@@ -21,6 +21,9 @@ juce_add_gui_app(NOVOX
     COMPANY_NAME "NOVOX Project"
 )
 
+# Generate the JUCE umbrella header included by the application sources.
+juce_generate_juce_header(NOVOX)
+
 target_sources(NOVOX PRIVATE
     Source/Main.cpp
     Source/MainComponent.h
