@@ -1,71 +1,128 @@
 #include "PitchDetector.h"
 #include <cmath>
 #include <algorithm>
-#include <array>
 
 void PitchDetector::prepare(double sampleRate, int)
 {
-    currentSampleRate = sampleRate > 0.0 ? sampleRate : 44100.0;
-    analysisBuffer.setSize(1, windowSize);
-    analysisBuffer.clear();
+    currentSampleRate = sampleRate > 0.0 ? sampleRate * 0.5 : 22050.0;
+    inputRing.fill(0.0f);
+    analysisFrame.fill(0.0f);
+    difference.fill(0.0f);
+    cumulativeMeanDifference.fill(1.0f);
     writePosition = 0;
+    samplesReceived = 0;
 }
 
 PitchResult PitchDetector::process(const float* samples, int numSamples)
 {
     PitchResult result;
-    if (samples == nullptr || numSamples <= 0 || analysisBuffer.getNumSamples() == 0)
+    if (samples == nullptr || numSamples <= 0)
         return result;
 
-    auto* dst = analysisBuffer.getWritePointer(0);
     for (int i = 0; i < numSamples; ++i)
     {
-        dst[writePosition] = samples[i];
-        writePosition = (writePosition + 1) % windowSize;
+        inputRing[static_cast<size_t>(writePosition)] = samples[i];
+        writePosition = (writePosition + 1) % inputWindowSize;
+        samplesReceived = juce::jmin(inputWindowSize, samplesReceived + 1);
     }
 
-    std::array<float, 4096> frame {};
-    for (int i = 0; i < windowSize; ++i)
-        frame[static_cast<size_t>(i)] = dst[(writePosition + i) % windowSize];
+    if (samplesReceived < inputWindowSize)
+        return result;
 
+    // Downsample by two. This keeps the analysis window practical while preserving
+    // the target vocal range (65–1000 Hz).
     double energy = 0.0;
-    for (int i = 0; i < windowSize; ++i)
-        energy += static_cast<double>(frame[static_cast<size_t>(i)]) * frame[static_cast<size_t>(i)];
+    for (int i = 0; i < analysisWindowSize; ++i)
+    {
+        const int sourceIndex = (writePosition + (i * 2)) % inputWindowSize;
+        const float value = inputRing[static_cast<size_t>(sourceIndex)];
+        analysisFrame[static_cast<size_t>(i)] = value;
+        energy += static_cast<double>(value) * value;
+    }
 
-    const float rms = static_cast<float>(std::sqrt(energy / windowSize));
-    if (rms < 0.008f)
+    result.rms = static_cast<float>(std::sqrt(energy / analysisWindowSize));
+    if (result.rms < silenceThreshold)
         return result;
 
     const int minLag = juce::jmax(2, static_cast<int>(currentSampleRate / maxFrequency));
-    const int maxLag = juce::jmin(windowSize / 2, static_cast<int>(currentSampleRate / minFrequency));
-    float bestCorrelation = 0.0f;
-    int bestLag = 0;
+    const int maxLag = juce::jmin(maxLagCapacity, static_cast<int>(currentSampleRate / minFrequency));
+    const int comparisonLength = analysisWindowSize - maxLag;
 
-    for (int lag = minLag; lag <= maxLag; ++lag)
+    difference[0] = 0.0f;
+    cumulativeMeanDifference[0] = 1.0f;
+
+    for (int tau = 1; tau <= maxLag; ++tau)
     {
-        double cross = 0.0, e1 = 0.0, e2 = 0.0;
-        const int limit = windowSize - lag;
-        for (int i = 0; i < limit; ++i)
+        double sum = 0.0;
+        for (int j = 0; j < comparisonLength; ++j)
         {
-            const float a = frame[static_cast<size_t>(i)];
-            const float b = frame[static_cast<size_t>(i + lag)];
-            cross += static_cast<double>(a) * b;
-            e1 += static_cast<double>(a) * a;
-            e2 += static_cast<double>(b) * b;
+            const float delta = analysisFrame[static_cast<size_t>(j)]
+                              - analysisFrame[static_cast<size_t>(j + tau)];
+            sum += static_cast<double>(delta) * delta;
         }
-        const float corr = (e1 > 1.0e-12 && e2 > 1.0e-12)
-            ? static_cast<float>(cross / std::sqrt(e1 * e2)) : 0.0f;
-        if (corr > bestCorrelation)
+        difference[static_cast<size_t>(tau)] = static_cast<float>(sum);
+    }
+
+    double runningSum = 0.0;
+    for (int tau = 1; tau <= maxLag; ++tau)
+    {
+        runningSum += difference[static_cast<size_t>(tau)];
+        cumulativeMeanDifference[static_cast<size_t>(tau)] =
+            runningSum > 1.0e-12
+                ? static_cast<float>(difference[static_cast<size_t>(tau)] * tau / runningSum)
+                : 1.0f;
+    }
+
+    int selectedLag = -1;
+    for (int tau = minLag; tau <= maxLag; ++tau)
+    {
+        if (cumulativeMeanDifference[static_cast<size_t>(tau)] < yinThreshold)
         {
-            bestCorrelation = corr;
-            bestLag = lag;
+            while (tau + 1 <= maxLag
+                && cumulativeMeanDifference[static_cast<size_t>(tau + 1)]
+                    < cumulativeMeanDifference[static_cast<size_t>(tau)])
+                ++tau;
+            selectedLag = tau;
+            break;
         }
     }
 
-    result.confidence = bestCorrelation;
-    result.voiced = bestLag > 0 && bestCorrelation > 0.72f;
-    if (result.voiced)
-        result.frequencyHz = static_cast<float>(currentSampleRate / bestLag);
+    if (selectedLag < 0)
+    {
+        float bestValue = yinThreshold;
+        for (int tau = minLag; tau <= maxLag; ++tau)
+        {
+            const float value = cumulativeMeanDifference[static_cast<size_t>(tau)];
+            if (value < bestValue)
+            {
+                bestValue = value;
+                selectedLag = tau;
+            }
+        }
+    }
+
+    if (selectedLag < 0)
+        return result;
+
+    float refinedLag = static_cast<float>(selectedLag);
+    if (selectedLag > minLag && selectedLag < maxLag)
+    {
+        const float left = cumulativeMeanDifference[static_cast<size_t>(selectedLag - 1)];
+        const float centre = cumulativeMeanDifference[static_cast<size_t>(selectedLag)];
+        const float right = cumulativeMeanDifference[static_cast<size_t>(selectedLag + 1)];
+        const float denominator = left - 2.0f * centre + right;
+        if (std::abs(denominator) > 1.0e-9f)
+            refinedLag += 0.5f * (left - right) / denominator;
+    }
+
+    result.confidence = juce::jlimit(0.0f, 1.0f,
+        1.0f - cumulativeMeanDifference[static_cast<size_t>(selectedLag)]);
+    result.frequencyHz = static_cast<float>(currentSampleRate / refinedLag);
+    result.voiced = result.confidence >= 0.80f
+                 && result.frequencyHz >= minFrequency
+                 && result.frequencyHz <= maxFrequency;
+    if (!result.voiced)
+        result.frequencyHz = 0.0f;
 
     return result;
 }
