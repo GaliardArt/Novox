@@ -12,13 +12,15 @@ public:
     void audioDeviceAboutToStart(juce::AudioIODevice* device) override;
     void audioDeviceStopped() override;
 
-    PitchResult getLatestPitch() const;
-    void setInputGain(float gain) { inputGain.store(juce::jlimit(0.1f, 8.0f, gain)); }
+    PitchResult getLatestPitch() const noexcept;
+    void setInputGain(float gain) noexcept { inputGain.store(juce::jlimit(0.1f, 8.0f, gain)); }
 
 private:
     PitchDetector detector;
-    mutable juce::CriticalSection resultLock;
-    PitchResult latest;
+    std::atomic<float> latestFrequency { 0.0f };
+    std::atomic<float> latestConfidence { 0.0f };
+    std::atomic<float> latestRms { 0.0f };
+    std::atomic<bool> latestVoiced { false };
     std::atomic<float> inputGain { 1.0f };
     juce::AudioBuffer<float> monoScratch;
 };
