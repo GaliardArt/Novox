@@ -1,4 +1,4 @@
-name: Windows Build
+name: Windows Build and Tests
 
 on:
   push:
@@ -19,10 +19,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Configure and compile (Windows x64)
+  build-and-test:
+    name: Configure, compile and test (Windows x64)
     runs-on: windows-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
 
     steps:
       - name: Check out source
@@ -35,7 +35,10 @@ jobs:
           git --version
 
       - name: Configure CMake
-        run: cmake -S . -B build -A x64
+        run: cmake -S . -B build -A x64 -DBUILD_TESTING=ON
 
       - name: Build Release
         run: cmake --build build --config Release --parallel 2
+
+      - name: Run regression tests
+        run: ctest --test-dir build -C Release --output-on-failure
