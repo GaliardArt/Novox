@@ -8,6 +8,7 @@ on:
   pull_request:
     branches:
       - main
+      - "dev/**"
   workflow_dispatch:
 
 permissions:
@@ -21,7 +22,7 @@ jobs:
   build:
     name: Configure and compile (Windows x64)
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: Check out source
