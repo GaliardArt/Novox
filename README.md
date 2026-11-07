@@ -1,50 +1,45 @@
 # NOVOX
 
-NOVOX is an offline-first, standalone vocal instrument for turning voice into musical control data. The project is written in C++ and uses JUCE for audio input, MIDI integration, and the desktop application.
+NOVOX is an offline-first, standalone vocal instrument for turning voice into musical control data. It is written in C++ and uses JUCE for audio input, MIDI integration, and the desktop application.
 
-## Current milestone (0.1)
+## Current milestone (0.2)
 
 - JUCE standalone desktop application
-- Audio input callback
-- Baseline normalized-autocorrelation pitch detector
-- Live note, frequency, and confidence display
+- Microphone/audio input capture
+- YIN-style fundamental-frequency estimation with confidence and RMS level
+- Live note, frequency, and input-level display
 - Input gain control
+- Selectable MIDI output
+- Stable-note filtering before MIDI note-on/note-off events
 
-## Planned milestones
+## Roadmap
 
-1. Improve real-time pitch detection with YIN, confidence scoring, smoothing, and hysteresis.
-2. Convert stable note tracking into MIDI note-on/note-off events.
-3. Add selectable MIDI outputs and virtual MIDI routing (Windows: loopMIDI).
-4. Add vocal trigger training and percussion classification.
-5. Add scale quantization, octave controls, pitch bend, and calibration.
-6. Add presets, local settings, diagnostics, and an installer.
+1. Improve pitch detection with test signals, noise rejection, and calibration.
+2. Move note tracking into a dedicated testable module and refine note onset/offset behavior.
+3. Add pitch bend and configurable MIDI channel/velocity.
+4. Add scale quantization, octave range, and note hold controls.
+5. Add vocal trigger training and percussion classification.
+6. Add local presets, diagnostics, and a Windows installer.
 
-## Build locally on Windows
+## Build on Windows
 
-Requirements:
-
-- Visual Studio 2022 with **Desktop development with C++**
-- CMake 3.22 or newer
-- Git
-- Windows 10/11
-
-From a Developer PowerShell in the repository directory:
+Requirements: Visual Studio 2022 with Desktop development with C++, CMake 3.22+, Git, Windows 10/11.
 
 ```powershell
 cmake -S . -B build -A x64
 cmake --build build --config Release --parallel
 ```
 
-CMake downloads JUCE 8.0.6 during the first configure. An internet connection is needed for this initial dependency download. Once dependencies are available, the application is designed to run offline.
+CMake fetches JUCE 8.0.6 on the first configure. An internet connection is needed for that dependency download. The application is designed to run offline after dependencies are available.
 
 ## Continuous integration
 
-GitHub Actions automatically configures and builds the Windows application whenever code is pushed or a pull request targets `main`. The workflow is defined in `.github/workflows/windows-build.yml`.
+GitHub Actions configures and compiles the Windows x64 Release build on pushes and pull requests targeting `main` or `dev/**`. The workflow is in `.github/workflows/windows-build.yml`.
 
-A green workflow means the current source successfully configured and compiled on the GitHub-hosted Windows runner. It does not replace testing with a physical microphone and MIDI destination.
+A successful CI build confirms configuration and compilation on the hosted runner. Hardware tests with a real microphone and MIDI destination remain necessary.
 
 ## Engineering notes
 
 - Keep audio callbacks real-time safe: avoid allocations, blocking locks, logging, and GUI access.
-- The current pitch detector is an educational baseline, not yet production-ready.
-- MIDI output and automated unit tests are planned for subsequent milestones.
+- The current pitch detector is an early YIN-style implementation and needs signal-based regression tests before production use.
+- MIDI events are currently dispatched by the GUI timer; a dedicated timestamped MIDI event queue is planned to improve timing.
