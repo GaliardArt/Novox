@@ -1,6 +1,6 @@
 #include "PitchDetector.h"
-#include <cmath>
 #include <algorithm>
+#include <cmath>
 
 void PitchDetector::prepare(double sampleRate, int)
 {
@@ -23,14 +23,13 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
     {
         inputRing[static_cast<size_t>(writePosition)] = samples[i];
         writePosition = (writePosition + 1) % inputWindowSize;
-        samplesReceived = juce::jmin(inputWindowSize, samplesReceived + 1);
+        samplesReceived = std::min(inputWindowSize, samplesReceived + 1);
     }
 
     if (samplesReceived < inputWindowSize)
         return result;
 
-    // Downsample by two. This keeps the analysis window practical while preserving
-    // the target vocal range (65–1000 Hz).
+    // Downsample by two. The effective analysis sample rate is half the device rate.
     double energy = 0.0;
     for (int i = 0; i < analysisWindowSize; ++i)
     {
@@ -44,8 +43,8 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
     if (result.rms < silenceThreshold)
         return result;
 
-    const int minLag = juce::jmax(2, static_cast<int>(currentSampleRate / maxFrequency));
-    const int maxLag = juce::jmin(maxLagCapacity, static_cast<int>(currentSampleRate / minFrequency));
+    const int minLag = std::max(2, static_cast<int>(currentSampleRate / maxFrequency));
+    const int maxLag = std::min(maxLagCapacity, static_cast<int>(currentSampleRate / minFrequency));
     const int comparisonLength = analysisWindowSize - maxLag;
 
     difference[0] = 0.0f;
@@ -115,8 +114,8 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
             refinedLag += 0.5f * (left - right) / denominator;
     }
 
-    result.confidence = juce::jlimit(0.0f, 1.0f,
-        1.0f - cumulativeMeanDifference[static_cast<size_t>(selectedLag)]);
+    result.confidence = std::clamp(
+        1.0f - cumulativeMeanDifference[static_cast<size_t>(selectedLag)], 0.0f, 1.0f);
     result.frequencyHz = static_cast<float>(currentSampleRate / refinedLag);
     result.voiced = result.confidence >= 0.80f
                  && result.frequencyHz >= minFrequency
