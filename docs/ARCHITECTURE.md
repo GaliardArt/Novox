@@ -3,42 +3,56 @@
 ## Application overview
 
 ```text
-MainComponent (GUI / 30 Hz refresh)
+AudioDeviceManager
        |
-       +---- AudioDeviceManager
+       +---- VoiceEngine (audio callback / producer)
        |          |
-       |          +---- VoiceEngine (audio callback)
-       |                    |
-       |                    +---- PitchDetector
-       |                    |
-       |                    +---- latest PitchResult
+       |          +---- channel mix + input gain
+       |          +---- preallocated SPSC sample FIFO
+       |                         |
+       |                         v
+       |                VoiceEngine worker thread
+       |                         |
+       |                         +---- PitchDetector (YIN)
+       |                         +---- sequence-stamped PitchResult
        |
-       +---- future NoteTracker
-       +---- future MidiRouter
-       +---- future TriggerTrainer
-       +---- future SettingsStore
+       +---- MainComponent (GUI / 60 Hz refresh)
+                  |
+                  +---- NoteTracker (new frames only)
+                  |       +---- onset/release debounce
+                  |       +---- semitone hysteresis
+                  |
+                  +---- MidiRouter
 ```
 
 ## Core modules
 
-- `AudioInput`: device selection, channel mapping, sample-rate management.
-- `PitchDetector`: YIN/NSDF-based monophonic fundamental estimation.
-- `NoteTracker`: note onset/offset, hysteresis, smoothing, and vibrato tolerance.
-- `MidiRouter`: MIDI note events, channels, pitch bend, and output device selection.
-- `TriggerTrainer`: user-recorded trigger samples and feature extraction.
-- `PercussionClassifier`: classify trained vocal sounds into trigger slots.
-- `ScaleQuantizer`: optional scale snapping and octave mapping.
-- `SettingsStore`: local settings and presets without account or cloud dependency.
+- `VoiceEngine`: audio capture handoff, preallocated SPSC FIFO, worker lifecycle, and coherent latest-pitch publication.
+- `PitchDetector`: YIN-style monophonic fundamental estimation.
+- `NoteTracker`: note onset/offset confirmation and pitch-boundary hysteresis.
+- `MidiRouter`: MIDI output device selection and note events.
+- `TriggerTrainer`: future user-recorded trigger samples and feature extraction.
+- `PercussionClassifier`: future classification of trained vocal sounds into trigger slots.
+- `ScaleQuantizer`: future optional scale snapping, octave mapping, and pitch bend.
+- `SettingsStore`: future local settings and presets.
 - `MainComponent`: visual feedback and controls.
 
-## Design principles
+## Real-time design
 
-1. **Standalone first:** the application must launch and perform its core functions without an account or network connection.
-2. **Real-time safety:** the audio callback performs bounded work and does not interact directly with the GUI.
-3. **Independent modules:** signal analysis, note tracking, MIDI routing, and presentation remain separable and testable.
-4. **User control:** input devices, sensitivity, pitch range, scale, octave, and MIDI destinations are configurable.
-5. **Observable behavior:** diagnostics expose input level, detected pitch, confidence, and MIDI event state.
+1. The audio callback does not execute pitch detection, allocate memory, wait on a mutex, log, or access the GUI.
+2. The callback performs channel averaging and writes into a fixed-capacity single-producer/single-consumer FIFO.
+3. A dedicated worker thread consumes audio blocks and runs the YIN detector.
+4. FIFO overflow never blocks the audio callback; dropped input samples are counted for diagnostics.
+5. Pitch snapshots use a sequence counter so the GUI does not read a partially published result.
+6. The GUI processes each new analysis frame once, rather than counting repeated timer reads as separate confirmations.
 
-## Current implementation status
+## Note tracking
 
-The first milestone provides a JUCE desktop shell, audio capture, a baseline autocorrelation pitch detector, and a live note/frequency/confidence display. The next milestones are a robust YIN detector, note tracking, and MIDI output.
+- Three consecutive analysis frames are required to trigger note-on or a note transition.
+- Four consecutive unvoiced frames are required to trigger note-off.
+- A 0.58-semitone transition margin reduces retriggers caused by small fluctuations around note boundaries.
+- MIDI is still sent from the GUI timer. A timestamped event queue and dedicated MIDI dispatch remain future work.
+
+## Validation
+
+CTest includes deterministic pitch-detector and note-tracker executables. These tests validate algorithmic behavior; they do not certify real-world microphone latency, CPU load, or performance with every audio driver.
