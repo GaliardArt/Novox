@@ -47,9 +47,25 @@ target_compile_definitions(NOVOX PRIVATE
 )
 target_link_libraries(NOVOX PRIVATE
     juce::juce_audio_utils juce::juce_audio_devices juce::juce_audio_basics
-    juce::juce_gui_extra juce::juce_recommended_config_flags
-    juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags
+    juce::juce_gui_extra juce::juce_recommended_warning_flags
 )
+
+# JUCE 8 WebView2 can fail to dispatch COM callbacks in optimized MSVC
+# Release builds when /O2 or /Ox is enabled. Keep Windows at /O1 so the
+# embedded WebView2 resource provider and native bridge work in the ZIP build.
+if(WIN32)
+    target_compile_options(NOVOX PRIVATE
+        "$<$<CONFIG:Debug>:/Od>"
+        "$<$<CONFIG:Release>:/O1>"
+        /MP
+        /EHsc
+    )
+else()
+    target_link_libraries(NOVOX PRIVATE
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+    )
+endif()
 if(BUILD_TESTING)
     add_executable(NOVOXPitchTests Tests/PitchDetectorTests.cpp Source/PitchDetector.cpp)
     target_include_directories(NOVOXPitchTests PRIVATE Source)
