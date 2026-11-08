@@ -6,6 +6,12 @@ VoiceEngine::VoiceEngine()
 {
 }
 
+VoiceEngine::~VoiceEngine()
+{
+    signalThreadShouldExit();
+    stopThread(1000);
+}
+
 void VoiceEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
 {
     signalThreadShouldExit();
