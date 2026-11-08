@@ -126,26 +126,40 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
     if (selectedLag < 0)
         return result;
 
-    // Correct clear octave mistakes only when the octave-related candidate has
-    // materially stronger periodicity. This avoids forcing ambiguous pure tones
-    // down or up an octave when both periods are equally plausible.
-    const float selectedPeriodicity = cumulativeMeanDifference[static_cast<size_t>(selectedLag)];
-    int correctedLag = selectedLag;
-    const int octaveCandidates[] = { selectedLag / 2, selectedLag * 2 };
-    for (const int candidate : octaveCandidates)
+    // YIN may select the second harmonic when the fundamental is weak.
+    // Check the actual spectral energy at half the selected frequency before
+    // correcting down an octave. A Hann-windowed projection reduces leakage,
+    // while the relative threshold keeps clean single-frequency tones intact.
+    const int lowerOctaveLag = selectedLag * 2;
+    if (lowerOctaveLag <= maxLag)
     {
-        if (candidate < minLag || candidate > maxLag)
-            continue;
-
-        const float candidatePeriodicity = cumulativeMeanDifference[static_cast<size_t>(candidate)];
-        if (candidatePeriodicity < yinThreshold * 1.5f
-            && candidatePeriodicity + 0.08f < selectedPeriodicity)
+        const auto estimateAmplitude = [this](double frequency)
         {
-            correctedLag = candidate;
-            break;
-        }
+            double real = 0.0;
+            double imaginary = 0.0;
+            double windowSum = 0.0;
+            for (int i = 0; i < analysisWindowSize; ++i)
+            {
+                const double window = 0.5 - 0.5 * std::cos(
+                    2.0 * 3.14159265358979323846 * i / (analysisWindowSize - 1));
+                const double phase = 2.0 * 3.14159265358979323846
+                                   * frequency * i / currentSampleRate;
+                const double value = static_cast<double>(analysisFrame[static_cast<size_t>(i)]) * window;
+                real += value * std::cos(phase);
+                imaginary -= value * std::sin(phase);
+                windowSum += window;
+            }
+            return 2.0 * std::sqrt(real * real + imaginary * imaginary) / windowSum;
+        };
+
+        const double selectedFrequency = currentSampleRate / static_cast<double>(selectedLag);
+        const double lowerFrequency = currentSampleRate / static_cast<double>(lowerOctaveLag);
+        const double selectedAmplitude = estimateAmplitude(selectedFrequency);
+        const double lowerAmplitude = estimateAmplitude(lowerFrequency);
+
+        if (lowerAmplitude > std::max(0.001, selectedAmplitude * 0.03))
+            selectedLag = lowerOctaveLag;
     }
-    selectedLag = correctedLag;
 
     float refinedLag = static_cast<float>(selectedLag);
     if (selectedLag > minLag && selectedLag < maxLag)
