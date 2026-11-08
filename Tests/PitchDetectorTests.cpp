@@ -75,7 +75,7 @@ namespace
 
     void testSampleRates()
     {
-        for (const double sampleRate : { 44100.0, 48000.0 })
+        for (const double sampleRate : { 44100.0, 48000.0, 96000.0 })
         {
             const auto result = analyseSignal(makeSine(196.0, sampleRate, 0.35), sampleRate);
             const auto error = std::abs(result.frequencyHz - 196.0f);
@@ -83,6 +83,14 @@ namespace
                   "Sample-rate handling at " + std::to_string(static_cast<int>(sampleRate)) + " Hz",
                   "detected " + std::to_string(result.frequencyHz) + " Hz");
         }
+    }
+
+    void testHighSampleRateBassRange()
+    {
+        const auto result = analyseSignal(makeSine(82.4069, 96000.0, 0.45), 96000.0);
+        check(result.voiced && std::abs(result.frequencyHz - 82.4069f) < 3.0f,
+              "Low E2 remains detectable at 96 kHz input rate",
+              "detected " + std::to_string(result.frequencyHz) + " Hz");
     }
 
     void testSilenceAndLowLevel()
@@ -195,6 +203,7 @@ int main()
     std::cout << "NOVOX PitchDetector regression tests\n";
     testKnownFrequencies();
     testSampleRates();
+    testHighSampleRateBassRange();
     testSilenceAndLowLevel();
     testSensitivityControl();
     testHarmonicSignal();

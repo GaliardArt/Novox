@@ -27,7 +27,7 @@ public:
 private:
     static constexpr int maxAnalysisWindowSize = 2048;
     static constexpr int shortAnalysisWindowSize = 1024;
-    static constexpr int maxLagCapacity = 384;
+    static constexpr int maxLagCapacity = 768;
     static constexpr int filterHistorySize = 31;
 
     // Symmetric 31-tap Blackman-windowed low-pass FIR, cutoff at 0.22 cycles/sample.
