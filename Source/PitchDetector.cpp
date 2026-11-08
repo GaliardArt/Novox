@@ -29,6 +29,12 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
     if (samplesReceived < inputWindowSize)
         return result;
 
+    const float sensitivity = sensitivityValue.load(std::memory_order_relaxed);
+    // Sensitivity trades noise rejection for the ability to track quieter voices.
+    const float silenceThreshold = 0.002f + 0.012f * (1.0f - sensitivity);
+    const float confidenceThreshold = 0.68f + 0.24f * (1.0f - sensitivity);
+    const float yinThreshold = 0.12f + 0.06f * sensitivity;
+
     // Downsample by two. The effective analysis sample rate is half the device rate.
     double energy = 0.0;
     for (int i = 0; i < analysisWindowSize; ++i)
@@ -117,7 +123,7 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
     result.confidence = std::clamp(
         1.0f - cumulativeMeanDifference[static_cast<size_t>(selectedLag)], 0.0f, 1.0f);
     result.frequencyHz = static_cast<float>(currentSampleRate / refinedLag);
-    result.voiced = result.confidence >= 0.80f
+    result.voiced = result.confidence >= confidenceThreshold
                  && result.frequencyHz >= minFrequency
                  && result.frequencyHz <= maxFrequency;
     if (!result.voiced)

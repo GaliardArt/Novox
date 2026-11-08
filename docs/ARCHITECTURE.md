@@ -13,7 +13,7 @@ AudioDeviceManager
        |                         v
        |                VoiceEngine worker thread
        |                         |
-       |                         +---- PitchDetector (YIN)
+       |                         +---- PitchDetector (YIN + sensitivity gate)
        |                         +---- sequence-stamped PitchResult
        |
        +---- MainComponent (GUI / 60 Hz refresh)
@@ -21,6 +21,8 @@ AudioDeviceManager
                   +---- NoteTracker (new frames only)
                   |       +---- onset/release debounce
                   |       +---- semitone hysteresis
+                  |
+                  +---- PitchSmoother (MIDI bend only)
                   |
                   +---- PitchBend (fractional semitone -> 14-bit wheel)
                   |
@@ -37,24 +39,34 @@ AudioDeviceManager
 ## Core modules
 
 - `VoiceEngine`: audio capture handoff, preallocated SPSC FIFO, worker lifecycle, and coherent latest-pitch publication.
-- `PitchDetector`: YIN-style monophonic fundamental estimation.
+- `PitchDetector`: YIN-style monophonic fundamental estimation with adjustable RMS and confidence thresholds.
 - `NoteTracker`: note onset/offset confirmation and pitch-boundary hysteresis.
-- `PitchBend`: pure conversion from frequency and active note to the standard 14-bit pitch-wheel value.
+- `PitchSmoother`: optional one-pole smoothing and deadband applied to MIDI bend offsets; raw pitch display and note detection remain unfiltered.
+- `PitchBend`: pure conversion from semitone offset to the standard 14-bit pitch-wheel value.
 - `MidiRouter`: MIDI output selection, channel-aware bounded event queue, and dedicated MIDI dispatch thread.
 - `MidiEventQueue`: fixed-capacity, lock-free SPSC queue preserving Note On, Note Off, and Pitch Bend order and payload.
-- `MainComponent`: visual feedback and controls for input gain, bend enable/range, MIDI output, and channel.
+- `MainComponent`: visual feedback and controls for input gain, pitch sensitivity, smoothing, bend enable/range, MIDI output, and channel.
 
 ## Real-time design
 
 1. The audio callback does not execute pitch detection, allocate memory, wait on a mutex, log, or access the GUI.
 2. The callback performs channel averaging and writes into a fixed-capacity SPSC FIFO.
 3. A dedicated worker thread consumes audio blocks and runs the YIN detector.
-4. Audio FIFO overflow and blocks larger than the prepared scratch buffer never block the callback; all such dropped samples are counted.
-5. Pitch snapshots use a sequence counter so the GUI does not read a partially published result.
-6. The GUI processes each new analysis frame once.
-7. The GUI converts fractional pitch relative to the active MIDI note into a 14-bit Pitch Bend value.
-8. The GUI enqueues MIDI events into a bounded SPSC queue. Each event captures the selected MIDI channel before entering the queue.
-9. A dedicated worker sends messages to the selected MIDI device in FIFO order. Output shutdown drains pending events before releasing the device handle.
+4. Pitch sensitivity is an atomic setting read by the worker. Increasing it lowers the RMS and confidence gates, improving quiet-signal tracking while increasing noise susceptibility.
+5. Audio FIFO overflow and blocks larger than the prepared scratch buffer never block the callback; all such dropped samples are counted.
+6. Pitch snapshots use a sequence counter so the GUI does not read a partially published result.
+7. The GUI processes each new analysis frame once.
+8. Raw pitch is passed to NoteTracker. Only the continuous MIDI bend offset is smoothed, preserving note detection response.
+9. The GUI enqueues MIDI events into a bounded SPSC queue. Each event captures the selected MIDI channel before entering the queue.
+10. A dedicated worker sends messages to the selected MIDI device in FIFO order. Output shutdown drains pending events before releasing the device handle.
+
+## Pitch stability and sensitivity
+
+- Sensitivity ranges from 0–100%, default 50%. The RMS threshold varies from 0.014 at minimum to 0.002 at maximum; the confidence threshold varies from 0.92 to 0.68. Higher sensitivity can track quieter vocals but may also accept more background noise.
+- Smoothing ranges from 0–100%, default 35%. Zero bypasses filtering. Higher values increase low-pass smoothing and the micro-variation deadband.
+- Smoothing is applied only to Pitch Bend. It does not change the displayed raw frequency or the discrete NoteTracker decisions.
+- The filter attenuates small rapid fluctuations but intentionally does not attempt to erase all vibrato, preserving expressive vocal movement.
+- Filter state resets on note changes, MIDI output/channel changes, note release, and when smoothing is disabled or pitch bend is reset.
 
 ## Pitch Bend and channel behavior
 
@@ -68,4 +80,4 @@ AudioDeviceManager
 
 ## Validation
 
-CTest includes deterministic pitch-detector, note-tracker, MIDI queue, and Pitch Bend executables. These tests validate signal conversion and queue behavior; they do not certify real-world microphone latency, MIDI driver behavior, CPU load, or musical performance.
+CTest includes deterministic pitch-detector, note-tracker, MIDI queue, Pitch Bend, and pitch-smoothing executables. These tests validate synthetic signal response and filter behavior; they do not certify real-world microphone latency, room-noise rejection, MIDI driver behavior, CPU load, or musical performance.

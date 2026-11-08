@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdint>
 #include <iostream>
 #include <random>
 #include <string>
@@ -26,10 +25,12 @@ namespace
         }
     }
 
-    PitchResult analyseSignal(const std::vector<float>& signal, double sampleRate, int blockSize = 256)
+    PitchResult analyseSignal(const std::vector<float>& signal, double sampleRate, int blockSize = 256,
+                              float sensitivity = 0.5f)
     {
         PitchDetector detector;
         detector.prepare(sampleRate, blockSize);
+        detector.setSensitivity(sensitivity);
         PitchResult latest;
         for (size_t offset = 0; offset < signal.size(); offset += static_cast<size_t>(blockSize))
         {
@@ -67,7 +68,7 @@ namespace
             check(result.voiced && errorPercent <= 2.0,
                   std::string("Known frequency: ") + item.label,
                   "expected " + std::to_string(item.hz) + " Hz, got "
-                    + std::to_string(result.frequencyHz) + " Hz (" 
+                    + std::to_string(result.frequencyHz) + " Hz ("
                     + std::to_string(errorPercent) + "% error)");
         }
     }
@@ -91,7 +92,18 @@ namespace
         check(!result.voiced && result.frequencyHz == 0.0f, "Silence is not classified as a note");
 
         result = analyseSignal(makeSine(440.0, 48000.0, 0.35, 0.002f), 48000.0);
-        check(!result.voiced, "Very low-level signal is rejected by the silence gate");
+        check(!result.voiced, "Very low-level signal is rejected by default sensitivity");
+    }
+
+    void testSensitivityControl()
+    {
+        const auto quietSignal = makeSine(440.0, 48000.0, 0.35, 0.004f);
+        const auto lowSensitivity = analyseSignal(quietSignal, 48000.0, 256, 0.0f);
+        const auto highSensitivity = analyseSignal(quietSignal, 48000.0, 256, 1.0f);
+        check(!lowSensitivity.voiced,
+              "Low sensitivity rejects a quiet signal");
+        check(highSensitivity.voiced && std::abs(highSensitivity.frequencyHz - 440.0f) < 3.0f,
+              "High sensitivity tracks a quiet but pitched signal");
     }
 
     void testHarmonicSignal()
@@ -136,6 +148,7 @@ int main()
     testKnownFrequencies();
     testSampleRates();
     testSilenceAndLowLevel();
+    testSensitivityControl();
     testHarmonicSignal();
     testNoiseRejection();
     testInvalidInput();

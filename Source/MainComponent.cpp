@@ -48,6 +48,32 @@ MainComponent::MainComponent()
     gainSlider.onValueChange = [this] { engine.setInputGain(static_cast<float>(gainSlider.getValue())); };
     addAndMakeVisible(gainSlider);
 
+    sensitivityLabel.setText("Pitch sensitivity", juce::dontSendNotification);
+    sensitivityLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+    addAndMakeVisible(sensitivityLabel);
+    sensitivitySlider.setRange(0, 100, 1);
+    sensitivitySlider.setValue(50, juce::dontSendNotification);
+    sensitivitySlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 24);
+    sensitivitySlider.setTextValueSuffix("%");
+    sensitivitySlider.onValueChange = [this] {
+        engine.setPitchSensitivity(static_cast<float>(sensitivitySlider.getValue() / 100.0));
+    };
+    engine.setPitchSensitivity(0.5f);
+    addAndMakeVisible(sensitivitySlider);
+
+    smoothingLabel.setText("Pitch smoothing", juce::dontSendNotification);
+    smoothingLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+    addAndMakeVisible(smoothingLabel);
+    smoothingSlider.setRange(0, 100, 1);
+    smoothingSlider.setValue(35, juce::dontSendNotification);
+    smoothingSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 24);
+    smoothingSlider.setTextValueSuffix("%");
+    smoothingSlider.onValueChange = [this] {
+        pitchSmoother.reset();
+        lastPitchBendValue = -1;
+    };
+    addAndMakeVisible(smoothingSlider);
+
     bendRangeLabel.setText("Pitch Bend range", juce::dontSendNotification);
     bendRangeLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible(bendRangeLabel);
@@ -95,7 +121,7 @@ MainComponent::MainComponent()
     else
         deviceManager.addAudioCallback(&engine);
 
-    setSize(960, 760);
+    setSize(960, 900);
     startTimerHz(60);
 }
 
@@ -121,6 +147,7 @@ void MainComponent::refreshMidiOutputs()
         midiRouter.noteOff(activeNote);
     }
     noteTracker.reset();
+    pitchSmoother.reset();
 
     midiOutputSelector.clear(juce::dontSendNotification);
     const auto names = midiRouter.getOutputNames();
@@ -130,7 +157,6 @@ void MainComponent::refreshMidiOutputs()
     midiOutputSelector.setSelectedId(1, juce::dontSendNotification);
     midiRouter.closeOutput();
     lastPitchBendValue = 8192;
-    noteTracker.reset();
     midiLabel.setText("MIDI: choose an output device", juce::dontSendNotification);
 }
 
@@ -143,6 +169,7 @@ void MainComponent::selectMidiOutput()
         midiRouter.noteOff(activeNote);
     }
     noteTracker.reset();
+    pitchSmoother.reset();
 
     const int selectedId = midiOutputSelector.getSelectedId();
     if (selectedId <= 1)
@@ -166,11 +193,12 @@ void MainComponent::selectMidiChannel()
     if (activeNote >= 0)
     {
         resetPitchBend();
-        midiRouter.noteOff(activeNote); // Enqueued on the previous channel.
+        midiRouter.noteOff(activeNote);
     }
 
     midiRouter.setChannel(channelSelector.getSelectedId());
     noteTracker.reset();
+    pitchSmoother.reset();
     lastPitchBendValue = 8192;
     midiLabel.setText("MIDI: channel " + juce::String(midiRouter.getChannel()),
                       juce::dontSendNotification);
@@ -181,6 +209,7 @@ void MainComponent::resetPitchBend()
     if (midiRouter.isOpen() && lastPitchBendValue != PitchBend::center)
         midiRouter.pitchBend(PitchBend::center);
     lastPitchBendValue = PitchBend::center;
+    pitchSmoother.reset();
     pitchBendLabel.setText("Pitch Bend: center", juce::dontSendNotification);
 }
 
@@ -193,8 +222,11 @@ void MainComponent::sendPitchBend(const PitchResult& pitch)
         return;
     }
 
+    const float rawOffset = PitchBend::semitoneOffset(pitch.frequencyHz, activeNote);
+    const float offset = pitchSmoother.process(rawOffset,
+        static_cast<float>(smoothingSlider.getValue()));
     const int range = static_cast<int>(bendRangeSlider.getValue());
-    const int value = PitchBend::to14BitValue(pitch.frequencyHz, activeNote, range);
+    const int value = PitchBend::semitonesTo14BitValue(offset, range);
 
     // Avoid filling the asynchronous MIDI queue with imperceptible changes.
     if (midiRouter.isOpen() && std::abs(value - lastPitchBendValue) >= 2)
@@ -203,7 +235,6 @@ void MainComponent::sendPitchBend(const PitchResult& pitch)
         lastPitchBendValue = value;
     }
 
-    const auto offset = PitchBend::semitoneOffset(pitch.frequencyHz, activeNote);
     const auto sign = offset > 0.005f ? "+" : "";
     pitchBendLabel.setText("Pitch Bend: " + juce::String(sign) + juce::String(offset, 2)
                            + " st  |  range ±" + juce::String(range) + " st",
@@ -220,6 +251,7 @@ void MainComponent::updateNoteTracking(const PitchResult& pitch)
     }
     if (update.noteOn >= 0)
     {
+        pitchSmoother.reset();
         midiRouter.noteOn(update.noteOn);
         lastPitchBendValue = -1;
     }
@@ -244,20 +276,26 @@ void MainComponent::resized()
     frequencyLabel.setBounds(area.removeFromTop(34));
     pitchBendLabel.setBounds(area.removeFromTop(28));
     midiLabel.setBounds(area.removeFromTop(28));
-    area.removeFromTop(16);
+    area.removeFromTop(12);
 
     gainLabel.setBounds(area.removeFromTop(22).withSizeKeepingCentre(420, 22));
     gainSlider.setBounds(area.removeFromTop(34).withSizeKeepingCentre(420, 34));
-    area.removeFromTop(8);
+    area.removeFromTop(5);
+    sensitivityLabel.setBounds(area.removeFromTop(22).withSizeKeepingCentre(420, 22));
+    sensitivitySlider.setBounds(area.removeFromTop(34).withSizeKeepingCentre(420, 34));
+    area.removeFromTop(5);
+    smoothingLabel.setBounds(area.removeFromTop(22).withSizeKeepingCentre(420, 22));
+    smoothingSlider.setBounds(area.removeFromTop(34).withSizeKeepingCentre(420, 34));
+    area.removeFromTop(6);
     pitchBendEnabled.setBounds(area.removeFromTop(28).withSizeKeepingCentre(220, 28));
     bendRangeLabel.setBounds(area.removeFromTop(22).withSizeKeepingCentre(420, 22));
     bendRangeSlider.setBounds(area.removeFromTop(34).withSizeKeepingCentre(420, 34));
-    area.removeFromTop(10);
-    midiOutputSelector.setBounds(area.removeFromTop(34).withSizeKeepingCentre(420, 34));
     area.removeFromTop(8);
+    midiOutputSelector.setBounds(area.removeFromTop(34).withSizeKeepingCentre(420, 34));
+    area.removeFromTop(5);
     channelLabel.setBounds(area.removeFromTop(22).withSizeKeepingCentre(420, 22));
     channelSelector.setBounds(area.removeFromTop(34).withSizeKeepingCentre(240, 34));
-    area.removeFromTop(8);
+    area.removeFromTop(6);
     refreshButton.setBounds(area.removeFromTop(36).withSizeKeepingCentre(180, 32));
 }
 

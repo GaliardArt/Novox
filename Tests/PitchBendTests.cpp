@@ -34,6 +34,8 @@ namespace
               "Zero frequency safely returns center");
         check(PitchBend::to14BitValue(440.0f, -1, 2) == 8192,
               "Invalid active note safely returns center");
+        check(PitchBend::semitonesTo14BitValue(std::nanf(""), 2) == 8192,
+              "Non-finite semitone offset safely returns center");
     }
 
     void testPositiveAndNegativeBend()
@@ -71,6 +73,10 @@ namespace
               "Exact MIDI note has zero semitone offset");
         check(std::abs(PitchBend::semitoneOffset(frequencyForMidi(69.25f), 69) - 0.25f) < 0.001f,
               "Semitone offset reports fractional pitch accurately");
+        const auto direct = PitchBend::semitonesTo14BitValue(0.5f, 2);
+        const auto fromFrequency = PitchBend::to14BitValue(frequencyForMidi(69.5f), 69, 2);
+        check(direct == fromFrequency,
+              "Smoothed semitone offset maps to the same wheel value as frequency input");
     }
 }
 

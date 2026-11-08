@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <atomic>
 #include <cstdint>
 
 struct PitchResult
@@ -16,6 +17,11 @@ class PitchDetector
 public:
     void prepare(double sampleRate, int maxBlockSize);
     PitchResult process(const float* samples, int numSamples);
+    void setSensitivity(float sensitivity) noexcept
+    {
+        sensitivityValue.store(sensitivity < 0.0f ? 0.0f : (sensitivity > 1.0f ? 1.0f : sensitivity),
+                               std::memory_order_relaxed);
+    }
 
 private:
     static constexpr int inputWindowSize = 2048;
@@ -31,6 +37,5 @@ private:
     int samplesReceived = 0;
     float minFrequency = 65.0f;
     float maxFrequency = 1000.0f;
-    float yinThreshold = 0.15f;
-    float silenceThreshold = 0.008f;
+    std::atomic<float> sensitivityValue { 0.5f };
 };

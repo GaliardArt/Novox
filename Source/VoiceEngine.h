@@ -19,6 +19,7 @@ public:
 
     PitchResult getLatestPitch() const noexcept;
     void setInputGain(float gain) noexcept { inputGain.store(juce::jlimit(0.1f, 8.0f, gain)); }
+    void setPitchSensitivity(float sensitivity) noexcept { detector.setSensitivity(sensitivity); }
     uint64_t getDroppedAudioSamples() const noexcept { return droppedAudioSamples.load(); }
 
 private:

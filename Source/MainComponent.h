@@ -3,6 +3,7 @@
 #include "VoiceEngine.h"
 #include "MidiRouter.h"
 #include "NoteTracker.h"
+#include "PitchSmoother.h"
 
 class MainComponent final : public juce::Component,
                             private juce::Timer
@@ -26,10 +27,12 @@ private:
     VoiceEngine engine;
     MidiRouter midiRouter;
     NoteTracker noteTracker;
+    PitchSmoother pitchSmoother;
 
     juce::Label title, status, noteLabel, frequencyLabel, midiLabel;
     juce::Label gainLabel, bendRangeLabel, channelLabel, pitchBendLabel;
-    juce::Slider gainSlider, bendRangeSlider;
+    juce::Label sensitivityLabel, smoothingLabel;
+    juce::Slider gainSlider, bendRangeSlider, sensitivitySlider, smoothingSlider;
     juce::ComboBox midiOutputSelector, channelSelector;
     juce::TextButton refreshButton { "Refresh MIDI" };
     juce::ToggleButton pitchBendEnabled { "Enable Pitch Bend" };
