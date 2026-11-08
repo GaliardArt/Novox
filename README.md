@@ -1,50 +1,75 @@
+<div align="center">
+
 # NOVOX
 
-NOVOX is an offline-first, standalone vocal instrument for turning voice into musical control data. The project is written in C++ and uses JUCE for audio input, MIDI integration, and the desktop application.
+### YOUR VOICE. YOUR INSTRUMENT.
 
-## Current milestone (0.1)
+**Transform vocal expression into MIDI — directly from your desktop.**
 
-- JUCE standalone desktop application
-- Audio input callback
-- Baseline normalized-autocorrelation pitch detector
-- Live note, frequency, and confidence display
-- Input gain control
+[![Platform](https://img.shields.io/badge/platform-Windows-1f6feb?style=for-the-badge&logo=windows&logoColor=white)](https://www.microsoft.com/windows)
+[![Language](https://img.shields.io/badge/language-C%2B%2B-00599C?style=for-the-badge&logo=cplusplus&logoColor=white)](https://isocpp.org/)
+[![Framework](https://img.shields.io/badge/framework-JUCE-20232A?style=for-the-badge)](https://juce.com/)
+[![Build](https://img.shields.io/badge/build-CMake-064F8C?style=for-the-badge&logo=cmake&logoColor=white)](https://cmake.org/)
 
-## Planned milestones
+</div>
 
-1. Improve real-time pitch detection with YIN, confidence scoring, smoothing, and hysteresis.
-2. Convert stable note tracking into MIDI note-on/note-off events.
-3. Add selectable MIDI outputs and virtual MIDI routing (Windows: loopMIDI).
-4. Add vocal trigger training and percussion classification.
-5. Add scale quantization, octave controls, pitch bend, and calibration.
-6. Add presets, local settings, diagnostics, and an installer.
+---
 
-## Build locally on Windows
+## What is NOVOX?
 
-Requirements:
+**NOVOX is a standalone vocal instrument built to turn the human voice into musical control.**
 
-- Visual Studio 2022 with **Desktop development with C++**
-- CMake 3.22 or newer
-- Git
-- Windows 10/11
+The idea is simple: sing a note, let NOVOX recognize its pitch, and use that information as the foundation for expressive MIDI performance. Instead of treating the microphone as just an audio input, NOVOX explores the voice as an instrument that can interact directly with music production software and MIDI-compatible equipment.
 
-From a Developer PowerShell in the repository directory:
+Designed with a focus on responsiveness, clarity, and independence, NOVOX is being developed as a native Windows desktop application. Its core is written in **C++**, with **JUCE** handling audio devices, MIDI integration, and the desktop application.
 
-```powershell
-cmake -S . -B build -A x64
-cmake --build build --config Release --parallel
-```
+## The concept
 
-CMake downloads JUCE 8.0.6 during the first configure. An internet connection is needed for this initial dependency download. Once dependencies are available, the application is designed to run offline.
+NOVOX is centered around one creative workflow:
 
-## Continuous integration
+**Voice → Pitch Detection → Musical Note → MIDI**
 
-GitHub Actions automatically configures and builds the Windows application whenever code is pushed or a pull request targets `main`. The workflow is defined in `.github/workflows/windows-build.yml`.
+A microphone captures a monophonic vocal signal. The pitch-analysis engine estimates its fundamental frequency and translates that information into musical feedback. This initial foundation establishes the signal path that future instrument capabilities can build upon.
 
-A green workflow means the current source successfully configured and compiled on the GitHub-hosted Windows runner. It does not replace testing with a physical microphone and MIDI destination.
+The goal is to make vocal performance a practical and immediate way to control digital instruments.
 
-## Engineering notes
+## What this version contains
 
-- Keep audio callbacks real-time safe: avoid allocations, blocking locks, logging, and GUI access.
-- The current pitch detector is an educational baseline, not yet production-ready.
-- MIDI output and automated unit tests are planned for subsequent milestones.
+- **Live audio capture** — receives input from the selected audio device.
+- **Pitch detection** — analyzes the incoming signal using normalized autocorrelation.
+- **Real-time feedback** — displays the detected note, frequency, and confidence.
+- **Input gain** — provides basic control over the signal level entering the analysis stage.
+- **Native desktop foundation** — a standalone JUCE application, built with CMake.
+
+> This branch represents the initial NOVOX foundation. Advanced note tracking, MIDI performance controls, and additional audio-processing features belong to the development branch.
+
+## Built for independence
+
+NOVOX is designed as a local desktop application. Its core workflow does not depend on a user account, cloud processing, or a remote service.
+
+Audio analysis happens on the machine, keeping the project focused on a direct path between the microphone and musical control.
+
+## Technology
+
+| Component | Role |
+|---|---|
+| **C++** | Core application and audio-processing logic |
+| **JUCE** | Audio devices, MIDI foundation, and desktop application |
+| **CMake** | Build configuration and project generation |
+| **Visual Studio** | Windows C++ compilation |
+
+## Project status
+
+NOVOX is an actively developed project. This branch contains its initial standalone application and pitch-detection foundation; it should be understood as an early technical baseline rather than a finished music-production tool.
+
+---
+
+<div align="center">
+
+**NOVOX**
+
+*Turn the voice into an instrument.*
+
+<sub>Built with C++ and JUCE.</sub>
+
+</div>
