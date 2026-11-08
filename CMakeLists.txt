@@ -11,7 +11,23 @@ FetchContent_Declare(JUCE
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(JUCE)
-juce_add_gui_app(NOVOX PRODUCT_NAME "NOVOX" COMPANY_NAME "NOVOX Project")
+if(WIN32)
+    set(NOVOX_WEBVIEW2_VERSION "1.0.2903.40")
+    set(NOVOX_WEBVIEW2_ROOT "${CMAKE_BINARY_DIR}/webview2")
+    set(NOVOX_WEBVIEW2_PACKAGE "${NOVOX_WEBVIEW2_ROOT}/Microsoft.Web.WebView2.${NOVOX_WEBVIEW2_VERSION}")
+    if(NOT EXISTS "${NOVOX_WEBVIEW2_PACKAGE}/build/native/include/WebView2.h")
+        file(MAKE_DIRECTORY "${NOVOX_WEBVIEW2_PACKAGE}")
+        set(NOVOX_WEBVIEW2_NUPKG "${CMAKE_BINARY_DIR}/webview2.nupkg")
+        file(DOWNLOAD "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/${NOVOX_WEBVIEW2_VERSION}" "${NOVOX_WEBVIEW2_NUPKG}" STATUS NOVOX_WEBVIEW2_DOWNLOAD_STATUS TLS_VERIFY ON)
+        list(GET NOVOX_WEBVIEW2_DOWNLOAD_STATUS 0 NOVOX_WEBVIEW2_DOWNLOAD_CODE)
+        if(NOT NOVOX_WEBVIEW2_DOWNLOAD_CODE EQUAL 0)
+            message(FATAL_ERROR "Failed to download Microsoft.Web.WebView2: ${NOVOX_WEBVIEW2_DOWNLOAD_STATUS}")
+        endif()
+        file(ARCHIVE_EXTRACT INPUT "${NOVOX_WEBVIEW2_NUPKG}" DESTINATION "${NOVOX_WEBVIEW2_PACKAGE}")
+    endif()
+    set(JUCE_WEBVIEW2_PACKAGE_LOCATION "${NOVOX_WEBVIEW2_ROOT}" CACHE PATH "Microsoft WebView2 NuGet package root" FORCE)
+endif()
+juce_add_gui_app(NOVOX PRODUCT_NAME "NOVOX" COMPANY_NAME "NOVOX Project" NEEDS_WEBVIEW2 TRUE)
 juce_generate_juce_header(NOVOX)
 target_sources(NOVOX PRIVATE
     Source/Main.cpp Source/MainComponent.h Source/MainComponent.cpp
@@ -23,7 +39,8 @@ target_sources(NOVOX PRIVATE
     Source/PresetData.h Source/PresetManager.h Source/PresetManager.cpp
 )
 target_compile_definitions(NOVOX PRIVATE
-    JUCE_WEB_BROWSER=0
+    JUCE_WEB_BROWSER=1
+    JUCE_USE_WIN_WEBVIEW2=1
     JUCE_USE_CURL=0
     JUCE_APPLICATION_NAME_STRING="$<TARGET_PROPERTY:NOVOX,JUCE_PRODUCT_NAME>"
     JUCE_APPLICATION_VERSION_STRING="${PROJECT_VERSION}"
@@ -99,4 +116,6 @@ set(CPACK_PACKAGE_FILE_NAME "NOVOX-${PROJECT_VERSION}-Windows-x64")
 set(CPACK_GENERATOR "ZIP")
 # Keep CPack output deterministic for local builds and CI artifact collection.
 set(CPACK_PACKAGE_DIRECTORY "${CMAKE_BINARY_DIR}")
+add_custom_command(TARGET NOVOX POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/UI" "$<TARGET_FILE_DIR:NOVOX>/UI")
+install(DIRECTORY UI DESTINATION .)
 include(CPack)

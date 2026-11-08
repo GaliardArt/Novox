@@ -116,3 +116,8 @@ The main window uses native JUCE components arranged in four tabs:
 - **Presets:** local preset selection, save/update, load, and delete.
 
 The UI redesign changes presentation and control placement only. Audio capture, worker-thread analysis, note tracking, MIDI event generation, and preset persistence remain in their existing modules.
+
+
+## Web presentation layer (transition foundation)
+
+On Windows, JUCE WebBrowserComponent uses WebView2 to render the local frontend in `UI/`. The resource provider serves only the allow-listed HTML, CSS, and JavaScript files from the application's adjacent UI directory. Native integration is enabled only for this bundled local content. The JavaScript bridge currently exposes a read-only status snapshot and a frontend-ready event. The WebView is presentation-only: it does not own audio callbacks, pitch analysis, note tracking, or MIDI dispatch. Existing native tabs remain intact until their web equivalents are implemented and validated.

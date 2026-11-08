@@ -36,7 +36,8 @@ private:
 
     NovoxLookAndFeel novoxLookAndFeel;
     juce::TabbedComponent tabs { juce::TabbedButtonBar::TabsAtTop };
-    juce::Component playPage, midiPage, audioPage, presetsPage;
+    juce::Component playPage, midiPage, audioPage, presetsPage, webPage;
+    std::unique_ptr<juce::WebBrowserComponent> webView;
 
     juce::ApplicationProperties appProperties;
     juce::PropertiesFile* settings = nullptr;

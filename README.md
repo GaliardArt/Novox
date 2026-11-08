@@ -1,6 +1,6 @@
 # NOVOX
 
-**Version 1.1.0 — Design System 1.0 in development**
+**Version 1.1.0 — WebView2 foundation in development**
 
 NOVOX is an offline-first, standalone vocal instrument for turning voice into musical control data. It is written in C++ and uses JUCE for audio input, MIDI integration, and the desktop application.
 
@@ -119,3 +119,8 @@ The interface is organized into four native JUCE tabs: Play, MIDI, Audio, and Pr
 ## UI Design System 1.0
 
 The shared native JUCE visual foundation uses a graphite palette, coral primary accent, teal secondary accent, consistent control styling, rounded surfaces, and clearer focus and interaction states. This layer is intentionally separate from the audio and MIDI processing pipeline; the Play, MIDI, Audio, and Presets workflows remain functionally unchanged while later interface iterations can refine each page independently.
+
+
+## WebView2 interface foundation
+
+The Windows desktop target embeds JUCE WebBrowserComponent using the Microsoft Edge WebView2 backend. The frontend in `UI/` is served locally by JUCE's resource provider; it does not load remote pages, CDN assets, or require internet at runtime. CMake downloads a pinned Microsoft.Web.WebView2 NuGet package during configuration when absent. Existing native Play, MIDI, Audio, and Presets tabs remain available during the gradual transition. The initial JavaScript bridge exposes a read-only `getNovoxStatus` function and a UI-ready event. Audio capture, pitch detection, and MIDI dispatch remain in native C++.

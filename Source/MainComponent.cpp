@@ -2,9 +2,30 @@
 #include "PitchBend.h"
 #include <cmath>
 #include <utility>
+#include <cstring>
 
 namespace
 {
+    std::optional<juce::WebBrowserComponent::Resource> provideNovoxWebResource(const juce::String& requestedPath)
+    {
+        const auto path = requestedPath.fromFirstOccurrenceOf("?", false, false).trimCharactersAtStart("/");
+        juce::String mime;
+        if (path == "index.html") mime = "text/html; charset=utf-8";
+        else if (path == "styles.css") mime = "text/css; charset=utf-8";
+        else if (path == "app.js") mime = "text/javascript; charset=utf-8";
+        else return std::nullopt;
+        const auto root = juce::File::getSpecialLocation(juce::File::currentExecutableFile).getParentDirectory().getChildFile("UI");
+        const auto file = root.getChildFile(path);
+        if (!file.existsAsFile()) return std::nullopt;
+        juce::MemoryBlock bytes;
+        if (!file.loadFileAsData(bytes)) return std::nullopt;
+        juce::WebBrowserComponent::Resource resource;
+        resource.mimeType = mime;
+        resource.data.resize(bytes.getSize());
+        if (bytes.getSize() > 0) std::memcpy(resource.data.data(), bytes.getData(), bytes.getSize());
+        return resource;
+    }
+
     juce::String noteNameFromMidi(int midi)
     {
         if (!juce::isPositiveAndBelow(midi, 128))
@@ -209,7 +230,34 @@ MainComponent::MainComponent()
     tabs.addTab("MIDI", juce::Colour(0xffe47b91), &midiPage, false);
     tabs.addTab("AUDIO", juce::Colour(0xffe47b91), &audioPage, false);
     tabs.addTab("PRESETS", juce::Colour(0xffe47b91), &presetsPage, false);
+    auto webOptions = juce::WebBrowserComponent::Options{}
+        .withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
+        .withWinWebView2Options(juce::WebBrowserComponent::Options::WinWebView2{}
+            .withStatusBarDisabled().withBuiltInErrorPageDisabled().withBackgroundColour(NovoxLookAndFeel::background))
+        .withNativeIntegrationEnabled()
+        .withInitialisationData("novoxAppName", juce::var("NOVOX"))
+        .withNativeFunction("getNovoxStatus",
+            [this](const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion complete)
+            {
+                const auto pitch = engine.getLatestPitch();
+                auto* data = new juce::DynamicObject();
+                data->setProperty("note", noteLabel.getText());
+                data->setProperty("frequencyHz", pitch.voiced ? pitch.frequencyHz : 0.0f);
+                data->setProperty("confidence", pitch.voiced ? pitch.confidence : 0.0f);
+                data->setProperty("midiConnected", midiRouter.isOpen());
+                data->setProperty("midiChannel", midiRouter.getChannel());
+                data->setProperty("pitchBendEnabled", pitchBendEnabled.getToggleState());
+                data->setProperty("pitchBendRange", static_cast<int>(bendRangeSlider.getValue()));
+                complete(juce::var(data));
+            })
+        .withEventListener("novoxUiReady", [this](juce::var)
+            { status.setText("Web interface connected — native audio/MIDI engine ready.", juce::dontSendNotification); })
+        .withResourceProvider([](const juce::String& path) { return provideNovoxWebResource(path); });
+    webView = std::make_unique<juce::WebBrowserComponent>(webOptions);
+    webPage.addAndMakeVisible(*webView);
+    tabs.addTab("WEB UI", juce::Colour(0xff63c7c0), &webPage, false);
     addAndMakeVisible(tabs);
+    webView->goToURL(juce::WebBrowserComponent::getResourceProviderRoot() + "index.html");
 
     const auto error = deviceManager.initialise(1, 0, nullptr, true);
     if (error.isNotEmpty())
@@ -523,6 +571,7 @@ void MainComponent::resized()
     status.setBounds(header.reduced(8, 12));
     area.removeFromTop(8);
     tabs.setBounds(area);
+    webView->setBounds(webPage.getLocalBounds().reduced(12));
     auto play = playPage.getLocalBounds().reduced(30);
     noteLabel.setBounds(play.removeFromTop(210));
     frequencyLabel.setBounds(play.removeFromTop(38));
