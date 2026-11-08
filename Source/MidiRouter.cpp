@@ -1,4 +1,5 @@
 #include "MidiRouter.h"
+#include "PitchBend.h"
 #include <algorithm>
 
 MidiRouter::MidiRouter() : juce::Thread("NOVOX MIDI Dispatch") {}
@@ -24,69 +25,111 @@ bool MidiRouter::openOutput(int index)
     if (output == nullptr)
         return false;
 
+    {
+        const juce::ScopedLock lock(producerLock);
+        eventQueue.reset();
+    }
     droppedEvents.store(0, std::memory_order_relaxed);
-    eventQueue.reset();
+    emergencyAllNotesOff.store(false, std::memory_order_relaxed);
     if (!startThread(juce::Thread::Priority::normal))
     {
         output.reset();
         return false;
     }
+
+    acceptingEvents.store(true, std::memory_order_release);
     return true;
 }
 
 void MidiRouter::closeOutput()
 {
+    acceptingEvents.store(false, std::memory_order_release);
     if (isThreadRunning())
     {
         signalThreadShouldExit();
         notify();
-        // Drain pending events and wait for a clean exit before releasing the driver.
         stopThread(-1);
     }
-    eventQueue.reset();
+
+    {
+        const juce::ScopedLock lock(producerLock);
+        eventQueue.reset();
+    }
+
+    sendAllNotesOff();
     output.reset();
+    emergencyAllNotesOff.store(false, std::memory_order_relaxed);
 }
 
 void MidiRouter::setChannel(int channel) noexcept
 {
-    midiChannel.store(std::clamp(channel, 1, 16), std::memory_order_relaxed);
+    const int safeChannel = std::clamp(channel, 1, 16);
+    if (safeChannel != midiChannel.load(std::memory_order_relaxed))
+        emergencyAllNotesOff.store(true, std::memory_order_release);
+    midiChannel.store(safeChannel, std::memory_order_relaxed);
+    notify();
 }
 
 void MidiRouter::noteOn(int note, juce::uint8 velocity)
 {
-    if (output != nullptr && juce::isPositiveAndBelow(note, 128))
+    if (juce::isPositiveAndBelow(note, 128))
         enqueue({ MidiEvent::Type::noteOn, note, velocity });
 }
 
 void MidiRouter::noteOff(int note)
 {
-    if (output != nullptr && juce::isPositiveAndBelow(note, 128))
+    if (juce::isPositiveAndBelow(note, 128))
         enqueue({ MidiEvent::Type::noteOff, note, 0 });
 }
 
 void MidiRouter::pitchBend(int value)
 {
-    if (output != nullptr)
-        enqueue({ MidiEvent::Type::pitchBend, 0, 0, std::clamp(value, 0, 16383) });
+    enqueue({ MidiEvent::Type::pitchBend, 0, 0, std::clamp(value, 0, 16383) });
 }
 
 void MidiRouter::enqueue(const MidiEvent& event) noexcept
 {
+    const juce::ScopedLock lock(producerLock);
+    if (!acceptingEvents.load(std::memory_order_acquire))
+        return;
+
     auto stampedEvent = event;
     stampedEvent.channel = midiChannel.load(std::memory_order_relaxed);
-
     if (!eventQueue.push(stampedEvent))
     {
         droppedEvents.fetch_add(1, std::memory_order_relaxed);
+        if (event.type == MidiEvent::Type::noteOff)
+            emergencyAllNotesOff.store(true, std::memory_order_release);
+        notify();
         return;
     }
     notify();
+}
+
+void MidiRouter::sendAllNotesOff() noexcept
+{
+    if (output == nullptr)
+        return;
+
+    for (int channel = 1; channel <= 16; ++channel)
+    {
+        output->sendMessageNow(juce::MidiMessage::controllerEvent(channel, 123, 0));
+        output->sendMessageNow(juce::MidiMessage::pitchWheel(channel, PitchBend::center));
+    }
 }
 
 void MidiRouter::run()
 {
     for (;;)
     {
+        if (emergencyAllNotesOff.exchange(false, std::memory_order_acq_rel))
+        {
+            MidiEvent discarded;
+            while (eventQueue.pop(discarded)) {}
+            sendAllNotesOff();
+            continue;
+        }
+
         MidiEvent event;
         if (eventQueue.pop(event))
         {

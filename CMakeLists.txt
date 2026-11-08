@@ -28,6 +28,7 @@ target_compile_definitions(NOVOX PRIVATE
     JUCE_USE_CURL=0
     JUCE_APPLICATION_NAME_STRING="$<TARGET_PROPERTY:NOVOX,JUCE_PRODUCT_NAME>"
     JUCE_APPLICATION_VERSION_STRING="${PROJECT_VERSION}"
+    $<$<PLATFORM_ID:Windows>:JUCE_ASIO=1>
 )
 target_link_libraries(NOVOX PRIVATE
     juce::juce_audio_utils juce::juce_audio_devices juce::juce_audio_basics juce::juce_dsp

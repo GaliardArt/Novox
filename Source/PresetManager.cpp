@@ -4,7 +4,7 @@
 
 namespace
 {
-    constexpr int presetSchemaVersion = 1;
+    constexpr int presetSchemaVersion = 2;
 
     void setError(juce::String* error, const juce::String& message)
     {
@@ -102,13 +102,13 @@ bool PresetManager::savePreset(const juce::String& name, PresetData data, juce::
     object->setProperty("pitchSmoothing", data.pitchSmoothing);
     object->setProperty("pitchBendEnabled", data.pitchBendEnabled);
     object->setProperty("noteTransitionSmoothingEnabled", data.noteTransitionSmoothingEnabled);
-    object->setProperty("noteTransitionStability", data.noteTransitionStability);
+    object->setProperty("noteTransitionDurationMs", data.noteTransitionDurationMs);
     object->setProperty("autoTuneEnabled",data.autoTuneEnabled); object->setProperty("autoTuneTonic",data.autoTuneTonic); object->setProperty("autoTuneScale",data.autoTuneScale);
     object->setProperty("noiseReductionEnabled", data.noiseReductionEnabled);
     object->setProperty("noiseReductionStrength", data.noiseReductionStrength);
     object->setProperty("pitchStabilityEnabled", data.pitchStabilityEnabled);
     object->setProperty("pitchDropToleranceCents", data.pitchDropToleranceCents);
-    object->setProperty("pitchDropHoldFrames", data.pitchDropHoldFrames);
+    object->setProperty("pitchDropHoldMs", data.pitchDropHoldMs);
     object->setProperty("inputChannelMode", data.inputChannelMode);
     object->setProperty("pitchBendRange", data.pitchBendRange);
     object->setProperty("midiChannel", data.midiChannel);
@@ -139,8 +139,8 @@ bool PresetManager::loadPreset(const juce::String& name, PresetData& data, juce:
 
     const auto parsed = readJson(file);
     auto* object = parsed.getDynamicObject();
-    if (object == nullptr
-        || static_cast<int>(object->getProperty("schemaVersion")) != presetSchemaVersion)
+    const int schemaVersion = object != nullptr ? static_cast<int>(object->getProperty("schemaVersion")) : 0;
+    if (object == nullptr || (schemaVersion != 1 && schemaVersion != presetSchemaVersion))
     {
         setError(error, "The preset file is invalid or uses an unsupported version.");
         return false;
@@ -169,7 +169,10 @@ bool PresetManager::loadPreset(const juce::String& name, PresetData& data, juce:
     loaded.pitchBendEnabled = static_cast<bool>(object->getProperty("pitchBendEnabled"));
     if (has("noteTransitionSmoothingEnabled"))
         loaded.noteTransitionSmoothingEnabled = static_cast<bool>(object->getProperty("noteTransitionSmoothingEnabled"));
-    if (has("noteTransitionStability")) loaded.noteTransitionStability=static_cast<double>(object->getProperty("noteTransitionStability"));
+    if (schemaVersion >= 2 && has("noteTransitionDurationMs"))
+        loaded.noteTransitionDurationMs = static_cast<double>(object->getProperty("noteTransitionDurationMs"));
+    else if (has("noteTransitionStability"))
+        loaded.noteTransitionDurationMs = static_cast<double>(object->getProperty("noteTransitionStability")) * 10.0;
     if(has("autoTuneEnabled"))loaded.autoTuneEnabled=static_cast<bool>(object->getProperty("autoTuneEnabled"));
     if(has("autoTuneTonic"))loaded.autoTuneTonic=static_cast<int>(object->getProperty("autoTuneTonic"));
     if(has("autoTuneScale"))loaded.autoTuneScale=static_cast<int>(object->getProperty("autoTuneScale"));
@@ -177,7 +180,10 @@ bool PresetManager::loadPreset(const juce::String& name, PresetData& data, juce:
     if (has("noiseReductionStrength")) loaded.noiseReductionStrength = static_cast<double>(object->getProperty("noiseReductionStrength"));
     if (has("pitchStabilityEnabled")) loaded.pitchStabilityEnabled = static_cast<bool>(object->getProperty("pitchStabilityEnabled"));
     if (has("pitchDropToleranceCents")) loaded.pitchDropToleranceCents = static_cast<double>(object->getProperty("pitchDropToleranceCents"));
-    if (has("pitchDropHoldFrames")) loaded.pitchDropHoldFrames = static_cast<int>(object->getProperty("pitchDropHoldFrames"));
+    if (schemaVersion >= 2 && has("pitchDropHoldMs"))
+        loaded.pitchDropHoldMs = static_cast<double>(object->getProperty("pitchDropHoldMs"));
+    else if (has("pitchDropHoldFrames"))
+        loaded.pitchDropHoldMs = static_cast<double>(object->getProperty("pitchDropHoldFrames")) * 10.0;
     if (has("inputChannelMode")) loaded.inputChannelMode = static_cast<int>(object->getProperty("inputChannelMode"));
     loaded.pitchBendRange = static_cast<int>(object->getProperty("pitchBendRange"));
     loaded.midiChannel = static_cast<int>(object->getProperty("midiChannel"));

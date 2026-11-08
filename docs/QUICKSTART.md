@@ -13,18 +13,20 @@ NOVOX turns a monophonic vocal line into MIDI notes and optional Pitch Bend. It 
 
 1. Extract the portable NOVOX ZIP to a folder you can write to, or run the optional installer.
 2. Launch `NOVOX.exe`.
-3. Check the **Audio input** diagnostic line. It should show the active input device, channel count, sample rate, and buffer size.
-4. If no audio device is active, choose a working Windows input device and restart NOVOX.
-5. Select the intended MIDI output in the MIDI output selector. Use **Refresh MIDI** after connecting or creating a MIDI destination.
-6. In your DAW or MIDI destination, select the same endpoint as an input and arm/enable the receiving instrument.
-7. Sing a clear, sustained single note. The detected note, frequency, confidence, and input level should update.
+3. Open **Audio Setup** on the Audio page to choose the driver and input device. On Windows, select ASIO when your interface provides a compatible ASIO driver; sample rate and buffer size are configured in the same panel.
+4. Check the **Audio input** diagnostic line. It should show the active driver/device, channel count, sample rate, and buffer size.
+5. If no audio device is active, choose a working Windows input device and restart NOVOX.
+6. Select the intended MIDI output in the MIDI output selector. Use **Refresh MIDI** after connecting or creating a MIDI destination.
+7. In your DAW or MIDI destination, select the same endpoint as an input and arm/enable the receiving instrument.
+8. Sing a clear, sustained single note. The detected note, frequency, confidence, and input level should update.
 
 ## Pitch and MIDI controls
 
 - **Input gain** adjusts the signal level entering analysis.
 - **Pitch sensitivity** trades quiet-voice tracking against rejection of background noise.
 - **Pitch smoothing** affects the continuous MIDI Pitch Bend response; it does not smooth the raw pitch display or note-onset decisions.
-- **Pitch Stability Guard** optionally holds brief downward pitch glitches and short unvoiced gaps before they reach the note display, Note Tracker, or Pitch Bend. Defaults are 45 cents and three UI frames. Persistent lower notes are accepted after the hold window; upward transitions remain immediate. Increase tolerance to catch larger dips, or increase hold only if glitches last longer. Excessive settings can delay genuine downward note changes.
+- **Note transition smoothing** optionally confirms note changes over a 30–120 ms window. Its timing remains consistent across audio buffer sizes.
+- **Pitch Stability Guard** optionally holds brief downward pitch glitches and short unvoiced gaps before they reach the note display, Note Tracker, or Pitch Bend. Defaults are 45 cents and 30 milliseconds. Persistent lower notes are accepted after the hold window; upward transitions remain immediate. Increase tolerance to catch larger dips, or increase hold only if glitches last longer. Excessive settings can delay genuine downward note changes.
 - **Input channel** selects automatic strongest-channel detection, Left, Right, or Stereo mix. Automatic mode helps avoid phase cancellation when stereo channels contain different signals.
 - **Noise reduction (gate)** optionally attenuates low-level background sound between vocal phrases. Increase its strength only until room noise is reduced; too much can cut quiet syllables or note tails. It is disabled by default and is not a neural background-noise remover.
 - **Calibrate 2s** measures the room/microphone noise floor. Keep the microphone silent during the two-second measurement. The gate then references that measured floor; strength controls the suppression margin. Recalibrate after changing microphone gain or moving to another acoustic environment.
@@ -62,5 +64,5 @@ If a saved MIDI output is unavailable, NOVOX leaves it unselected instead of sil
 ## Known limitations
 
 - Pitch tracking is monophonic; simultaneous sung notes/chords are not separated.
-- MIDI event generation is GUI-timer-driven and is not sample-accurate.
+- MIDI event decisions are made on the pitch worker for every processed audio block; delivery remains asynchronous and is not sample-accurate.
 - The automated tests use deterministic synthetic signals and do not certify every microphone, audio driver, MIDI device, or DAW configuration.

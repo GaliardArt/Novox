@@ -2,9 +2,6 @@
 #include <JuceHeader.h>
 #include "VoiceEngine.h"
 #include "MidiRouter.h"
-#include "NoteTracker.h"
-#include "PitchSmoother.h"
-#include "PitchStabilityGuard.h"
 #include "PresetManager.h"
 #include "NovoxLookAndFeel.h"
 #include <cstdint>
@@ -24,9 +21,7 @@ private:
     void refreshMidiOutputs();
     void selectMidiOutput();
     void selectMidiChannel();
-    void updateNoteTracking(const PitchResult&);
-    void sendPitchBend(const PitchResult&);
-    void resetPitchBend();
+    void showAudioSetup();
     void saveSettings();
     PresetData capturePresetData() const;
     void applyPresetData(PresetData, const juce::String&);
@@ -50,14 +45,11 @@ private:
     PresetManager presetManager;
     VoiceEngine engine;
     MidiRouter midiRouter;
-    NoteTracker noteTracker;
-    PitchSmoother pitchSmoother;
-    PitchStabilityGuard pitchStabilityGuard;
-    PitchResult latestGuardedPitch;
+    juce::String lastAudioStateXml;
     juce::AudioDeviceManager deviceManager;
 
     juce::ComboBox midiOutputSelector, channelSelector, presetSelector;
-    juce::TextButton refreshButton { "Refresh" };
+    juce::TextButton refreshButton { "Refresh" }, audioSetupButton { "Audio Setup" };
     juce::ToggleButton pitchBendEnabled { "Pitch Bend" };
     juce::ToggleButton noteTransitionEnabled { "Note transition smoothing" };
     juce::ToggleButton autoTuneEnabled { "Auto-Tune" };
@@ -82,8 +74,6 @@ private:
     bool audioAvailable = false;
     int audioChannels = 0, bufferSize = 0;
     double sampleRate = 0.0;
-    uint64_t lastPitchSequence = 0;
     int lastNoiseCalibrationState = 0;
-    int lastPitchBendValue = 8192;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

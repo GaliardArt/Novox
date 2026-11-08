@@ -4,26 +4,28 @@
 
 int NoteTracker::frequencyToMidiNote(float frequencyHz) noexcept
 {
-    if (!(frequencyHz > 0.0f))
+    if (!(frequencyHz > 0.0f) || !std::isfinite(frequencyHz))
         return -1;
 
     const auto midiValue = 69.0f + 12.0f * std::log2(frequencyHz / 440.0f);
     return std::clamp(static_cast<int>(std::lround(midiValue)), 0, 127);
 }
 
-NoteUpdate NoteTracker::process(const PitchResult& pitch) noexcept
+NoteUpdate NoteTracker::process(const PitchResult& pitch, float elapsedSeconds) noexcept
 {
     NoteUpdate update;
+    const float delta = std::clamp(elapsedSeconds, 0.0f, 0.25f);
     int detectedNote = pitch.voiced ? frequencyToMidiNote(pitch.frequencyHz) : -1;
-    if(detectedNote>=0&&autoTuneEnabled) detectedNote=ScaleQuantizer::quantize(detectedNote,scaleTonic,musicalScale);
+    if (detectedNote >= 0 && autoTuneEnabled)
+        detectedNote = ScaleQuantizer::quantize(detectedNote, scaleTonic, musicalScale);
 
     if (detectedNote < 0)
     {
         candidateNote = -1;
-        candidateFrames = 0;
-        ++silentFrames;
+        candidateSeconds = 0.0f;
+        silentSeconds += delta;
 
-        if (silentFrames >= releaseConfirmations && activeNote >= 0)
+        if (silentSeconds >= releaseConfirmationSeconds && activeNote >= 0)
         {
             update.noteOff = activeNote;
             activeNote = -1;
@@ -31,10 +33,8 @@ NoteUpdate NoteTracker::process(const PitchResult& pitch) noexcept
         return update;
     }
 
-    silentFrames = 0;
+    silentSeconds = 0.0f;
 
-    // Keep the current note through small pitch fluctuations around a
-    // semitone boundary; a real transition must cross the hysteresis margin.
     if (activeNote >= 0 && detectedNote != activeNote)
     {
         const auto midiValue = 69.0f + 12.0f * std::log2(pitch.frequencyHz / 440.0f);
@@ -46,27 +46,30 @@ NoteUpdate NoteTracker::process(const PitchResult& pitch) noexcept
     if (detectedNote == activeNote)
     {
         candidateNote = -1;
-        candidateFrames = 0;
+        candidateSeconds = 0.0f;
         return update;
     }
 
     if (detectedNote != candidateNote)
     {
         candidateNote = detectedNote;
-        candidateFrames = 1;
-        return update;
+        candidateSeconds = delta;
+    }
+    else
+    {
+        candidateSeconds += delta;
     }
 
-    ++candidateFrames;
-    const int requiredConfirmations = activeNote >= 0 && transitionSmoothingEnabled
-        ? transitionConfirmations : onsetConfirmations;
-    if (candidateFrames >= requiredConfirmations)
+    const float requiredSeconds = activeNote >= 0 && transitionSmoothingEnabled
+        ? transitionConfirmationSeconds : onsetConfirmationSeconds;
+
+    if (candidateSeconds + 1.0e-6f >= requiredSeconds)
     {
         update.noteOff = activeNote;
         update.noteOn = candidateNote;
         activeNote = candidateNote;
         candidateNote = -1;
-        candidateFrames = 0;
+        candidateSeconds = 0.0f;
     }
 
     return update;
@@ -76,6 +79,6 @@ void NoteTracker::reset() noexcept
 {
     activeNote = -1;
     candidateNote = -1;
-    candidateFrames = 0;
-    silentFrames = 0;
+    candidateSeconds = 0.0f;
+    silentSeconds = 0.0f;
 }

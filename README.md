@@ -40,7 +40,8 @@ The processing pipeline is separated from the interface, keeping audio capture a
 ## What NOVOX does
 
 ### 🎙️ Vocal pitch tracking
-- Real-time microphone and audio-device capture.
+- Real-time microphone and audio-device capture, including ASIO on Windows when a compatible driver is installed.
+- Audio setup panel for selecting the driver/device and configuring supported sample rates and buffer sizes.
 - YIN-style fundamental-frequency estimation.
 - Pitch confidence and input-level monitoring.
 - Adjustable sensitivity for balancing quiet-voice detection and noise rejection.
@@ -84,7 +85,7 @@ The application is built around a native JUCE interface and a C++ audio engine. 
 |---|---|
 | **Play** | Follow detected notes, frequency, pitch confidence, and instrument activity. |
 | **MIDI** | Choose the MIDI destination, channel, and Pitch Bend behavior. |
-| **Audio** | Configure input gain and sensitivity, select the input channel, calibrate optional noise reduction, and inspect device diagnostics. |
+| **Audio** | Configure the audio driver/device, sample rate and buffer size; adjust input gain and sensitivity, select the input channel, calibrate optional noise reduction, and inspect device diagnostics. |
 | **Presets** | Save, update, load, and delete local instrument configurations. |
 
 ## Under the hood
@@ -92,9 +93,9 @@ The application is built around a native JUCE interface and a C++ audio engine. 
 NOVOX uses a separated processing pipeline to keep time-sensitive audio work away from the graphical interface.
 
 - **Audio callback:** performs bounded channel mixing and writes samples into a preallocated single-producer/single-consumer FIFO.
-- **Pitch worker:** consumes audio blocks and runs pitch analysis outside the audio callback.
-- **Note tracking:** confirms note transitions and applies hysteresis to reduce false retriggers.
-- **MIDI dispatch:** sends queued MIDI events from a dedicated worker thread.
+- **Pitch worker:** consumes every queued audio block, runs pitch analysis, applies time-based stability and note tracking, and generates Note On/Off and Pitch Bend events outside the audio callback.
+- **Note tracking:** confirms note transitions and applies hysteresis using elapsed audio time rather than GUI timer frames.
+- **MIDI dispatch:** sends queued MIDI events from a dedicated worker thread, with an emergency all-notes-off recovery path.
 - **Local storage:** persists preferences and versioned `.novoxpreset` files on the machine.
 
 This design helps avoid blocking operations in the audio callback and keeps MIDI event delivery ordered.

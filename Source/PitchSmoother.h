@@ -5,15 +5,14 @@
 class PitchSmoother
 {
 public:
-    // smoothing is 0..100. Zero is transparent; higher values attenuate
-    // frame-to-frame jitter while retaining larger expressive pitch movement.
-    float process(float semitoneOffset, float smoothing) noexcept
+    float process(float semitoneOffset, float smoothing, float elapsedSeconds = 0.01f) noexcept
     {
         const float amount = std::clamp(smoothing, 0.0f, 100.0f);
+        const float delta = std::clamp(elapsedSeconds, 0.0f, 0.25f);
         if (!std::isfinite(semitoneOffset))
             return initialized ? currentValue : 0.0f;
 
-        if (!initialized || amount <= 0.0f)
+        if (!initialized || amount <= 0.0f || delta <= 0.0f)
         {
             currentValue = semitoneOffset;
             targetValue = semitoneOffset;
@@ -21,13 +20,12 @@ public:
             return currentValue;
         }
 
-        // Apply the deadband to changes in the incoming target, not to the
-        // remaining filter error. A sustained target must still converge fully.
         const float deadband = amount * 0.0003f;
         if (std::abs(semitoneOffset - targetValue) > deadband)
             targetValue = semitoneOffset;
 
-        const float alpha = 1.0f - amount * 0.0065f;
+        const float baseAlpha = 1.0f - amount * 0.0065f;
+        const float alpha = 1.0f - std::pow(1.0f - baseAlpha, delta / 0.01f);
         currentValue += alpha * (targetValue - currentValue);
         return currentValue;
     }

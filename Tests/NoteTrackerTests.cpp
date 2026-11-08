@@ -43,7 +43,31 @@ namespace
         check(tracker.process(note(69.0f)).noteOn == -1, "Onset waits for confirmation 2/3");
         const auto update = tracker.process(note(69.0f));
         check(update.noteOn == 69 && tracker.getActiveNote() == 69,
-              "Onset emits MIDI note after three confirmed frames");
+              "Onset emits MIDI note after 30 ms of confirmation");
+    }
+
+    void testTimeBasedOnsetAcrossBufferSizes()
+    {
+        NoteTracker tracker;
+        for (int i = 0; i < 5; ++i)
+            check(tracker.process(note(69.0f), 0.005f).noteOn == -1,
+                  "Five-millisecond buffers do not shorten the 30 ms onset window");
+        const auto update = tracker.process(note(69.0f), 0.005f);
+        check(update.noteOn == 69, "Onset confirms after 30 ms across smaller buffers");
+    }
+
+    void testTimeBasedTransition()
+    {
+        NoteTracker tracker;
+        tracker.process(note(69.0f), 0.01f);
+        tracker.process(note(69.0f), 0.01f);
+        tracker.process(note(69.0f), 0.01f);
+        tracker.setTransitionSmoothing(true, 60.0f);
+        check(tracker.process(note(70.0f), 0.02f).noteOn == -1, "20 ms transition remains pending");
+        check(tracker.process(note(70.0f), 0.02f).noteOn == -1, "40 ms transition remains pending");
+        const auto update = tracker.process(note(70.0f), 0.02f);
+        check(update.noteOff == 69 && update.noteOn == 70,
+              "Transition confirms after 60 ms regardless of block size");
     }
 
     void testTransientRejection()
@@ -69,7 +93,7 @@ namespace
         tracker.process(silence());
         const auto update = tracker.process(silence());
         check(update.noteOff == 69 && tracker.getActiveNote() == -1,
-              "Release emits note-off after four silent frames");
+              "Release emits note-off after 40 ms of silence");
     }
 
     void testNoteTransition()
@@ -92,15 +116,15 @@ namespace
         tracker.process(note(69.0f));
         tracker.process(note(69.0f));
         tracker.process(note(69.0f));
-        tracker.setTransitionSmoothing(true, 6);
+        tracker.setTransitionSmoothing(true, 60.0f)
         for (int i = 0; i < 5; ++i)
             check(tracker.process(note(70.0f)).noteOn == -1,
-                  "Enabled transition smoothing waits for configured stability");
+                  "Enabled transition smoothing waits for configured duration");
         const auto update = tracker.process(note(70.0f));
         check(update.noteOff == 69 && update.noteOn == 70,
-              "Enabled transition smoothing commits after six stable frames");
+              "Enabled transition smoothing commits after 60 ms");
 
-        tracker.setTransitionSmoothing(false, 12);
+        tracker.setTransitionSmoothing(false, 120.0f)
         tracker.process(note(71.0f));
         tracker.process(note(71.0f));
         const auto directUpdate = tracker.process(note(71.0f));
@@ -135,6 +159,8 @@ int main()
 {
     std::cout << "NOVOX NoteTracker regression tests\n";
     testOnsetDebounce();
+    testTimeBasedOnsetAcrossBufferSizes();
+    testTimeBasedTransition();
     testTransientRejection();
     testReleaseDebounce();
     testNoteTransition();

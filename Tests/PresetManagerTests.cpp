@@ -41,7 +41,7 @@ int main()
     original.noiseReductionStrength = 67.0;original.inputChannelMode=2;
     original.pitchStabilityEnabled = true;
     original.pitchDropToleranceCents = 62.0;
-    original.pitchDropHoldFrames = 5;
+    original.pitchDropHoldMs = 50.0;
 
     juce::String error;
     expect(manager.savePreset("Studio Voice", original, &error), "save preset");
@@ -63,7 +63,30 @@ int main()
     expect(loaded.inputChannelMode==original.inputChannelMode,"input channel mode round trip");
     expect(loaded.pitchStabilityEnabled == original.pitchStabilityEnabled, "pitch stability toggle round trip");
     expect(std::abs(loaded.pitchDropToleranceCents - original.pitchDropToleranceCents) < 0.0001, "pitch drop tolerance round trip");
-    expect(loaded.pitchDropHoldFrames == original.pitchDropHoldFrames, "pitch drop hold frames round trip");
+    expect(std::abs(loaded.pitchDropHoldMs - original.pitchDropHoldMs) < 0.0001, "pitch drop hold duration round trip");
+
+
+    const auto legacyPreset = testDirectory.getChildFile("Legacy Voice.novoxpreset");
+    expect(legacyPreset.replaceWithText(R"({
+        "schemaVersion": 1,
+        "name": "Legacy Voice",
+        "inputGain": 1.0,
+        "pitchSensitivity": 50.0,
+        "pitchSmoothing": 35.0,
+        "pitchBendEnabled": true,
+        "pitchBendRange": 2,
+        "midiChannel": 1,
+        "midiOutputName": "",
+        "noteTransitionStability": 6,
+        "pitchDropHoldFrames": 3
+    })"), "write legacy schema preset");
+    PresetData migrated;
+    expect(manager.loadPreset("Legacy Voice", migrated, &error), "load legacy schema preset");
+    expect(std::abs(migrated.noteTransitionDurationMs - 60.0) < 0.0001,
+           "legacy note transition frames migrate to milliseconds");
+    expect(std::abs(migrated.pitchDropHoldMs - 30.0) < 0.0001,
+           "legacy pitch stability frames migrate to milliseconds");
+    expect(manager.deletePreset("Legacy Voice", &error), "delete migrated legacy preset");
 
     PresetData clamped;
     clamped.inputGain = 99.0;
@@ -77,7 +100,7 @@ int main()
     expect(clamped.pitchSmoothing == 100.0, "smoothing clamped");
     expect(clamped.pitchBendRange == 12, "bend range clamped");
     expect(clamped.midiChannel == 1, "MIDI channel clamped");
-    clamped.noiseReductionStrength=150.0;clamped.inputChannelMode=99;clamped.pitchDropToleranceCents=999.0;clamped.pitchDropHoldFrames=99;clamped.sanitise();expect(clamped.noiseReductionStrength==100.0,"noise reduction strength clamped");expect(clamped.inputChannelMode==3,"input channel mode clamped");expect(clamped.pitchDropToleranceCents==150.0,"pitch drop tolerance clamped");expect(clamped.pitchDropHoldFrames==8,"pitch drop hold frames clamped");
+    clamped.noiseReductionStrength=150.0;clamped.inputChannelMode=99;clamped.pitchDropToleranceCents=999.0;clamped.pitchDropHoldMs=99.0;clamped.sanitise();expect(clamped.noiseReductionStrength==100.0,"noise reduction strength clamped");expect(clamped.inputChannelMode==3,"input channel mode clamped");expect(clamped.pitchDropToleranceCents==150.0,"pitch drop tolerance clamped");expect(clamped.pitchDropHoldMs==80.0,"pitch drop hold duration clamped");
 
     expect(manager.deletePreset("Studio Voice", &error), "delete preset");
     expect(manager.listPresets().empty(), "list empty after deletion");

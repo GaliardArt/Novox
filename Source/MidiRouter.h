@@ -11,7 +11,7 @@ public:
     juce::StringArray getOutputNames() const;
     bool openOutput(int index);
     void closeOutput();
-    bool isOpen() const noexcept { return output != nullptr; }
+    bool isOpen() const noexcept { return acceptingEvents.load(std::memory_order_acquire); }
 
     void setChannel(int channel) noexcept;
     int getChannel() const noexcept { return midiChannel.load(std::memory_order_relaxed); }
@@ -23,10 +23,14 @@ public:
 private:
     void run() override;
     void enqueue(const MidiEvent& event) noexcept;
+    void sendAllNotesOff() noexcept;
 
     juce::Array<juce::MidiDeviceInfo> devices;
     std::unique_ptr<juce::MidiOutput> output;
     MidiEventQueue eventQueue;
+    juce::CriticalSection producerLock;
     std::atomic<int> midiChannel { 1 };
     std::atomic<uint64_t> droppedEvents { 0 };
+    std::atomic<bool> acceptingEvents { false };
+    std::atomic<bool> emergencyAllNotesOff { false };
 };

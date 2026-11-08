@@ -12,14 +12,28 @@ struct NoteUpdate
 class NoteTracker
 {
 public:
-    NoteUpdate process(const PitchResult& pitch) noexcept;
+    NoteUpdate process(const PitchResult& pitch, float elapsedSeconds = 0.01f) noexcept;
     void reset() noexcept;
-    void setTransitionSmoothing(bool enabled, int confirmationFrames) noexcept
+
+    void setTransitionSmoothing(bool enabled, float confirmationMs) noexcept
     {
         transitionSmoothingEnabled = enabled;
-        transitionConfirmations = std::clamp(confirmationFrames, 3, 12);
+        transitionConfirmationSeconds = std::clamp(confirmationMs, 30.0f, 120.0f) * 0.001f;
     }
-    void setAutoTune(bool enabled,int tonic,MusicalScale scale) noexcept { autoTuneEnabled=enabled;scaleTonic=std::clamp(tonic,0,11);musicalScale=scale;candidateNote=-1;candidateFrames=0; }
+
+    void setAutoTune(bool enabled, int tonic, MusicalScale scale) noexcept
+    {
+        const int safeTonic = std::clamp(tonic, 0, 11);
+        if (autoTuneEnabled != enabled || scaleTonic != safeTonic || musicalScale != scale)
+        {
+            autoTuneEnabled = enabled;
+            scaleTonic = safeTonic;
+            musicalScale = scale;
+            candidateNote = -1;
+            candidateSeconds = 0.0f;
+        }
+    }
+
     int getActiveNote() const noexcept { return activeNote; }
 
 private:
@@ -27,15 +41,15 @@ private:
 
     int activeNote = -1;
     int candidateNote = -1;
-    int candidateFrames = 0;
-    int silentFrames = 0;
-    int transitionConfirmations = 6;
+    float candidateSeconds = 0.0f;
+    float silentSeconds = 0.0f;
+    float transitionConfirmationSeconds = 0.060f;
     bool transitionSmoothingEnabled = false;
     bool autoTuneEnabled = false;
     int scaleTonic = 0;
     MusicalScale musicalScale = MusicalScale::major;
 
-    static constexpr int onsetConfirmations = 3;
-    static constexpr int releaseConfirmations = 4;
+    static constexpr float onsetConfirmationSeconds = 0.030f;
+    static constexpr float releaseConfirmationSeconds = 0.040f;
     static constexpr float noteChangeHysteresisSemitones = 0.58f;
 };

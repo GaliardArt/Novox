@@ -1,5 +1,4 @@
 #include "MainComponent.h"
-#include "PitchBend.h"
 #include <cmath>
 #include <utility>
 
@@ -54,7 +53,8 @@ MainComponent::MainComponent()
     const double savedSensitivity = juce::jlimit(0.0, 100.0, settings->getDoubleValue("pitchSensitivity", 50.0));
     const double savedSmoothing = juce::jlimit(0.0, 100.0, settings->getDoubleValue("pitchSmoothing", 35.0));
     const bool savedNoteTransitionEnabled = settings->getBoolValue("noteTransitionSmoothingEnabled", false);
-    const double savedNoteTransitionStability = juce::jlimit(3.0, 12.0, settings->getDoubleValue("noteTransitionStability", 6.0));
+    const double legacyTransitionFrames = settings->getDoubleValue("noteTransitionStability", 6.0);
+    const double savedNoteTransitionDurationMs = juce::jlimit(30.0, 120.0, settings->getDoubleValue("noteTransitionDurationMs", legacyTransitionFrames * 10.0));
     const bool savedAutoTuneEnabled=settings->getBoolValue("autoTuneEnabled",false);
     const int savedAutoTuneTonic=juce::jlimit(0,11,settings->getIntValue("autoTuneTonic",0));
     const int savedAutoTuneScale=juce::jlimit(0,2,settings->getIntValue("autoTuneScale",1));
@@ -62,7 +62,8 @@ MainComponent::MainComponent()
     const double savedNoiseReductionStrength = juce::jlimit(0.0, 100.0, settings->getDoubleValue("noiseReductionStrength", 35.0));
     const bool savedPitchStabilityEnabled = settings->getBoolValue("pitchStabilityEnabled", false);
     const double savedPitchDropTolerance = juce::jlimit(10.0, 150.0, settings->getDoubleValue("pitchDropToleranceCents", 45.0));
-    const int savedPitchDropHold = juce::jlimit(1, 8, settings->getIntValue("pitchDropHoldFrames", 3));
+    const double legacyPitchDropFrames = settings->getDoubleValue("pitchDropHoldFrames", 3.0);
+    const double savedPitchDropHoldMs = juce::jlimit(10.0, 80.0, settings->getDoubleValue("pitchDropHoldMs", legacyPitchDropFrames * 10.0));
     const int savedInputChannelMode=juce::jlimit(0,3,settings->getIntValue("inputChannelMode",0));
     const double savedNoiseFloorDb=juce::jlimit(-120.0,0.0,settings->getDoubleValue("noiseCalibrationFloorDb",-120.0));
     const int savedBendRange = juce::jlimit(1, 12, settings->getIntValue("pitchBendRange", 2));
@@ -105,13 +106,14 @@ MainComponent::MainComponent()
     pitchBendEnabled.setToggleState(savedBendEnabled, juce::dontSendNotification);
     pitchBendEnabled.onClick = [this]
     {
-        if (!pitchBendEnabled.getToggleState()) resetPitchBend();
-        else lastPitchBendValue = -1;
+        engine.setPitchBendEnabled(pitchBendEnabled.getToggleState());
+        if (!pitchBendEnabled.getToggleState()) engine.requestReset();
         settings->setValue("pitchBendEnabled", pitchBendEnabled.getToggleState());
         saveSettings();
         repaint();
     };
     addAndMakeVisible(pitchBendEnabled);
+    engine.setPitchBendEnabled(savedBendEnabled);
 
     bendRangeSlider.setRange(1, 12, 1);
     bendRangeSlider.setValue(savedBendRange, juce::dontSendNotification);
@@ -119,12 +121,13 @@ MainComponent::MainComponent()
     bendRangeSlider.setTextValueSuffix(" semitones");
     bendRangeSlider.onValueChange = [this]
     {
-        lastPitchBendValue = -1;
+        engine.setPitchBendRange(static_cast<int>(bendRangeSlider.getValue()));
         settings->setValue("pitchBendRange", static_cast<int>(bendRangeSlider.getValue()));
         saveSettings();
         repaint();
     };
     addAndMakeVisible(bendRangeSlider);
+    engine.setPitchBendRange(savedBendRange);
 
     gainSlider.setRange(0.1, 4.0, 0.05);
     gainSlider.setValue(savedGain, juce::dontSendNotification);
@@ -160,49 +163,49 @@ MainComponent::MainComponent()
     smoothingSlider.setTextValueSuffix("%");
     smoothingSlider.onValueChange = [this]
     {
-        pitchSmoother.reset();
-        lastPitchBendValue = -1;
+        engine.setPitchSmoothing(static_cast<float>(smoothingSlider.getValue()));
         settings->setValue("pitchSmoothing", smoothingSlider.getValue());
         saveSettings();
         repaint();
     };
     addAndMakeVisible(smoothingSlider);
+    engine.setPitchSmoothing(static_cast<float>(savedSmoothing));
 
     noteTransitionEnabled.setToggleState(savedNoteTransitionEnabled, juce::dontSendNotification);
     noteTransitionEnabled.onClick = [this]
     {
-        noteTracker.setTransitionSmoothing(noteTransitionEnabled.getToggleState(),
-                                          static_cast<int>(noteTransitionSlider.getValue()));
+        engine.setTransitionSmoothing(noteTransitionEnabled.getToggleState(),
+                                      static_cast<float>(noteTransitionSlider.getValue()));
         settings->setValue("noteTransitionSmoothingEnabled", noteTransitionEnabled.getToggleState());
         saveSettings();
         repaint();
     };
     addAndMakeVisible(noteTransitionEnabled);
 
-    noteTransitionSlider.setRange(3, 12, 1);
-    noteTransitionSlider.setValue(savedNoteTransitionStability, juce::dontSendNotification);
+    noteTransitionSlider.setRange(30, 120, 5);
+    noteTransitionSlider.setValue(savedNoteTransitionDurationMs, juce::dontSendNotification);
     noteTransitionSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 58, 23);
-    noteTransitionSlider.setTextValueSuffix(" frames");
+    noteTransitionSlider.setTextValueSuffix(" ms");
     noteTransitionSlider.onValueChange = [this]
     {
-        noteTracker.setTransitionSmoothing(noteTransitionEnabled.getToggleState(),
-                                          static_cast<int>(noteTransitionSlider.getValue()));
-        settings->setValue("noteTransitionStability", noteTransitionSlider.getValue());
+        engine.setTransitionSmoothing(noteTransitionEnabled.getToggleState(),
+                                      static_cast<float>(noteTransitionSlider.getValue()));
+        settings->setValue("noteTransitionDurationMs", noteTransitionSlider.getValue());
         saveSettings();
         repaint();
     };
-    noteTracker.setTransitionSmoothing(savedNoteTransitionEnabled,
-                                       static_cast<int>(savedNoteTransitionStability));
+    engine.setTransitionSmoothing(savedNoteTransitionEnabled,
+                                  static_cast<float>(savedNoteTransitionDurationMs));
     addAndMakeVisible(noteTransitionSlider);
 
     autoTuneEnabled.setToggleState(savedAutoTuneEnabled,juce::dontSendNotification);
-    autoTuneEnabled.onClick=[this]{noteTracker.setAutoTune(autoTuneEnabled.getToggleState(),autoTuneKeySelector.getSelectedId()-1,static_cast<MusicalScale>(juce::jlimit(0,2,autoTuneScaleSelector.getSelectedId()-1)));if(autoTuneEnabled.getToggleState())resetPitchBend();settings->setValue("autoTuneEnabled",autoTuneEnabled.getToggleState());saveSettings();repaint();};addAndMakeVisible(autoTuneEnabled);
+    autoTuneEnabled.onClick=[this]{engine.setAutoTune(autoTuneEnabled.getToggleState(),autoTuneKeySelector.getSelectedId()-1,autoTuneScaleSelector.getSelectedId()-1);if(autoTuneEnabled.getToggleState())engine.requestReset();settings->setValue("autoTuneEnabled",autoTuneEnabled.getToggleState());saveSettings();repaint();};addAndMakeVisible(autoTuneEnabled);
     const char* keys[]={"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};for(int i=0;i<12;++i)autoTuneKeySelector.addItem(keys[i],i+1);
     autoTuneKeySelector.setSelectedId(savedAutoTuneTonic+1,juce::dontSendNotification);
-    autoTuneKeySelector.onChange=[this]{noteTracker.setAutoTune(autoTuneEnabled.getToggleState(),autoTuneKeySelector.getSelectedId()-1,static_cast<MusicalScale>(juce::jlimit(0,2,autoTuneScaleSelector.getSelectedId()-1)));settings->setValue("autoTuneTonic",autoTuneKeySelector.getSelectedId()-1);saveSettings();repaint();};addAndMakeVisible(autoTuneKeySelector);
+    autoTuneKeySelector.onChange=[this]{engine.setAutoTune(autoTuneEnabled.getToggleState(),autoTuneKeySelector.getSelectedId()-1,autoTuneScaleSelector.getSelectedId()-1);settings->setValue("autoTuneTonic",autoTuneKeySelector.getSelectedId()-1);saveSettings();repaint();};addAndMakeVisible(autoTuneKeySelector);
     autoTuneScaleSelector.addItem("Chromatic",1);autoTuneScaleSelector.addItem("Major",2);autoTuneScaleSelector.addItem("Minor",3);autoTuneScaleSelector.setSelectedId(savedAutoTuneScale+1,juce::dontSendNotification);
-    autoTuneScaleSelector.onChange=[this]{noteTracker.setAutoTune(autoTuneEnabled.getToggleState(),autoTuneKeySelector.getSelectedId()-1,static_cast<MusicalScale>(juce::jlimit(0,2,autoTuneScaleSelector.getSelectedId()-1)));settings->setValue("autoTuneScale",autoTuneScaleSelector.getSelectedId()-1);saveSettings();repaint();};addAndMakeVisible(autoTuneScaleSelector);
-    noteTracker.setAutoTune(savedAutoTuneEnabled,savedAutoTuneTonic,static_cast<MusicalScale>(savedAutoTuneScale));
+    autoTuneScaleSelector.onChange=[this]{engine.setAutoTune(autoTuneEnabled.getToggleState(),autoTuneKeySelector.getSelectedId()-1,autoTuneScaleSelector.getSelectedId()-1);settings->setValue("autoTuneScale",autoTuneScaleSelector.getSelectedId()-1);saveSettings();repaint();};addAndMakeVisible(autoTuneScaleSelector);
+    engine.setAutoTune(savedAutoTuneEnabled, savedAutoTuneTonic, savedAutoTuneScale);
     noiseReductionEnabled.setToggleState(savedNoiseReductionEnabled, juce::dontSendNotification);
     noiseReductionEnabled.onClick = [this]
     {
@@ -223,15 +226,16 @@ MainComponent::MainComponent()
     };
     engine.setNoiseReductionStrength(static_cast<float>(savedNoiseReductionStrength / 100.0));engine.setNoiseReductionEnabled(savedNoiseReductionEnabled);addAndMakeVisible(noiseReductionSlider);
     pitchStabilityEnabled.setToggleState(savedPitchStabilityEnabled,juce::dontSendNotification);
-    pitchStabilityEnabled.onClick=[this]{pitchStabilityGuard.configure(pitchStabilityEnabled.getToggleState(),static_cast<float>(pitchDropToleranceSlider.getValue()),static_cast<int>(pitchDropHoldSlider.getValue()));settings->setValue("pitchStabilityEnabled",pitchStabilityEnabled.getToggleState());saveSettings();repaint();};addAndMakeVisible(pitchStabilityEnabled);
+    pitchStabilityEnabled.onClick=[this]{engine.setPitchStabilityGuard(pitchStabilityEnabled.getToggleState(),static_cast<float>(pitchDropToleranceSlider.getValue()),static_cast<float>(pitchDropHoldSlider.getValue()));settings->setValue("pitchStabilityEnabled",pitchStabilityEnabled.getToggleState());saveSettings();repaint();};addAndMakeVisible(pitchStabilityEnabled);
     pitchDropToleranceSlider.setRange(10.0,150.0,5.0);pitchDropToleranceSlider.setValue(savedPitchDropTolerance,juce::dontSendNotification);pitchDropToleranceSlider.setTextBoxStyle(juce::Slider::TextBoxRight,false,42,20);pitchDropToleranceSlider.setTextValueSuffix(" ct");
-    pitchDropToleranceSlider.onValueChange=[this]{pitchStabilityGuard.configure(pitchStabilityEnabled.getToggleState(),static_cast<float>(pitchDropToleranceSlider.getValue()),static_cast<int>(pitchDropHoldSlider.getValue()));settings->setValue("pitchDropToleranceCents",pitchDropToleranceSlider.getValue());saveSettings();repaint();};addAndMakeVisible(pitchDropToleranceSlider);
-    pitchDropHoldSlider.setRange(1.0,8.0,1.0);pitchDropHoldSlider.setValue(savedPitchDropHold,juce::dontSendNotification);pitchDropHoldSlider.setTextBoxStyle(juce::Slider::TextBoxRight,false,42,20);pitchDropHoldSlider.setTextValueSuffix(" fr");
-    pitchDropHoldSlider.onValueChange=[this]{pitchStabilityGuard.configure(pitchStabilityEnabled.getToggleState(),static_cast<float>(pitchDropToleranceSlider.getValue()),static_cast<int>(pitchDropHoldSlider.getValue()));settings->setValue("pitchDropHoldFrames",static_cast<int>(pitchDropHoldSlider.getValue()));saveSettings();repaint();};addAndMakeVisible(pitchDropHoldSlider);
-    pitchStabilityGuard.configure(savedPitchStabilityEnabled,static_cast<float>(savedPitchDropTolerance),savedPitchDropHold);
+    pitchDropToleranceSlider.onValueChange=[this]{engine.setPitchStabilityGuard(pitchStabilityEnabled.getToggleState(),static_cast<float>(pitchDropToleranceSlider.getValue()),static_cast<float>(pitchDropHoldSlider.getValue()));settings->setValue("pitchDropToleranceCents",pitchDropToleranceSlider.getValue());saveSettings();repaint();};addAndMakeVisible(pitchDropToleranceSlider);
+    pitchDropHoldSlider.setRange(10.0,80.0,5.0);pitchDropHoldSlider.setValue(savedPitchDropHoldMs,juce::dontSendNotification);pitchDropHoldSlider.setTextBoxStyle(juce::Slider::TextBoxRight,false,42,20);pitchDropHoldSlider.setTextValueSuffix(" ms");
+    pitchDropHoldSlider.onValueChange=[this]{engine.setPitchStabilityGuard(pitchStabilityEnabled.getToggleState(),static_cast<float>(pitchDropToleranceSlider.getValue()),static_cast<float>(pitchDropHoldSlider.getValue()));settings->setValue("pitchDropHoldMs",pitchDropHoldSlider.getValue());saveSettings();repaint();};addAndMakeVisible(pitchDropHoldSlider);
+    engine.setPitchStabilityGuard(savedPitchStabilityEnabled, static_cast<float>(savedPitchDropTolerance), static_cast<float>(savedPitchDropHoldMs));
     inputChannelSelector.addItem("Auto (strongest)",1);inputChannelSelector.addItem("Left",2);inputChannelSelector.addItem("Right",3);inputChannelSelector.addItem("Stereo mix",4);inputChannelSelector.setSelectedId(savedInputChannelMode+1,juce::dontSendNotification);
     inputChannelSelector.onChange=[this]{int mode=juce::jlimit(0,3,inputChannelSelector.getSelectedId()-1);engine.setInputChannelMode(mode);settings->setValue("inputChannelMode",mode);saveSettings();repaint();};engine.setInputChannelMode(savedInputChannelMode);engine.setCalibratedNoiseFloorDb((float)savedNoiseFloorDb);addAndMakeVisible(inputChannelSelector);
     calibrateNoiseButton.onClick=[this]{engine.beginNoiseCalibration();operationStatus="Measuring room noise. Keep the microphone silent for two seconds.";repaint();};addAndMakeVisible(calibrateNoiseButton);
+    audioSetupButton.onClick = [this] { showAudioSetup(); }; addAndMakeVisible(audioSetupButton);
 
     presetNameEditor.setText("My Preset", juce::dontSendNotification);
     presetNameEditor.setInputRestrictions(48);
@@ -255,8 +259,10 @@ MainComponent::MainComponent()
     styleControls();
     refreshPresetList(settings->getValue("lastPresetName"));
     refreshMidiOutputs();
-
-    auto error=deviceManager.initialise(2,0,nullptr,true);if(error.isNotEmpty())error=deviceManager.initialise(1,0,nullptr,true);if(error.isNotEmpty())operationStatus="Audio device error: "+error;else deviceManager.addAudioCallback(&engine);
+    engine.setMidiRouter(&midiRouter);
+    lastAudioStateXml = settings->getValue("audioDeviceState");
+    auto savedAudioState = juce::XmlDocument::parse(lastAudioStateXml);
+    auto error=deviceManager.initialise(2,0,savedAudioState.get(),true);if(error.isNotEmpty())error=deviceManager.initialise(1,0,nullptr,true);if(error.isNotEmpty())operationStatus="Audio device error: "+error;else deviceManager.addAudioCallback(&engine);
 
     setSize(1160, 780);
     showPage(Page::play);
@@ -267,14 +273,15 @@ MainComponent::~MainComponent()
 {
     stopTimer();
     setLookAndFeel(nullptr);
-    if (noteTracker.getActiveNote() >= 0)
+    if (auto state = deviceManager.createStateXml())
     {
-        resetPitchBend();
-        midiRouter.noteOff(noteTracker.getActiveNote());
+        lastAudioStateXml = state->toString();
+        settings->setValue("audioDeviceState", lastAudioStateXml);
     }
-    midiRouter.closeOutput();
+    engine.requestReset();
     deviceManager.removeAudioCallback(&engine);
     deviceManager.closeAudioDevice();
+    midiRouter.closeOutput();
     saveSettings();
 }
 
@@ -300,6 +307,7 @@ void MainComponent::styleControls()
     styleButton(loadPresetButton);
     styleButton(deletePresetButton);
     styleButton(calibrateNoiseButton);
+    styleButton(audioSetupButton);
     for (auto* slider : { &gainSlider, &sensitivitySlider, &smoothingSlider, &bendRangeSlider, &noteTransitionSlider, &noiseReductionSlider, &pitchDropToleranceSlider, &pitchDropHoldSlider })
     {
         slider->setColour(juce::Slider::trackColourId, NovoxLookAndFeel::accent);
@@ -385,7 +393,7 @@ void MainComponent::paint(juce::Graphics& g)
         g.setColour(NovoxLookAndFeel::teal.withAlpha(0.28f)); g.drawEllipse(centre.x - radius, centre.y - radius, radius * 2.0f, radius * 2.0f, 1.0f);
         g.setColour(NovoxLookAndFeel::accent.withAlpha(0.13f)); g.drawEllipse(centre.x - radius * 0.72f, centre.y - radius * 0.72f, radius * 1.44f, radius * 1.44f, 1.0f);
         static const char* notes[] = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
-        const int activePitch = noteTracker.getActiveNote() >= 0 ? noteTracker.getActiveNote() % 12 : -1;
+        const int activePitch = engine.getActiveNote() >= 0 ? engine.getActiveNote() % 12 : -1;
         for (int i = 0; i < 12; ++i)
         {
             const float angle = juce::MathConstants<float>::twoPi * static_cast<float>(i) / 12.0f - juce::MathConstants<float>::halfPi;
@@ -447,7 +455,7 @@ void MainComponent::paint(juce::Graphics& g)
     {
         drawText(g, "INPUT & DETECTION", { x, y, cw, 17.0f }, 8.0f, NovoxLookAndFeel::textSecondary, true);
         drawText(g, "Audio environment", { x, y + 24.0f, cw, 26.0f }, 18.0f, NovoxLookAndFeel::textPrimary, true);
-        drawText(g, "Input signal, pitch detection parameters and runtime health.", { x, y + 52.0f, cw, 20.0f }, 10.0f, NovoxLookAndFeel::textSecondary);
+        drawText(g, "Input signal, pitch detection parameters and runtime health.", { x, y + 52.0f, cw - 154.0f, 20.0f }, 10.0f, NovoxLookAndFeel::textSecondary);
         const float top = y + 86.0f;
         drawCard(g, { x, top, cw, 112.0f });
         drawText(g, "ACTIVE INPUT DEVICE", { x + 18.0f, top + 15.0f, cw - 36.0f, 15.0f }, 8.0f, NovoxLookAndFeel::textSecondary, true);
@@ -528,6 +536,7 @@ void MainComponent::resized()
 void MainComponent::layoutPlayPage(juce::Rectangle<int>)
 {
     midiOutputSelector.setVisible(false);
+    audioSetupButton.setVisible(false);
     channelSelector.setVisible(false);
     refreshButton.setVisible(false);
     pitchBendEnabled.setVisible(false);
@@ -565,6 +574,8 @@ void MainComponent::layoutAudioPage(juce::Rectangle<int> a)
 {
     layoutPlayPage({});
     const int top = 142 + 86 + 126, gap = 13, cardW = (a.getWidth() - gap * 2) / 3;
+    audioSetupButton.setVisible(true);
+    audioSetupButton.setBounds(a.getRight() - 142, 194, 124, 30);
     gainSlider.setVisible(true); sensitivitySlider.setVisible(true); smoothingSlider.setVisible(true);
     noteTransitionEnabled.setVisible(true); noteTransitionSlider.setVisible(true);
     autoTuneEnabled.setVisible(true);autoTuneKeySelector.setVisible(true);autoTuneScaleSelector.setVisible(true);
@@ -599,9 +610,7 @@ void MainComponent::saveSettings() { if (settings != nullptr) settings->saveIfNe
 
 void MainComponent::refreshMidiOutputs()
 {
-    const int active = noteTracker.getActiveNote();
-    if (active >= 0) { resetPitchBend(); midiRouter.noteOff(active); }
-    noteTracker.reset(); pitchSmoother.reset();
+    engine.requestReset();
     midiOutputSelector.clear(juce::dontSendNotification);
     const auto names = midiRouter.getOutputNames();
     midiOutputSelector.addItem("No MIDI output", 1);
@@ -609,67 +618,51 @@ void MainComponent::refreshMidiOutputs()
     for (int i = 0; i < names.size(); ++i)
     {
         midiOutputSelector.addItem(names[i], i + 2);
-        if (names[i] == preferredMidiOutputName) restored = i + 2;
+        if (names[i] == preferredMidiOutputName)
+            restored = i + 2;
     }
+
     midiRouter.closeOutput();
     midiOutputSelector.setSelectedId(restored, juce::dontSendNotification);
-    lastPitchBendValue = PitchBend::center;
-    if (restored > 1) selectMidiOutput();
-    else midiStatus = preferredMidiOutputName.isNotEmpty() ? "Saved MIDI output is unavailable" : "No MIDI output selected";
+    if (restored > 1)
+        selectMidiOutput();
+    else
+        midiStatus = preferredMidiOutputName.isNotEmpty()
+            ? "Saved MIDI output is unavailable" : "No MIDI output selected";
     repaint();
 }
 
 void MainComponent::selectMidiOutput()
 {
-    const int active = noteTracker.getActiveNote();
-    if (active >= 0) { resetPitchBend(); midiRouter.noteOff(active); }
-    noteTracker.reset(); pitchSmoother.reset();
+    engine.requestReset();
     const int id = midiOutputSelector.getSelectedId();
+    midiRouter.closeOutput();
     if (id <= 1)
     {
-        midiRouter.closeOutput(); preferredMidiOutputName.clear();
-        settings->setValue("midiOutputName", preferredMidiOutputName); saveSettings();
-        midiStatus = "No MIDI output selected"; repaint(); return;
+        preferredMidiOutputName.clear();
+        settings->setValue("midiOutputName", preferredMidiOutputName);
+        saveSettings();
+        midiStatus = "No MIDI output selected";
+        repaint();
+        return;
     }
+
     preferredMidiOutputName = midiOutputSelector.getItemText(midiOutputSelector.indexOfItemId(id));
-    settings->setValue("midiOutputName", preferredMidiOutputName); saveSettings();
-    midiStatus = midiRouter.openOutput(id - 2) ? "MIDI output connected" : "Could not open MIDI output";
-    lastPitchBendValue = PitchBend::center; repaint();
+    settings->setValue("midiOutputName", preferredMidiOutputName);
+    saveSettings();
+    midiStatus = midiRouter.openOutput(id - 2)
+        ? "MIDI output connected" : "Could not open MIDI output";
+    repaint();
 }
 
 void MainComponent::selectMidiChannel()
 {
-    const int active = noteTracker.getActiveNote();
-    if (active >= 0) { resetPitchBend(); midiRouter.noteOff(active); }
+    engine.requestReset();
     midiRouter.setChannel(channelSelector.getSelectedId());
-    settings->setValue("midiChannel", midiRouter.getChannel()); saveSettings();
-    noteTracker.reset(); pitchSmoother.reset(); lastPitchBendValue = PitchBend::center;
-    midiStatus = "MIDI channel " + juce::String(midiRouter.getChannel()); repaint();
-}
-
-void MainComponent::resetPitchBend()
-{
-    if (midiRouter.isOpen() && lastPitchBendValue != PitchBend::center) midiRouter.pitchBend(PitchBend::center);
-    lastPitchBendValue = PitchBend::center; pitchSmoother.reset();
-}
-
-void MainComponent::sendPitchBend(const PitchResult& pitch)
-{
-    const int active = noteTracker.getActiveNote();
-    if(active<0||!pitch.voiced||!pitchBendEnabled.getToggleState()||autoTuneEnabled.getToggleState()){resetPitchBend();return;}
-    const float raw = PitchBend::semitoneOffset(pitch.frequencyHz, active);
-    const float offset = pitchSmoother.process(raw, static_cast<float>(smoothingSlider.getValue()));
-    const int range = static_cast<int>(bendRangeSlider.getValue());
-    const int value = PitchBend::semitonesTo14BitValue(offset, range);
-    if (midiRouter.isOpen() && std::abs(value - lastPitchBendValue) >= 2) { midiRouter.pitchBend(value); lastPitchBendValue = value; }
-}
-
-void MainComponent::updateNoteTracking(const PitchResult& pitch)
-{
-    const auto update = noteTracker.process(pitch);
-    if (update.noteOff >= 0) { resetPitchBend(); midiRouter.noteOff(update.noteOff); }
-    if (update.noteOn >= 0) { pitchSmoother.reset(); midiRouter.noteOn(update.noteOn); lastPitchBendValue = -1; }
-    sendPitchBend(pitch);
+    settings->setValue("midiChannel", midiRouter.getChannel());
+    saveSettings();
+    midiStatus = "MIDI channel " + juce::String(midiRouter.getChannel());
+    repaint();
 }
 
 PresetData MainComponent::capturePresetData() const
@@ -678,9 +671,9 @@ PresetData MainComponent::capturePresetData() const
     data.inputGain = gainSlider.getValue(); data.pitchSensitivity = sensitivitySlider.getValue();
     data.pitchSmoothing = smoothingSlider.getValue(); data.pitchBendEnabled = pitchBendEnabled.getToggleState();
     data.noteTransitionSmoothingEnabled = noteTransitionEnabled.getToggleState();
-    data.noteTransitionStability=noteTransitionSlider.getValue();data.autoTuneEnabled=autoTuneEnabled.getToggleState();data.autoTuneTonic=autoTuneKeySelector.getSelectedId()-1;data.autoTuneScale=autoTuneScaleSelector.getSelectedId()-1;
+    data.noteTransitionDurationMs=noteTransitionSlider.getValue();data.autoTuneEnabled=autoTuneEnabled.getToggleState();data.autoTuneTonic=autoTuneKeySelector.getSelectedId()-1;data.autoTuneScale=autoTuneScaleSelector.getSelectedId()-1;
     data.noiseReductionEnabled = noiseReductionEnabled.getToggleState(); data.noiseReductionStrength = noiseReductionSlider.getValue();
-    data.pitchStabilityEnabled=pitchStabilityEnabled.getToggleState();data.pitchDropToleranceCents=pitchDropToleranceSlider.getValue();data.pitchDropHoldFrames=static_cast<int>(pitchDropHoldSlider.getValue());
+    data.pitchStabilityEnabled=pitchStabilityEnabled.getToggleState();data.pitchDropToleranceCents=pitchDropToleranceSlider.getValue();data.pitchDropHoldMs=pitchDropHoldSlider.getValue();
     data.inputChannelMode=inputChannelSelector.getSelectedId()-1;
     data.pitchBendRange = static_cast<int>(bendRangeSlider.getValue());
     data.midiChannel = channelSelector.getSelectedId(); data.midiOutputName = preferredMidiOutputName.toStdString();
@@ -690,24 +683,27 @@ PresetData MainComponent::capturePresetData() const
 void MainComponent::applyPresetData(PresetData data, const juce::String& name)
 {
     data.sanitise();
-    if (noteTracker.getActiveNote() >= 0) { resetPitchBend(); midiRouter.noteOff(noteTracker.getActiveNote()); }
-    noteTracker.reset(); pitchSmoother.reset(); lastPitchBendValue = PitchBend::center;
+    engine.requestReset();
     gainSlider.setValue(data.inputGain, juce::dontSendNotification);
     sensitivitySlider.setValue(data.pitchSensitivity, juce::dontSendNotification);
     smoothingSlider.setValue(data.pitchSmoothing, juce::dontSendNotification);
     noteTransitionEnabled.setToggleState(data.noteTransitionSmoothingEnabled, juce::dontSendNotification);
-    noteTransitionSlider.setValue(data.noteTransitionStability, juce::dontSendNotification);
-    noteTracker.setTransitionSmoothing(data.noteTransitionSmoothingEnabled,static_cast<int>(data.noteTransitionStability));
+    noteTransitionSlider.setValue(data.noteTransitionDurationMs, juce::dontSendNotification);
+    engine.setTransitionSmoothing(data.noteTransitionSmoothingEnabled,static_cast<float>(data.noteTransitionDurationMs));
     autoTuneEnabled.setToggleState(data.autoTuneEnabled,juce::dontSendNotification);autoTuneKeySelector.setSelectedId(data.autoTuneTonic+1,juce::dontSendNotification);autoTuneScaleSelector.setSelectedId(data.autoTuneScale+1,juce::dontSendNotification);
-    noteTracker.setAutoTune(data.autoTuneEnabled,data.autoTuneTonic,static_cast<MusicalScale>(data.autoTuneScale));
+    engine.setAutoTune(data.autoTuneEnabled,data.autoTuneTonic,data.autoTuneScale);
     noiseReductionEnabled.setToggleState(data.noiseReductionEnabled, juce::dontSendNotification);
     noiseReductionSlider.setValue(data.noiseReductionStrength, juce::dontSendNotification);
-    pitchStabilityEnabled.setToggleState(data.pitchStabilityEnabled,juce::dontSendNotification);pitchDropToleranceSlider.setValue(data.pitchDropToleranceCents,juce::dontSendNotification);pitchDropHoldSlider.setValue(data.pitchDropHoldFrames,juce::dontSendNotification);pitchStabilityGuard.configure(data.pitchStabilityEnabled,static_cast<float>(data.pitchDropToleranceCents),data.pitchDropHoldFrames);
+    pitchStabilityEnabled.setToggleState(data.pitchStabilityEnabled,juce::dontSendNotification);pitchDropToleranceSlider.setValue(data.pitchDropToleranceCents,juce::dontSendNotification);pitchDropHoldSlider.setValue(data.pitchDropHoldMs,juce::dontSendNotification);
+    engine.setPitchStabilityGuard(data.pitchStabilityEnabled,static_cast<float>(data.pitchDropToleranceCents),static_cast<float>(data.pitchDropHoldMs));
     engine.setNoiseReductionEnabled(data.noiseReductionEnabled);
     engine.setNoiseReductionStrength(static_cast<float>(data.noiseReductionStrength / 100.0));
     inputChannelSelector.setSelectedId(data.inputChannelMode+1,juce::dontSendNotification);engine.setInputChannelMode(data.inputChannelMode);
     pitchBendEnabled.setToggleState(data.pitchBendEnabled, juce::dontSendNotification);
+    engine.setPitchBendEnabled(data.pitchBendEnabled);
     bendRangeSlider.setValue(data.pitchBendRange, juce::dontSendNotification);
+    engine.setPitchBendRange(data.pitchBendRange);
+    engine.setPitchSmoothing(static_cast<float>(data.pitchSmoothing));
     channelSelector.setSelectedId(data.midiChannel, juce::dontSendNotification);
     engine.setInputGain(static_cast<float>(data.inputGain));
     engine.setPitchSensitivity(static_cast<float>(data.pitchSensitivity / 100.0));
@@ -715,9 +711,9 @@ void MainComponent::applyPresetData(PresetData data, const juce::String& name)
     settings->setValue("inputGain", data.inputGain); settings->setValue("pitchSensitivity", data.pitchSensitivity);
     settings->setValue("pitchSmoothing", data.pitchSmoothing); settings->setValue("pitchBendEnabled", data.pitchBendEnabled);
     settings->setValue("noteTransitionSmoothingEnabled", data.noteTransitionSmoothingEnabled);
-    settings->setValue("noteTransitionStability",data.noteTransitionStability);settings->setValue("autoTuneEnabled",data.autoTuneEnabled);settings->setValue("autoTuneTonic",data.autoTuneTonic);settings->setValue("autoTuneScale",data.autoTuneScale);
+    settings->setValue("noteTransitionDurationMs",data.noteTransitionDurationMs);settings->setValue("autoTuneEnabled",data.autoTuneEnabled);settings->setValue("autoTuneTonic",data.autoTuneTonic);settings->setValue("autoTuneScale",data.autoTuneScale);
     settings->setValue("noiseReductionEnabled", data.noiseReductionEnabled); settings->setValue("noiseReductionStrength", data.noiseReductionStrength);
-    settings->setValue("pitchStabilityEnabled",data.pitchStabilityEnabled);settings->setValue("pitchDropToleranceCents",data.pitchDropToleranceCents);settings->setValue("pitchDropHoldFrames",data.pitchDropHoldFrames);
+    settings->setValue("pitchStabilityEnabled",data.pitchStabilityEnabled);settings->setValue("pitchDropToleranceCents",data.pitchDropToleranceCents);settings->setValue("pitchDropHoldMs",data.pitchDropHoldMs);
     settings->setValue("inputChannelMode",data.inputChannelMode);
     settings->setValue("pitchBendRange", data.pitchBendRange); settings->setValue("midiChannel", data.midiChannel);
     settings->setValue("midiOutputName", preferredMidiOutputName); settings->setValue("lastPresetName", name);
@@ -777,35 +773,73 @@ void MainComponent::deleteSelectedPreset()
     operationStatus = "Deleted preset: " + name; repaint();
 }
 
+void MainComponent::showAudioSetup()
+{
+    auto* selector = new juce::AudioDeviceSelectorComponent(
+        deviceManager, 1, 2, 0, 0, false, false, true, false);
+    selector->setSize(560, 430);
+
+    juce::DialogWindow::LaunchOptions options;
+    options.content.setOwned(selector);
+    options.dialogTitle = "NOVOX Audio Setup";
+    options.dialogBackgroundColour = juce::Colours::darkgrey;
+    options.componentToCentreAround = this;
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar = true;
+    options.resizable = false;
+    options.launchAsync();
+}
+
 void MainComponent::timerCallback()
 {
-    const auto rawPitch = engine.getLatestPitch();
-    currentConfidence = rawPitch.voiced ? rawPitch.confidence : 0.0f;
-    currentRms = rawPitch.rms;
+    const auto pitch = engine.getLatestPitch();
+    currentConfidence = pitch.voiced ? pitch.confidence : 0.0f;
+    currentRms = pitch.rms;
     currentInputRms = engine.getInputRms();
     currentInputPeak = engine.getInputPeak();
     currentInputClipping = engine.isInputClipping();
-    currentAnalysisWindowSamples = rawPitch.analysisWindowSamples;
+    currentAnalysisWindowSamples = pitch.analysisWindowSamples;
+
     if (auto* device = deviceManager.getCurrentAudioDevice())
     {
-        audioAvailable = true; audioDeviceName = device->getName();
+        audioAvailable = true;
+        audioDeviceName = deviceManager.getCurrentAudioDeviceType() + " · " + device->getName();
         audioChannels = device->getActiveInputChannels().countNumberOfSetBits();
-        sampleRate = device->getCurrentSampleRate(); bufferSize = device->getCurrentBufferSizeSamples();
+        sampleRate = device->getCurrentSampleRate();
+        bufferSize = device->getCurrentBufferSizeSamples();
     }
     else
     {
-        audioAvailable = false; audioDeviceName = "No audio input device";
-        audioChannels = 0; sampleRate = 0.0; bufferSize = 0;
+        audioAvailable = false;
+        audioDeviceName = "No audio input device";
+        audioChannels = 0;
+        sampleRate = 0.0;
+        bufferSize = 0;
     }
-    const int cs=engine.getNoiseCalibrationState();if(cs==2&&lastNoiseCalibrationState!=2){settings->setValue("noiseCalibrationFloorDb",(double)engine.getCalibratedNoiseFloorDb());saveSettings();operationStatus="Room noise calibration completed.";}
-    lastNoiseCalibrationState=cs;
-    if (rawPitch.sequence != 0 && rawPitch.sequence != lastPitchSequence)
+
+    const int calibrationState = engine.getNoiseCalibrationState();
+    if (calibrationState == 2 && lastNoiseCalibrationState != 2)
     {
-        lastPitchSequence = rawPitch.sequence;
-        latestGuardedPitch = pitchStabilityGuard.process(rawPitch);
-        updateNoteTracking(latestGuardedPitch);
+        settings->setValue("noiseCalibrationFloorDb", static_cast<double>(engine.getCalibratedNoiseFloorDb()));
+        saveSettings();
+        operationStatus = "Room noise calibration completed.";
     }
-    currentFrequency = latestGuardedPitch.voiced ? latestGuardedPitch.frequencyHz : 0.0f;
-    currentNote = latestGuardedPitch.voiced ? noteNameFromMidi(noteTracker.getActiveNote()) : "--";
+    lastNoiseCalibrationState = calibrationState;
+
+    currentFrequency = pitch.voiced ? pitch.frequencyHz : 0.0f;
+    currentNote = engine.getActiveNote() >= 0
+        ? noteNameFromMidi(engine.getActiveNote()) : "--";
+
+    if (auto state = deviceManager.createStateXml())
+    {
+        const auto xml = state->toString();
+        if (xml != lastAudioStateXml)
+        {
+            lastAudioStateXml = xml;
+            settings->setValue("audioDeviceState", xml);
+            saveSettings();
+        }
+    }
+
     repaint();
 }

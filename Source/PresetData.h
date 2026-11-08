@@ -11,7 +11,7 @@ struct PresetData
     double pitchSmoothing = 35.0;
     bool pitchBendEnabled = true;
     bool noteTransitionSmoothingEnabled = false;
-    double noteTransitionStability = 6.0;
+    double noteTransitionDurationMs = 60.0;
     bool autoTuneEnabled = false;
     int autoTuneTonic = 0;
     int autoTuneScale = 1;
@@ -19,7 +19,7 @@ struct PresetData
     double noiseReductionStrength = 35.0;
     bool pitchStabilityEnabled = false;
     double pitchDropToleranceCents = 45.0;
-    int pitchDropHoldFrames = 3;
+    double pitchDropHoldMs = 30.0;
     int inputChannelMode = 0;
     int pitchBendRange = 2;
     int midiChannel = 1;
@@ -28,16 +28,18 @@ struct PresetData
     void sanitise() noexcept
     {
         inputGain = std::isfinite(inputGain) ? std::clamp(inputGain, 0.1, 4.0) : 1.0;
-        pitchSensitivity = std::isfinite(pitchSensitivity)
-            ? std::clamp(pitchSensitivity, 0.0, 100.0) : 50.0;
-        pitchSmoothing = std::isfinite(pitchSmoothing)
-            ? std::clamp(pitchSmoothing, 0.0, 100.0) : 35.0;
-        noteTransitionStability = std::isfinite(noteTransitionStability)
-            ? std::clamp(noteTransitionStability, 3.0, 12.0) : 6.0;
-        autoTuneTonic=std::clamp(autoTuneTonic,0,11); autoTuneScale=std::clamp(autoTuneScale,0,2);
-        noiseReductionStrength = std::isfinite(noiseReductionStrength) ? std::clamp(noiseReductionStrength, 0.0, 100.0) : 35.0;
-        pitchDropToleranceCents = std::isfinite(pitchDropToleranceCents) ? std::clamp(pitchDropToleranceCents, 10.0, 150.0) : 45.0;
-        pitchDropHoldFrames = std::clamp(pitchDropHoldFrames, 1, 8);
+        pitchSensitivity = std::isfinite(pitchSensitivity) ? std::clamp(pitchSensitivity, 0.0, 100.0) : 50.0;
+        pitchSmoothing = std::isfinite(pitchSmoothing) ? std::clamp(pitchSmoothing, 0.0, 100.0) : 35.0;
+        noteTransitionDurationMs = std::isfinite(noteTransitionDurationMs)
+            ? std::clamp(noteTransitionDurationMs, 30.0, 120.0) : 60.0;
+        autoTuneTonic = std::clamp(autoTuneTonic, 0, 11);
+        autoTuneScale = std::clamp(autoTuneScale, 0, 2);
+        noiseReductionStrength = std::isfinite(noiseReductionStrength)
+            ? std::clamp(noiseReductionStrength, 0.0, 100.0) : 35.0;
+        pitchDropToleranceCents = std::isfinite(pitchDropToleranceCents)
+            ? std::clamp(pitchDropToleranceCents, 10.0, 150.0) : 45.0;
+        pitchDropHoldMs = std::isfinite(pitchDropHoldMs)
+            ? std::clamp(pitchDropHoldMs, 10.0, 80.0) : 30.0;
         inputChannelMode = std::clamp(inputChannelMode, 0, 3);
         pitchBendRange = std::clamp(pitchBendRange, 1, 12);
         midiChannel = std::clamp(midiChannel, 1, 16);
