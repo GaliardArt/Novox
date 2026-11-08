@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(NOVOX VERSION 0.9.0 LANGUAGES CXX)
+project(NOVOX VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -87,3 +87,25 @@ if(BUILD_TESTING)
         target_compile_options(NOVOXPresetManagerTests PRIVATE -Wall -Wextra -Wpedantic)
     endif()
 endif()
+
+# Installable Windows release layout (executable + end-user documentation).
+install(TARGETS NOVOX
+    RUNTIME DESTINATION .
+    BUNDLE DESTINATION .
+)
+install(FILES
+    README.md
+    docs/QUICKSTART.md
+    docs/RELEASE_NOTES_1.0.0.md
+    DESTINATION docs
+)
+
+# A portable ZIP is the canonical release artifact. The Inno Setup script
+# provides an optional conventional installer for maintainers with ISCC installed.
+set(CPACK_PACKAGE_NAME "NOVOX")
+set(CPACK_PACKAGE_VENDOR "NOVOX Project")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Offline-first voice-to-MIDI desktop instrument")
+set(CPACK_PACKAGE_FILE_NAME "NOVOX-${PROJECT_VERSION}-Windows-x64")
+set(CPACK_GENERATOR "ZIP")
+include(CPack)

@@ -2,7 +2,7 @@
 
 NOVOX is an offline-first, standalone vocal instrument for turning voice into musical control data. It is written in C++ and uses JUCE for audio input, MIDI integration, and the desktop application.
 
-## Current milestone (0.9.0 — integration diagnostics)
+## Stable release (1.0.0)
 
 - JUCE standalone desktop application and microphone capture
 - YIN-style fundamental-frequency estimation with confidence and RMS level
@@ -45,17 +45,25 @@ The lightweight transient classifier runs on the audio worker and provides the k
 
 Preferences are stored in the current user's application settings directory using JUCE's local PropertiesFile support. Settings are written locally and restored on the next launch. NOVOX does not transmit preferences or require an account or network connection. If a saved MIDI output is not present at startup, NOVOX keeps the preference and waits for the user to reconnect or select an available device.
 
-## Build on Windows
+## Quick start
 
-Requirements: Visual Studio 2022 with Desktop development with C++, CMake 3.22+, Git, Windows 10/11.
+See [docs/QUICKSTART.md](docs/QUICKSTART.md) for microphone setup, MIDI routing, first-use guidance, and troubleshooting.
+
+## Build and package on Windows
+
+Requirements: Windows 10/11 x64, Visual Studio 2022 with Desktop development with C++, CMake 3.22+, Git, and the Microsoft Visual C++ 2015–2022 Redistributable (x64) on target machines.
 
 ```powershell
 cmake -S . -B build -A x64 -DBUILD_TESTING=ON
-cmake --build build --config Release --parallel
+cmake --build build --config Release --parallel 2
 ctest --test-dir build -C Release --output-on-failure
+cmake --install build --config Release --prefix dist
+cpack --config build/CPackConfig.cmake -C Release
 ```
 
 CMake fetches JUCE 8.0.6 on the first configure. An internet connection is needed for that dependency download. The application is designed to run offline after dependencies are available.
+
+The packaging commands create a portable ZIP named `NOVOX-1.0.0-Windows-x64.zip` in the build directory and an install layout under `dist/`. An optional Inno Setup definition is provided at `installer/NOVOX.iss`; compile it from the repository root after creating `dist/` if Inno Setup 6 is installed. The portable ZIP is the canonical package and does not require the installer.
 
 ## Regression coverage
 
@@ -68,7 +76,7 @@ CMake fetches JUCE 8.0.6 on the first configure. An internet connection is neede
 - `NOVOXPresetManagerTests`: preset-name sanitising, full settings round trip, value clamping, listing, and deletion.
 - `NOVOXVocalPercussionTests`: synthetic kick/snare/hi-hat transients, silence, sustained-tone rejection, and invalid input.
 
-The tests are deterministic. They do not replace microphone, room-noise, end-to-end latency, MIDI-driver, or musical-performance testing. Local preference read/write behavior still needs an end-to-end Windows application check.
+The tests are deterministic. They do not replace microphone, room-noise, end-to-end latency, MIDI-driver, or musical-performance testing. Before publishing a stable binary, complete the manual checks in [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
 
 ## Continuous integration
 

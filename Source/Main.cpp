@@ -4,8 +4,8 @@
 class VocalInstrumentApplication final : public juce::JUCEApplication
 {
 public:
-    const juce::String getApplicationName() override { return "Vocal Instrument"; }
-    const juce::String getApplicationVersion() override { return "0.1.0"; }
+    const juce::String getApplicationName() override { return "NOVOX"; }
+    const juce::String getApplicationVersion() override { return JUCE_APPLICATION_VERSION_STRING; }
     bool moreThanOneInstanceAllowed() override { return true; }
 
     void initialise(const juce::String&) override
