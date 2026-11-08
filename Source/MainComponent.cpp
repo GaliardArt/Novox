@@ -235,6 +235,8 @@ MainComponent::MainComponent()
     inputEqualizerEnabled.onClick=[this]{engine.setInputEqualizerEnabled(inputEqualizerEnabled.getToggleState());settings->setValue("inputEqualizerEnabled",inputEqualizerEnabled.getToggleState());saveSettings();repaint();};addAndMakeVisible(inputEqualizerEnabled);
     const auto setupEqSlider=[this](juce::Slider& slider,double value){slider.setRange(-12,12,.5);slider.setValue(value,juce::dontSendNotification);slider.setTextBoxStyle(juce::Slider::TextBoxRight,false,52,21);slider.setTextValueSuffix(" dB");slider.onValueChange=[this]{const auto l=(float)equalizerLowSlider.getValue(),m=(float)equalizerMidSlider.getValue(),h=(float)equalizerHighSlider.getValue();engine.setInputEqualizerGains(l,m,h);settings->setValue("equalizerLowDb",l);settings->setValue("equalizerMidDb",m);settings->setValue("equalizerHighDb",h);saveSettings();repaint();};addAndMakeVisible(slider);};
     setupEqSlider(equalizerLowSlider,savedEqLow);setupEqSlider(equalizerMidSlider,savedEqMid);setupEqSlider(equalizerHighSlider,savedEqHigh);engine.setInputEqualizerGains((float)savedEqLow,(float)savedEqMid,(float)savedEqHigh);engine.setInputEqualizerEnabled(savedEqEnabled);
+    const auto setupEqLabel=[this](juce::Label& label,const juce::String& text){label.setText(text,juce::dontSendNotification);label.setColour(juce::Label::textColourId,NovoxLookAndFeel::textSecondary);label.setFont(juce::FontOptions(9.0f,juce::Font::bold));addAndMakeVisible(label);};
+    setupEqLabel(equalizerLowLabel,"LOW · 120 Hz");setupEqLabel(equalizerMidLabel,"MID · 1 kHz");setupEqLabel(equalizerHighLabel,"HIGH · 5 kHz");
     pitchStabilityEnabled.setToggleState(savedPitchStabilityEnabled,juce::dontSendNotification);
     pitchStabilityEnabled.onClick=[this]{engine.setPitchStabilityGuard(pitchStabilityEnabled.getToggleState(),static_cast<float>(pitchDropToleranceSlider.getValue()),static_cast<float>(pitchDropHoldSlider.getValue()));settings->setValue("pitchStabilityEnabled",pitchStabilityEnabled.getToggleState());saveSettings();repaint();};addAndMakeVisible(pitchStabilityEnabled);
     pitchDropToleranceSlider.setRange(10.0,150.0,5.0);pitchDropToleranceSlider.setValue(savedPitchDropTolerance,juce::dontSendNotification);pitchDropToleranceSlider.setTextBoxStyle(juce::Slider::TextBoxRight,false,42,20);pitchDropToleranceSlider.setTextValueSuffix(" ct");
@@ -601,6 +603,7 @@ void MainComponent::layoutPlayPage(juce::Rectangle<int>)
     autoTuneEnabled.setVisible(false);autoTuneKeySelector.setVisible(false);autoTuneScaleSelector.setVisible(false);
     noiseReductionEnabled.setVisible(false); noiseReductionSlider.setVisible(false);
     inputEqualizerEnabled.setVisible(false);equalizerLowSlider.setVisible(false);equalizerMidSlider.setVisible(false);equalizerHighSlider.setVisible(false);
+    equalizerLowLabel.setVisible(false);equalizerMidLabel.setVisible(false);equalizerHighLabel.setVisible(false);
     pitchStabilityEnabled.setVisible(false);pitchDropToleranceSlider.setVisible(false);pitchDropHoldSlider.setVisible(false);
     midiNoteCleanupEnabled.setVisible(false); midiNoteMinimumDurationSlider.setVisible(false); midiNoteMinimumConfidenceSlider.setVisible(false); midiNoteGapBridgeSlider.setVisible(false);
     midiCleanupDurationLabel.setVisible(false); midiCleanupConfidenceLabel.setVisible(false); midiCleanupGapLabel.setVisible(false);
@@ -636,6 +639,7 @@ void MainComponent::layoutAudioPage(juce::Rectangle<int> a)
     autoTuneEnabled.setVisible(true);autoTuneKeySelector.setVisible(true);autoTuneScaleSelector.setVisible(true);
     noiseReductionEnabled.setVisible(true);noiseReductionSlider.setVisible(true);inputChannelSelector.setVisible(true);calibrateNoiseButton.setVisible(true);
     inputEqualizerEnabled.setVisible(true);equalizerLowSlider.setVisible(true);equalizerMidSlider.setVisible(true);equalizerHighSlider.setVisible(true);
+    equalizerLowLabel.setVisible(true);equalizerMidLabel.setVisible(true);equalizerHighLabel.setVisible(true);
     pitchStabilityEnabled.setVisible(true);pitchDropToleranceSlider.setVisible(true);pitchDropHoldSlider.setVisible(true);
     midiNoteCleanupEnabled.setVisible(true); midiNoteMinimumDurationSlider.setVisible(true); midiNoteMinimumConfidenceSlider.setVisible(true); midiNoteGapBridgeSlider.setVisible(true);
     midiCleanupDurationLabel.setVisible(true); midiCleanupConfidenceLabel.setVisible(true); midiCleanupGapLabel.setVisible(true);
@@ -654,7 +658,9 @@ void MainComponent::layoutAudioPage(juce::Rectangle<int> a)
     midiCleanupDurationLabel.setBounds(a.getX()+205, top+194, 170, 18); midiNoteMinimumDurationSlider.setBounds(a.getX()+205, top+212, 170, 26);
     midiCleanupConfidenceLabel.setBounds(a.getX()+385, top+194, 170, 18); midiNoteMinimumConfidenceSlider.setBounds(a.getX()+385, top+212, 170, 26);
     midiCleanupGapLabel.setBounds(a.getX()+565, top+194, 170, 18); midiNoteGapBridgeSlider.setBounds(a.getX()+565, top+212, 170, 26);
-    inputEqualizerEnabled.setBounds(a.getX()+14,top+250,150,26);equalizerLowSlider.setBounds(a.getX()+170,top+250,190,26);equalizerMidSlider.setBounds(a.getX()+370,top+250,190,26);equalizerHighSlider.setBounds(a.getX()+570,top+250,190,26);
+    inputEqualizerEnabled.setBounds(a.getX()+14,top+250,150,26);
+    equalizerLowLabel.setBounds(a.getX()+170,top+232,190,16);equalizerMidLabel.setBounds(a.getX()+370,top+232,190,16);equalizerHighLabel.setBounds(a.getX()+570,top+232,190,16);
+    equalizerLowSlider.setBounds(a.getX()+170,top+250,190,26);equalizerMidSlider.setBounds(a.getX()+370,top+250,190,26);equalizerHighSlider.setBounds(a.getX()+570,top+250,190,26);
 }
 
 void MainComponent::layoutPresetsPage(juce::Rectangle<int> a)

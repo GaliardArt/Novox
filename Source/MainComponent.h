@@ -56,6 +56,7 @@ private:
     juce::ToggleButton noiseReductionEnabled { "Noise reduction (gate)" };
     juce::ToggleButton inputEqualizerEnabled { "Input equalizer" };
     juce::Slider equalizerLowSlider, equalizerMidSlider, equalizerHighSlider;
+    juce::Label equalizerLowLabel, equalizerMidLabel, equalizerHighLabel;
     juce::ToggleButton pitchStabilityEnabled { "Pitch Stability Guard" }, midiNoteCleanupEnabled { "MIDI Note Cleanup" };
     juce::Slider midiNoteMinimumDurationSlider, midiNoteMinimumConfidenceSlider, midiNoteGapBridgeSlider;
     juce::Label midiCleanupDurationLabel, midiCleanupConfidenceLabel, midiCleanupGapLabel;
