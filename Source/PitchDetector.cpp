@@ -161,11 +161,7 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
     {
         const double lowerFrequency = currentSampleRate / static_cast<double>(octaveLag);
         const double lowerAmplitude = estimateAmplitude(lowerFrequency);
-        const double thirdHarmonicAmplitude = estimateAmplitude(lowerFrequency * 3.0);
-        const double minimumSupport = std::max(0.0015, selectedAmplitude * 0.02);
-
-        if (lowerAmplitude > std::max(0.0015, selectedAmplitude * 0.03)
-            && thirdHarmonicAmplitude > minimumSupport)
+        if (lowerAmplitude > std::max(0.0015, selectedAmplitude * 0.03))
         {
             selectedLag = octaveLag;
         }
