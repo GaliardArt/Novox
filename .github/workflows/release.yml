@@ -1,0 +1,105 @@
+name: Publish Windows Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to build and publish (for example v1.0.0)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: novox-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, test and publish Windows x64
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Validate release tag and project version
+        shell: pwsh
+        run: |
+          $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.tag }}" } else { "${{ github.ref_name }}" }
+          if ($tag -notmatch '^v\d+\.\d+\.\d+$') {
+            throw "Invalid release tag: $tag. Expected vMAJOR.MINOR.PATCH."
+          }
+          $projectVersion = (Select-String -Path CMakeLists.txt -Pattern '^project\(NOVOX VERSION ([0-9]+\.[0-9]+\.[0-9]+)' ).Matches.Groups[1].Value
+          if (-not $projectVersion) {
+            throw "Could not read NOVOX project version from CMakeLists.txt."
+          }
+          if ($tag -ne "v$projectVersion") {
+            throw "Tag $tag does not match CMake project version $projectVersion."
+          }
+          "NOVOX_VERSION=$projectVersion" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "RELEASE_TAG=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Configure CMake
+        run: cmake -S . -B build -A x64 -DBUILD_TESTING=ON
+
+      - name: Build Release
+        run: cmake --build build --config Release --parallel 2
+
+      - name: Run regression tests
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Create install layout
+        run: cmake --install build --config Release --prefix dist
+
+      - name: Create portable ZIP
+        run: cpack --config build/CPackConfig.cmake -C Release -B build
+
+      - name: Verify portable ZIP exists
+        shell: pwsh
+        run: |
+          $packagePath = "build/NOVOX-$env:NOVOX_VERSION-Windows-x64.zip"
+          if (-not (Test-Path $packagePath -PathType Leaf)) {
+            Get-ChildItem build -Recurse -File | Select-Object -ExpandProperty FullName
+            throw "Expected package was not created at $packagePath."
+          }
+          Write-Host "Package ready: $packagePath"
+
+      - name: Generate SHA-256 checksum
+        shell: pwsh
+        run: |
+          $package = Get-ChildItem build -Filter "NOVOX-$env:NOVOX_VERSION-Windows-x64.zip" | Select-Object -First 1
+          if (-not $package) {
+            throw "Expected portable ZIP was not created."
+          }
+          $hash = (Get-FileHash $package.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($package.Name)" | Set-Content "$($package.FullName).sha256" -Encoding ascii
+
+      - name: Upload package as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NOVOX-${{ env.RELEASE_TAG }}-Windows-x64
+          path: |
+            build/NOVOX-${{ env.NOVOX_VERSION }}-Windows-x64.zip
+            build/NOVOX-${{ env.NOVOX_VERSION }}-Windows-x64.zip.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: NOVOX ${{ env.NOVOX_VERSION }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            build/NOVOX-${{ env.NOVOX_VERSION }}-Windows-x64.zip
+            build/NOVOX-${{ env.NOVOX_VERSION }}-Windows-x64.zip.sha256

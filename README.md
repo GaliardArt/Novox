@@ -96,3 +96,26 @@ GitHub Actions configures and compiles the Windows x64 Release build and runs CT
 - Closing or changing MIDI output drains pending events and stops the dispatch worker before releasing the device handle.
 - MIDI event generation still originates from the GUI timer. This milestone does not claim sample-accurate timing.
 - Preferences are saved immediately after a control change and on shutdown. The saved output device is matched by its JUCE device name; if no exact match exists, NOVOX does not silently select a different device.
+
+
+## GitHub Actions: build and distribution
+
+Two workflows automate the Windows x64 pipeline:
+
+- `.github/workflows/windows-build.yml` runs on pushes and pull requests targeting `main` or `dev/**`. It configures CMake, builds Release, runs CTest, creates the install layout and portable ZIP, then uploads the ZIP as a downloadable Actions artifact for 14 days.
+- `.github/workflows/release.yml` runs when a version tag matching `vMAJOR.MINOR.PATCH` is pushed (or can be started manually for an existing tag). It verifies that the tag matches the CMake project version, rebuilds and tests that exact tagged source, creates the portable ZIP and SHA-256 checksum, and publishes both files in a GitHub Release.
+
+### Publishing a stable version
+
+After the maintainer has approved the exact source commit for publication:
+
+```powershell
+git checkout dev/yin-midi
+git pull
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The tag must point to the validated source commit and match `project(NOVOX VERSION ...)` in `CMakeLists.txt`. Pushing the tag starts the release workflow. The workflow does not merge branches or create/move tags. It publishes only after the clean Windows build and all CTest cases pass.
+
+The workflow publishes the portable ZIP as the canonical package and includes its SHA-256 checksum. The optional Inno Setup installer remains a separate maintainer-controlled step; no third-party installer or driver is bundled automatically.

@@ -1,4 +1,4 @@
-name: Windows Build and Tests
+name: Windows Build, Tests and Package
 
 on:
   push:
@@ -19,10 +19,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    name: Configure, compile and test (Windows x64)
+  build-test-package:
+    name: Build, test and package (Windows x64)
     runs-on: windows-latest
-    timeout-minutes: 40
+    timeout-minutes: 50
 
     steps:
       - name: Check out source
@@ -42,3 +42,28 @@ jobs:
 
       - name: Run regression tests
         run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Create install layout
+        run: cmake --install build --config Release --prefix dist
+
+      - name: Create portable ZIP
+        run: cpack --config build/CPackConfig.cmake -C Release -B build
+
+      - name: Verify portable ZIP exists
+        shell: pwsh
+        run: |
+          $packages = @(Get-ChildItem build -Filter "NOVOX-*-Windows-x64.zip" -File)
+          if ($packages.Count -ne 1) {
+            Get-ChildItem build -Recurse -File | Select-Object -ExpandProperty FullName
+            throw "Expected exactly one NOVOX Windows x64 ZIP in build; found $($packages.Count)."
+          }
+          Write-Host "Package ready: $($packages[0].FullName)"
+
+      - name: Upload Windows x64 package
+        uses: actions/upload-artifact@v4
+        with:
+          name: NOVOX-Windows-x64-${{ github.sha }}
+          path: build/NOVOX-*-Windows-x64.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14

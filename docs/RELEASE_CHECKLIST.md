@@ -38,3 +38,14 @@ This checklist separates automated build/test evidence from checks that require 
 - [ ] Record the final source commit and package checksum.
 - [ ] Publish the 1.0.0 tag and attach the tested Windows x64 ZIP (and optional installer).
 - [ ] Keep the development pull request unmerged until the maintainer explicitly approves integration.
+
+
+## Automated GitHub Actions pipeline
+
+- [ ] Confirm the Windows Build, Tests and Package workflow uploaded the portable ZIP artifact.
+- [ ] Download and extract the artifact; launch NOVOX on a clean Windows x64 machine.
+- [ ] Confirm the intended commit is approved before creating/pushing its version tag.
+- [ ] Push a tag matching the CMake project version (for example `v1.0.0`).
+- [ ] Confirm the Publish Windows Release workflow completed its own clean build and CTest run.
+- [ ] Download the ZIP and SHA-256 file from the GitHub Release and verify the checksum.
+- [ ] Test the exact release ZIP before announcing the release.

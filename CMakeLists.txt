@@ -108,4 +108,6 @@ set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Offline-first voice-to-MIDI desktop instrument")
 set(CPACK_PACKAGE_FILE_NAME "NOVOX-${PROJECT_VERSION}-Windows-x64")
 set(CPACK_GENERATOR "ZIP")
+# Keep CPack output deterministic for local builds and CI artifact collection.
+set(CPACK_PACKAGE_DIRECTORY "${CMAKE_BINARY_DIR}")
 include(CPack)
