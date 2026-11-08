@@ -15,6 +15,26 @@ namespace
 
 MainComponent::MainComponent()
 {
+    juce::PropertiesFile::Options storageOptions;
+    storageOptions.applicationName = "NOVOX";
+    storageOptions.filenameSuffix = ".settings";
+    storageOptions.folderName = "NOVOX";
+    storageOptions.osxLibrarySubFolder = "Application Support";
+    storageOptions.storageFormat = juce::PropertiesFile::storeAsXML;
+    storageOptions.commonToAllUsers = false;
+    appProperties.setStorageParameters(storageOptions);
+    settings = appProperties.getUserSettings();
+
+    const double savedGain = juce::jlimit(0.1, 4.0, settings->getDoubleValue("inputGain", 1.0));
+    const double savedSensitivity = juce::jlimit(0.0, 100.0,
+        settings->getDoubleValue("pitchSensitivity", 50.0));
+    const double savedSmoothing = juce::jlimit(0.0, 100.0,
+        settings->getDoubleValue("pitchSmoothing", 35.0));
+    const int savedBendRange = juce::jlimit(1, 12, settings->getIntValue("pitchBendRange", 2));
+    const int savedChannel = juce::jlimit(1, 16, settings->getIntValue("midiChannel", 1));
+    const bool savedBendEnabled = settings->getBoolValue("pitchBendEnabled", true);
+    preferredMidiOutputName = settings->getValue("midiOutputName");
+
     title.setText("NOVOX", juce::dontSendNotification);
     title.setFont(juce::FontOptions(26.0f, juce::Font::bold));
     title.setColour(juce::Label::textColourId, juce::Colours::white);
@@ -43,34 +63,45 @@ MainComponent::MainComponent()
     gainLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible(gainLabel);
     gainSlider.setRange(0.1, 4.0, 0.05);
-    gainSlider.setValue(1.0);
+    gainSlider.setValue(savedGain, juce::dontSendNotification);
     gainSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 24);
-    gainSlider.onValueChange = [this] { engine.setInputGain(static_cast<float>(gainSlider.getValue())); };
+    gainSlider.onValueChange = [this] {
+        const auto value = static_cast<float>(gainSlider.getValue());
+        engine.setInputGain(value);
+        settings->setValue("inputGain", value);
+        saveSettings();
+    };
+    engine.setInputGain(static_cast<float>(savedGain));
     addAndMakeVisible(gainSlider);
 
     sensitivityLabel.setText("Pitch sensitivity", juce::dontSendNotification);
     sensitivityLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible(sensitivityLabel);
     sensitivitySlider.setRange(0, 100, 1);
-    sensitivitySlider.setValue(50, juce::dontSendNotification);
+    sensitivitySlider.setValue(savedSensitivity, juce::dontSendNotification);
     sensitivitySlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 24);
     sensitivitySlider.setTextValueSuffix("%");
     sensitivitySlider.onValueChange = [this] {
-        engine.setPitchSensitivity(static_cast<float>(sensitivitySlider.getValue() / 100.0));
+        const auto value = static_cast<float>(sensitivitySlider.getValue() / 100.0);
+        engine.setPitchSensitivity(value);
+        settings->setValue("pitchSensitivity", sensitivitySlider.getValue());
+        saveSettings();
     };
-    engine.setPitchSensitivity(0.5f);
+    engine.setPitchSensitivity(static_cast<float>(savedSensitivity / 100.0));
     addAndMakeVisible(sensitivitySlider);
 
     smoothingLabel.setText("Pitch smoothing", juce::dontSendNotification);
     smoothingLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible(smoothingLabel);
     smoothingSlider.setRange(0, 100, 1);
-    smoothingSlider.setValue(35, juce::dontSendNotification);
+    smoothingSlider.setValue(savedSmoothing, juce::dontSendNotification);
     smoothingSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 24);
     smoothingSlider.setTextValueSuffix("%");
     smoothingSlider.onValueChange = [this] {
         pitchSmoother.reset();
         lastPitchBendValue = -1;
+        settings->setValue("pitchSmoothing", smoothingSlider.getValue());
+        saveSettings();
     };
     addAndMakeVisible(smoothingSlider);
 
@@ -78,18 +109,24 @@ MainComponent::MainComponent()
     bendRangeLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible(bendRangeLabel);
     bendRangeSlider.setRange(1, 12, 1);
-    bendRangeSlider.setValue(2, juce::dontSendNotification);
+    bendRangeSlider.setValue(savedBendRange, juce::dontSendNotification);
     bendRangeSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 100, 24);
     bendRangeSlider.setTextValueSuffix(" semitones");
-    bendRangeSlider.onValueChange = [this] { lastPitchBendValue = -1; };
+    bendRangeSlider.onValueChange = [this] {
+        lastPitchBendValue = -1;
+        settings->setValue("pitchBendRange", static_cast<int>(bendRangeSlider.getValue()));
+        saveSettings();
+    };
     addAndMakeVisible(bendRangeSlider);
 
-    pitchBendEnabled.setToggleState(true, juce::dontSendNotification);
+    pitchBendEnabled.setToggleState(savedBendEnabled, juce::dontSendNotification);
     pitchBendEnabled.onClick = [this] {
         if (!pitchBendEnabled.getToggleState())
             resetPitchBend();
         else
             lastPitchBendValue = -1;
+        settings->setValue("pitchBendEnabled", pitchBendEnabled.getToggleState());
+        saveSettings();
     };
     addAndMakeVisible(pitchBendEnabled);
 
@@ -106,10 +143,10 @@ MainComponent::MainComponent()
     addAndMakeVisible(channelLabel);
     for (int channel = 1; channel <= 16; ++channel)
         channelSelector.addItem("Channel " + juce::String(channel), channel);
-    channelSelector.setSelectedId(1, juce::dontSendNotification);
+    channelSelector.setSelectedId(savedChannel, juce::dontSendNotification);
     channelSelector.onChange = [this] { selectMidiChannel(); };
     addAndMakeVisible(channelSelector);
-    midiRouter.setChannel(1);
+    midiRouter.setChannel(savedChannel);
 
     refreshButton.onClick = [this] { refreshMidiOutputs(); };
     addAndMakeVisible(refreshButton);
@@ -136,6 +173,13 @@ MainComponent::~MainComponent()
     midiRouter.closeOutput();
     deviceManager.removeAudioCallback(&engine);
     deviceManager.closeAudioDevice();
+    saveSettings();
+}
+
+void MainComponent::saveSettings()
+{
+    if (settings != nullptr)
+        settings->saveIfNeeded();
 }
 
 void MainComponent::refreshMidiOutputs()
@@ -152,12 +196,23 @@ void MainComponent::refreshMidiOutputs()
     midiOutputSelector.clear(juce::dontSendNotification);
     const auto names = midiRouter.getOutputNames();
     midiOutputSelector.addItem("No MIDI output", 1);
+    int restoredId = 1;
     for (int i = 0; i < names.size(); ++i)
+    {
         midiOutputSelector.addItem(names[i], i + 2);
-    midiOutputSelector.setSelectedId(1, juce::dontSendNotification);
+        if (names[i] == preferredMidiOutputName)
+            restoredId = i + 2;
+    }
+
     midiRouter.closeOutput();
+    midiOutputSelector.setSelectedId(restoredId, juce::dontSendNotification);
     lastPitchBendValue = 8192;
-    midiLabel.setText("MIDI: choose an output device", juce::dontSendNotification);
+    if (restoredId > 1)
+        selectMidiOutput();
+    else
+        midiLabel.setText(preferredMidiOutputName.isNotEmpty()
+            ? "MIDI: saved output unavailable" : "MIDI: choose an output device",
+            juce::dontSendNotification);
 }
 
 void MainComponent::selectMidiOutput()
@@ -175,9 +230,16 @@ void MainComponent::selectMidiOutput()
     if (selectedId <= 1)
     {
         midiRouter.closeOutput();
+        preferredMidiOutputName.clear();
+        settings->setValue("midiOutputName", preferredMidiOutputName);
+        saveSettings();
         midiLabel.setText("MIDI: no output selected", juce::dontSendNotification);
         return;
     }
+
+    preferredMidiOutputName = midiOutputSelector.getItemText(midiOutputSelector.indexOfItemId(selectedId));
+    settings->setValue("midiOutputName", preferredMidiOutputName);
+    saveSettings();
 
     if (midiRouter.openOutput(selectedId - 2))
         midiLabel.setText("MIDI: output connected", juce::dontSendNotification);
@@ -197,6 +259,8 @@ void MainComponent::selectMidiChannel()
     }
 
     midiRouter.setChannel(channelSelector.getSelectedId());
+    settings->setValue("midiChannel", midiRouter.getChannel());
+    saveSettings();
     noteTracker.reset();
     pitchSmoother.reset();
     lastPitchBendValue = 8192;
@@ -228,7 +292,6 @@ void MainComponent::sendPitchBend(const PitchResult& pitch)
     const int range = static_cast<int>(bendRangeSlider.getValue());
     const int value = PitchBend::semitonesTo14BitValue(offset, range);
 
-    // Avoid filling the asynchronous MIDI queue with imperceptible changes.
     if (midiRouter.isOpen() && std::abs(value - lastPitchBendValue) >= 2)
     {
         midiRouter.pitchBend(value);

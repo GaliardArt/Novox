@@ -27,13 +27,17 @@ AudioDeviceManager
                   +---- PitchBend (fractional semitone -> 14-bit wheel)
                   |
                   +---- MidiRouter (GUI producer)
+                  |           |
+                  |           +---- bounded SPSC MIDI event queue
+                  |                          |
+                  |                          v
+                  |                 MIDI dispatch thread
+                  |
+                  +---- JUCE ApplicationProperties
                               |
-                              +---- bounded SPSC MIDI event queue
-                                             |
-                                             v
-                                    MIDI dispatch thread
-                                             |
-                                             +---- Note On / Note Off / Pitch Wheel
+                              +---- local PropertiesFile
+                                    (gain, sensitivity, smoothing,
+                                     bend settings, MIDI channel/output)
 ```
 
 ## Core modules
@@ -45,7 +49,13 @@ AudioDeviceManager
 - `PitchBend`: pure conversion from semitone offset to the standard 14-bit pitch-wheel value.
 - `MidiRouter`: MIDI output selection, channel-aware bounded event queue, and dedicated MIDI dispatch thread.
 - `MidiEventQueue`: fixed-capacity, lock-free SPSC queue preserving Note On, Note Off, and Pitch Bend order and payload.
-- `MainComponent`: visual feedback and controls for input gain, pitch sensitivity, smoothing, bend enable/range, MIDI output, and channel.
+- `MainComponent`: visual feedback, controls, and local preference restoration/persistence through JUCE `ApplicationProperties`.
+
+## Local preferences
+
+JUCE `ApplicationProperties` owns a per-user `PropertiesFile` in the NOVOX application settings directory. The application stores input gain, pitch sensitivity, pitch smoothing, Pitch Bend enable state, Pitch Bend range, MIDI channel, and the preferred MIDI output name. Numeric values are clamped to supported UI ranges when loaded. Values are saved after user changes and again during shutdown.
+
+MIDI output restoration uses an exact device-name match. If the saved device is absent, NOVOX leaves the output unselected rather than choosing another device. The preference remains saved until the user explicitly selects a different output or chooses no output.
 
 ## Real-time design
 
@@ -80,4 +90,4 @@ AudioDeviceManager
 
 ## Validation
 
-CTest includes deterministic pitch-detector, note-tracker, MIDI queue, Pitch Bend, and pitch-smoothing executables. These tests validate synthetic signal response and filter behavior; they do not certify real-world microphone latency, room-noise rejection, MIDI driver behavior, CPU load, or musical performance.
+CTest includes deterministic pitch-detector, note-tracker, MIDI queue, Pitch Bend, and pitch-smoothing executables. These tests validate synthetic signal response and filter behavior; they do not certify real-world microphone latency, room-noise rejection, MIDI driver behavior, CPU load, musical performance, or local settings behavior across Windows profiles.

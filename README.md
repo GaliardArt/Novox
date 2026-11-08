@@ -2,7 +2,7 @@
 
 NOVOX is an offline-first, standalone vocal instrument for turning voice into musical control data. It is written in C++ and uses JUCE for audio input, MIDI integration, and the desktop application.
 
-## Current milestone (0.4.0 — implementation in validation)
+## Current milestone (0.5.0 — local settings persistence)
 
 - JUCE standalone desktop application and microphone capture
 - YIN-style fundamental-frequency estimation with confidence and RMS level
@@ -15,7 +15,13 @@ NOVOX is an offline-first, standalone vocal instrument for turning voice into mu
 - Ordered asynchronous MIDI Note On/Off and 14-bit Pitch Bend delivery
 - Configurable Pitch Bend enable/disable and range from ±1 to ±12 semitones
 - Configurable MIDI output channel (1–16), captured per queued event
+- Persistent local preferences for input gain, sensitivity, smoothing, bend enable/range, MIDI channel, and preferred MIDI output
+- Saved MIDI output is automatically restored when that device is available; unavailable devices remain safely unselected
 - Automated pitch-detector, note-tracker, MIDI-queue, Pitch Bend, and smoothing regression tests
+
+## Local settings
+
+Preferences are stored in the current user's application settings directory using JUCE's local PropertiesFile support. Settings are written locally and restored on the next launch. NOVOX does not transmit preferences or require an account or network connection. If a saved MIDI output is not present at startup, NOVOX keeps the preference and waits for the user to reconnect or select an available device.
 
 ## Build on Windows
 
@@ -37,7 +43,7 @@ CMake fetches JUCE 8.0.6 on the first configure. An internet connection is neede
 - `NOVOXPitchBendTests`: center, positive/negative direction, clamping, configurable range, invalid input, and fractional semitone offsets.
 - `NOVOXPitchSmootherTests`: transparent mode, convergence, micro-variation rejection, reset, invalid values, and parameter clamping.
 
-The tests are deterministic. They do not replace microphone, room-noise, end-to-end latency, MIDI-driver, or musical-performance testing.
+The tests are deterministic. They do not replace microphone, room-noise, end-to-end latency, MIDI-driver, or musical-performance testing. Local preference read/write behavior still needs an end-to-end Windows application check.
 
 ## Continuous integration
 
@@ -46,7 +52,7 @@ GitHub Actions configures and compiles the Windows x64 Release build and runs CT
 ## Engineering notes
 
 - The audio callback performs bounded channel mixing and FIFO writes only; pitch detection runs on a worker thread.
-- Pitch sensitivity is published atomically to the pitch worker. Higher values lower the RMS gate and confidence threshold, allowing quieter signals through at the cost of admitting more noise.
+- Pitch sensitivity is published atomically to the pitch worker. Higher values lower the RMS and confidence gates, allowing quieter signals through at the cost of admitting more noise.
 - Pitch smoothing is applied only to the MIDI bend control, not the raw detector display or note-onset logic.
 - The smoothing control uses a one-pole response plus a small deadband. It suppresses small frame-to-frame fluctuations while larger pitch movement remains responsive; it is not intended to remove expressive vibrato completely.
 - Audio FIFO overflow and callback blocks larger than the prepared scratch buffer are counted and dropped without blocking the callback.
@@ -56,3 +62,4 @@ GitHub Actions configures and compiles the Windows x64 Release build and runs CT
 - Pitch Bend updates are sent only for new analysis frames and changes of at least two wheel units, limiting redundant queue traffic.
 - Closing or changing MIDI output drains pending events and stops the dispatch worker before releasing the device handle.
 - MIDI event generation still originates from the GUI timer. This milestone does not claim sample-accurate timing.
+- Preferences are saved immediately after a control change and on shutdown. The saved output device is matched by its JUCE device name; if no exact match exists, NOVOX does not silently select a different device.

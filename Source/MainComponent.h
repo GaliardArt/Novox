@@ -23,6 +23,11 @@ private:
     void updateNoteTracking(const PitchResult& pitch);
     void sendPitchBend(const PitchResult& pitch);
     void resetPitchBend();
+    void saveSettings();
+
+    juce::ApplicationProperties appProperties;
+    juce::PropertiesFile* settings = nullptr;
+    juce::String preferredMidiOutputName;
 
     VoiceEngine engine;
     MidiRouter midiRouter;
