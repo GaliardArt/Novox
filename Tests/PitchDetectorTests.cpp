@@ -120,6 +120,46 @@ namespace
               "detected " + std::to_string(result.frequencyHz) + " Hz");
     }
 
+
+    void testAntiAliasing()
+    {
+        constexpr double sampleRate = 48000.0;
+        constexpr double fundamental = 220.0;
+        auto mixed = makeSine(fundamental, sampleRate, 0.35, 0.35f);
+        const auto highTone = makeSine(15000.0, sampleRate, 0.35, 0.45f);
+        for (size_t i = 0; i < mixed.size(); ++i)
+            mixed[i] += highTone[i];
+
+        const auto mixedResult = analyseSignal(mixed, sampleRate);
+        check(mixedResult.voiced && std::abs(mixedResult.frequencyHz - fundamental) <= 4.0f,
+              "Anti-alias filter preserves the voice fundamental beside high-frequency content",
+              "detected " + std::to_string(mixedResult.frequencyHz) + " Hz");
+
+        const auto highOnly = analyseSignal(highTone, sampleRate);
+        check(!highOnly.voiced,
+              "Out-of-band high-frequency tone is rejected after decimation",
+              "detected " + std::to_string(highOnly.frequencyHz) + " Hz");
+    }
+
+    void testOctaveErrorCorrection()
+    {
+        constexpr double sampleRate = 48000.0;
+        constexpr double fundamental = 220.0;
+        auto signal = makeSine(fundamental, sampleRate, 0.35, 0.03f);
+        for (size_t i = 0; i < signal.size(); ++i)
+            signal[i] += 0.45f * static_cast<float>(std::sin(2.0 * pi * 2.0 * fundamental * i / sampleRate));
+
+        const auto result = analyseSignal(signal, sampleRate);
+        check(result.voiced && std::abs(result.frequencyHz - fundamental) <= 4.0f,
+              "Octave correction detects a weaker fundamental beneath a dominant second harmonic",
+              "expected 220 Hz, detected " + std::to_string(result.frequencyHz) + " Hz");
+
+        const auto pureTone = analyseSignal(makeSine(440.0, sampleRate, 0.35), sampleRate);
+        check(pureTone.voiced && std::abs(pureTone.frequencyHz - 440.0f) <= 4.0f,
+              "Octave correction does not lower a clean tone by one octave",
+              "detected " + std::to_string(pureTone.frequencyHz) + " Hz");
+    }
+
     void testNoiseRejection()
     {
         std::mt19937 generator(0x4e4f564f);
@@ -150,6 +190,8 @@ int main()
     testSilenceAndLowLevel();
     testSensitivityControl();
     testHarmonicSignal();
+    testAntiAliasing();
+    testOctaveErrorCorrection();
     testNoiseRejection();
     testInvalidInput();
 

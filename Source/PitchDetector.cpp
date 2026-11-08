@@ -5,12 +5,15 @@
 void PitchDetector::prepare(double sampleRate, int)
 {
     currentSampleRate = sampleRate > 0.0 ? sampleRate * 0.5 : 22050.0;
-    inputRing.fill(0.0f);
+    decimatedRing.fill(0.0f);
     analysisFrame.fill(0.0f);
+    filterHistory.fill(0.0f);
     difference.fill(0.0f);
     cumulativeMeanDifference.fill(1.0f);
-    writePosition = 0;
-    samplesReceived = 0;
+    decimatedWritePosition = 0;
+    decimatedSamplesReceived = 0;
+    decimationPhase = 0;
+    filterHistoryCount = 0;
 }
 
 PitchResult PitchDetector::process(const float* samples, int numSamples)
@@ -19,28 +22,42 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
     if (samples == nullptr || numSamples <= 0)
         return result;
 
+    // Filter at the device sample rate before decimating by two. This prevents
+    // content above the new Nyquist frequency from folding into the pitch band.
     for (int i = 0; i < numSamples; ++i)
     {
-        inputRing[static_cast<size_t>(writePosition)] = samples[i];
-        writePosition = (writePosition + 1) % inputWindowSize;
-        samplesReceived = std::min(inputWindowSize, samplesReceived + 1);
+        for (int tap = filterHistorySize - 1; tap > 0; --tap)
+            filterHistory[static_cast<size_t>(tap)] = filterHistory[static_cast<size_t>(tap - 1)];
+        filterHistory[0] = samples[i];
+        filterHistoryCount = std::min(filterHistorySize, filterHistoryCount + 1);
+
+        double filtered = 0.0;
+        for (int tap = 0; tap < filterHistorySize; ++tap)
+            filtered += static_cast<double>(antiAliasCoefficients[static_cast<size_t>(tap)])
+                      * filterHistory[static_cast<size_t>(tap)];
+
+        if (decimationPhase == 0)
+        {
+            decimatedRing[static_cast<size_t>(decimatedWritePosition)] = static_cast<float>(filtered);
+            decimatedWritePosition = (decimatedWritePosition + 1) % analysisWindowSize;
+            decimatedSamplesReceived = std::min(analysisWindowSize, decimatedSamplesReceived + 1);
+        }
+        decimationPhase ^= 1;
     }
 
-    if (samplesReceived < inputWindowSize)
+    if (decimatedSamplesReceived < analysisWindowSize)
         return result;
 
     const float sensitivity = sensitivityValue.load(std::memory_order_relaxed);
-    // Sensitivity trades noise rejection for the ability to track quieter voices.
     const float silenceThreshold = 0.002f + 0.012f * (1.0f - sensitivity);
     const float confidenceThreshold = 0.68f + 0.24f * (1.0f - sensitivity);
     const float yinThreshold = 0.12f + 0.06f * sensitivity;
 
-    // Downsample by two. The effective analysis sample rate is half the device rate.
     double energy = 0.0;
     for (int i = 0; i < analysisWindowSize; ++i)
     {
-        const int sourceIndex = (writePosition + (i * 2)) % inputWindowSize;
-        const float value = inputRing[static_cast<size_t>(sourceIndex)];
+        const int sourceIndex = (decimatedWritePosition + i) % analysisWindowSize;
+        const float value = decimatedRing[static_cast<size_t>(sourceIndex)];
         analysisFrame[static_cast<size_t>(i)] = value;
         energy += static_cast<double>(value) * value;
     }
@@ -108,6 +125,27 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
 
     if (selectedLag < 0)
         return result;
+
+    // Correct clear octave mistakes only when the octave-related candidate has
+    // materially stronger periodicity. This avoids forcing ambiguous pure tones
+    // down or up an octave when both periods are equally plausible.
+    const float selectedPeriodicity = cumulativeMeanDifference[static_cast<size_t>(selectedLag)];
+    int correctedLag = selectedLag;
+    const int octaveCandidates[] = { selectedLag / 2, selectedLag * 2 };
+    for (const int candidate : octaveCandidates)
+    {
+        if (candidate < minLag || candidate > maxLag)
+            continue;
+
+        const float candidatePeriodicity = cumulativeMeanDifference[static_cast<size_t>(candidate)];
+        if (candidatePeriodicity < yinThreshold * 1.5f
+            && candidatePeriodicity + 0.08f < selectedPeriodicity)
+        {
+            correctedLag = candidate;
+            break;
+        }
+    }
+    selectedLag = correctedLag;
 
     float refinedLag = static_cast<float>(selectedLag);
     if (selectedLag > minLag && selectedLag < maxLag)
