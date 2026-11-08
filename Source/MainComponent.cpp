@@ -441,7 +441,6 @@ void MainComponent::paint(juce::Graphics& g)
         drawCard(g, { x, top, cw, 112.0f });
         drawText(g, "ACTIVE INPUT DEVICE", { x + 18.0f, top + 15.0f, cw - 36.0f, 15.0f }, 8.0f, NovoxLookAndFeel::textSecondary, true);
         drawText(g,audioDeviceName,{x+18,top+38,cw-260,24},16,NovoxLookAndFeel::textPrimary,true);drawText(g,"INPUT CHANNEL MODE",{x+cw-220,top+15,200,14},7.5f,NovoxLookAndFeel::textSecondary,true);
-        drawPill(g, { x + cw - 112.0f, top + 14.0f, 94.0f, 21.0f }, audioAvailable ? "ACTIVE" : "UNAVAILABLE", audioAvailable ? NovoxLookAndFeel::success : NovoxLookAndFeel::textSecondary);
         const float specY = top + 73.0f, specW = (cw - 36.0f) / 3.0f;
         drawText(g, "INPUT CHANNELS   " + juce::String(audioAvailable ? audioChannels : 0), { x + 18.0f, specY, specW, 16.0f }, 8.0f, NovoxLookAndFeel::textSecondary);
         drawText(g, "SAMPLE RATE   " + (audioAvailable ? juce::String(sampleRate / 1000.0, 1) + " kHz" : "—"), { x + 18.0f + specW, specY, specW, 16.0f }, 8.0f, NovoxLookAndFeel::textSecondary);
@@ -461,7 +460,7 @@ void MainComponent::paint(juce::Graphics& g)
         drawText(g,"PITCH CORRECTION  /  NOISE CONTROL",{x+14.0f,tuneY+5.0f,260.0f,13.0f},7.5f,NovoxLookAndFeel::textSecondary,true);
         drawText(g,autoTuneEnabled.getToggleState()?"ON":"OFF",{x+14.0f,tuneY+20.0f,40.0f,18.0f},10.0f,autoTuneEnabled.getToggleState()?NovoxLookAndFeel::success:NovoxLookAndFeel::textSecondary,true);
         drawText(g,"Key: "+autoTuneKeySelector.getText()+"   Scale: "+autoTuneScaleSelector.getText(),{x+150.0f,tuneY+17.0f,260.0f,20.0f},9.0f,NovoxLookAndFeel::textPrimary,true);
-        const float diagY=tuneY+56.0f,diagH=ch-(diagY-y),colW=cw/3.0f;drawCard(g,{x,diagY,cw,diagH});
+        const float diagY=tuneY+56.0f,diagH=ch-(diagY-y);drawCard(g,{x,diagY,cw,diagH});
         drawText(g, "RUNTIME HEALTH", { x + 18.0f, diagY + 15.0f, cw - 36.0f, 15.0f }, 8.0f, NovoxLookAndFeel::textSecondary, true);
         const float dcol=cw/4;drawText(g,"DROPPED AUDIO",{x+18,diagY+42,dcol-24,15},7.5f,NovoxLookAndFeel::textSecondary);drawText(g,juce::String((juce::int64)engine.getDroppedAudioSamples()),{x+18,diagY+61,dcol-24,25},17,NovoxLookAndFeel::textPrimary,true);
         drawText(g,"DROPPED MIDI",{x+dcol,diagY+42,dcol-18,15},7.5f,NovoxLookAndFeel::textSecondary);drawText(g,juce::String((juce::int64)midiRouter.getDroppedEvents()),{x+dcol,diagY+61,dcol-18,25},17,NovoxLookAndFeel::textPrimary,true);
