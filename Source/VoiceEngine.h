@@ -2,6 +2,7 @@
 #include <JuceHeader.h>
 #include "PitchDetector.h"
 #include "VocalPercussionDetector.h"
+#include "PercussionEventQueue.h"
 #include <array>
 
 class VoiceEngine final : public juce::AudioIODeviceCallback,
@@ -20,6 +21,8 @@ public:
 
     PitchResult getLatestPitch() const noexcept;
     VocalPercussionResult getLatestPercussion() const noexcept;
+    bool popPercussionEvent(VocalPercussionResult& event) noexcept { return percussionEvents.pop(event); }
+    uint64_t getDroppedPercussionEvents() const noexcept { return percussionEvents.getDropped(); }
     void setInputGain(float gain) noexcept { inputGain.store(juce::jlimit(0.1f, 8.0f, gain)); }
     void setPitchSensitivity(float sensitivity) noexcept { detector.setSensitivity(sensitivity); }
     uint64_t getDroppedAudioSamples() const noexcept { return droppedAudioSamples.load(); }
@@ -34,6 +37,7 @@ private:
 
     PitchDetector detector;
     VocalPercussionDetector percussionDetector;
+    PercussionEventQueue percussionEvents;
     juce::AbstractFifo sampleFifo { fifoCapacity };
     std::array<float, fifoCapacity> sampleBuffer {};
     juce::AudioBuffer<float> monoScratch;

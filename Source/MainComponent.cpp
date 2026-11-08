@@ -292,7 +292,7 @@ MainComponent::MainComponent()
         deviceManager.addAudioCallback(&engine);
 
     setSize(1080, 760);
-    startTimerHz(60);
+    startTimerHz(100);
 }
 
 MainComponent::~MainComponent()
@@ -496,8 +496,10 @@ void MainComponent::dispatchPercussion(const VocalPercussionResult& percussion)
         juce::jlimit(1, 127, static_cast<int>(std::lround(percussion.confidence * 127.0f))));
     midiRouter.drumNoteOn(note, velocity);
     pendingDrumNotes[static_cast<size_t>(slot)] = note;
+    const uint32_t gateMs = percussion.type == VocalPercussionType::kick ? 80U
+        : (percussion.type == VocalPercussionType::snare ? 65U : 42U);
     drumNoteOffTimes[static_cast<size_t>(slot)] =
-        juce::Time::getMillisecondCounter() + 90U;
+        juce::Time::getMillisecondCounter() + gateMs;
 }
 
 void MainComponent::releaseDueDrumNotes()
@@ -744,7 +746,6 @@ void MainComponent::resized()
 void MainComponent::timerCallback()
 {
     const auto pitch = engine.getLatestPitch();
-    const auto percussion = engine.getLatestPercussion();
     releaseDueDrumNotes();
 
     if (auto* audioDevice = deviceManager.getCurrentAudioDevice())
@@ -766,11 +767,13 @@ void MainComponent::timerCallback()
     performanceDiagnosticsLabel.setText(
         "Dropped audio samples: " + juce::String(static_cast<juce::int64>(engine.getDroppedAudioSamples()))
         + "  |  Dropped MIDI events: "
-        + juce::String(static_cast<juce::int64>(midiRouter.getDroppedEvents())),
+        + juce::String(static_cast<juce::int64>(midiRouter.getDroppedEvents()))
+        + "  |  Dropped percussion events: "
+        + juce::String(static_cast<juce::int64>(engine.getDroppedPercussionEvents())),
         juce::dontSendNotification);
-    if (percussion.sequence != 0 && percussion.sequence != lastPercussionSequence)
+    VocalPercussionResult percussion;
+    while (engine.popPercussionEvent(percussion))
     {
-        lastPercussionSequence = percussion.sequence;
         dispatchPercussion(percussion);
         const char* hitName = "Unknown";
         switch (percussion.type)

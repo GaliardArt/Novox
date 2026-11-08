@@ -41,7 +41,7 @@ Percussion MIDI is disabled by default. When enabled, kick/snare/hi-hat events a
 
 ## Vocal percussion detection
 
-The lightweight transient classifier runs on the audio worker and provides the kick/snare/hi-hat events used by the MIDI mapper. It remains heuristic and requires real microphone/performance validation.
+The transient classifier runs on the audio worker and separates low-frequency kick energy, broad mid-band snare energy, and bright high-frequency hi-hat energy. It uses an adaptive room-noise estimate, onset/crest/attack checks, per-hit refractory timing, and sample-rate-aware filters. Detected hits enter a bounded SPSC event queue so short events are not overwritten while the GUI timer is between updates. The GUI drains every queued hit and uses part-specific MIDI note gates: kick 80 ms, snare 65 ms, and closed hi-hat 42 ms. The classifier remains heuristic; real microphone, voice, room and DAW testing is essential. Synthetic tests cannot establish professional-grade performance.
 
 ## Local settings
 
@@ -76,7 +76,8 @@ The packaging commands create a portable ZIP named `NOVOX-1.1.0-Windows-x64.zip`
 - `NOVOXPitchSmootherTests`: transparent mode, convergence, micro-variation rejection, reset, invalid values, and parameter clamping.
 - `NOVOXDrumMappingTests`: GM channel, default note assignments, range clamping, and note labels.
 - `NOVOXPresetManagerTests`: preset-name sanitising, full settings round trip, value clamping, listing, and deletion.
-- `NOVOXVocalPercussionTests`: synthetic kick/snare/hi-hat transients, silence, sustained-tone rejection, and invalid input.
+- `NOVOXVocalPercussionTests`: synthetic kick/snare/hi-hat transients, gain variation, 44.1 kHz operation, room-noise rejection, silence, sustained-tone rejection, and invalid input.
+- `NOVOXPercussionQueueTests`: bounded SPSC event ordering, payload preservation, overflow counting, and recovery.
 
 The tests are deterministic. They do not replace microphone, room-noise, end-to-end latency, MIDI-driver, or musical-performance testing. Before publishing a stable binary, complete the manual checks in [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
 
@@ -96,7 +97,7 @@ GitHub Actions configures and compiles the Windows x64 Release build and runs CT
 - Pitch Bend is calculated from the fractional semitone offset relative to the tracked note and encoded using the standard 14-bit MIDI wheel value. The configured range is applied symmetrically, with asymmetric integer scaling around MIDI center 8192.
 - Pitch Bend updates are sent only for new analysis frames and changes of at least two wheel units, limiting redundant queue traffic.
 - Closing or changing MIDI output drains pending events and stops the dispatch worker before releasing the device handle.
-- MIDI event generation still originates from the GUI timer. This milestone does not claim sample-accurate timing.
+- Melodic MIDI event generation still originates from the GUI timer. Percussion hits are buffered in a dedicated bounded SPSC queue on the audio worker, then drained by the 100 Hz GUI timer to avoid losing short hits between UI ticks. This reduces scheduling jitter but does not claim sample-accurate MIDI timing.
 - Preferences are saved immediately after a control change and on shutdown. The saved output device is matched by its JUCE device name; if no exact match exists, NOVOX does not silently select a different device.
 
 

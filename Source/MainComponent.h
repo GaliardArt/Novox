@@ -74,7 +74,6 @@ private:
 
     uint64_t lastPitchSequence = 0;
     int lastPitchBendValue = 8192;
-    uint64_t lastPercussionSequence = 0;
     std::array<int, 3> pendingDrumNotes { -1, -1, -1 };
     std::array<uint32_t, 3> drumNoteOffTimes {};
 

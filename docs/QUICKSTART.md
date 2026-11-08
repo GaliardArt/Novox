@@ -32,7 +32,7 @@ NOVOX turns a monophonic vocal line into MIDI notes and optional Pitch Bend. It 
 
 Percussion MIDI is off by default. Enable **Send percussion to MIDI (channel 10)** to send detected kick, snare, and hi-hat events on General MIDI channel 10. The three note assignments can be changed independently. The receiving instrument must support the selected GM percussion notes.
 
-The percussion detector is heuristic. Its results depend on vocal technique, microphone response, room noise, and gain; it is not a replacement for a dedicated drum trigger or sample-based drum instrument.
+The percussion detector is heuristic and responds to the spectral character of the vocal hit: use a low, compact “b/p” for kick, a mid-band “p/tsh” burst for snare, and a bright “ts” burst for hi-hat. Keep microphone distance and input gain consistent, avoid clipping, and reduce room noise. Its response still depends on vocal technique and microphone frequency response; it is not a replacement for a dedicated drum trigger or sample-based drum instrument.
 
 ## Presets and local preferences
 

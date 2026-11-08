@@ -14,7 +14,8 @@ AudioDeviceManager
        |                VoiceEngine worker thread
        |                         |
        |                         +---- PitchDetector (YIN + sensitivity gate)
-       |                         +---- VocalPercussionDetector (transient features)
+       |                         +---- VocalPercussionDetector (adaptive multi-band transient features)
+       |                         +---- bounded SPSC percussion event queue
        |                         +---- sequence-stamped PitchResult
        |
        +---- MainComponent (GUI / 60 Hz refresh + diagnostics)
@@ -57,17 +58,18 @@ AudioDeviceManager
 - `PitchBend`: pure conversion from semitone offset to the standard 14-bit pitch-wheel value.
 - `MidiRouter`: MIDI output selection, channel-aware bounded event queue, and dedicated MIDI dispatch thread.
 - `MidiEventQueue`: fixed-capacity, lock-free SPSC queue preserving Note On, Note Off, and Pitch Bend order and payload.
+- `PercussionEventQueue`: fixed-capacity SPSC queue that preserves each worker-thread drum hit until the GUI can dispatch it; overflow is counted.
 - `MainComponent`: tabbed JUCE interface (Play, MIDI, Audio, Presets), visual feedback, controls, live audio-device diagnostics, dropped-sample/event counters, and local preference restoration/persistence through JUCE `ApplicationProperties`.
 - `PresetData`: complete, validated snapshot of the active instrument configuration.
 - `PresetManager`: versioned JSON preset files stored in the user's NOVOX application-data directory; supports listing, save/update, load, and delete.
 
 ## MIDI drum mapping
 
-The GUI can optionally convert recognized kick, snare, and hi-hat events into MIDI note triggers. Drum messages always use General MIDI channel 10, independent of the selected melodic channel and Pitch Bend. Defaults are note 36 (Bass Drum 1), 38 (Acoustic Snare), and 42 (Closed Hi-Hat); the UI allows assignments across notes 35–81 and persists them locally. Trigger velocity is derived from detector confidence. The GUI sends a short 90 ms note gate and releases pending drum notes when the feature is disabled, the output changes, or the application closes.
+The GUI can optionally convert recognized kick, snare, and hi-hat events into MIDI note triggers. Drum messages always use General MIDI channel 10, independent of the selected melodic channel and Pitch Bend. Defaults are note 36 (Bass Drum 1), 38 (Acoustic Snare), and 42 (Closed Hi-Hat); the UI allows assignments across notes 35–81 and persists them locally. Trigger velocity is derived from detector confidence. Part-specific gates are 80 ms (kick), 65 ms (snare), and 42 ms (closed hi-hat). Pending notes are released when the feature is disabled, the output changes, or the application closes.
 
 ## Vocal percussion detection
 
-The percussion detector processes the same worker-thread audio blocks as the pitch detector. It uses a 256-sample analysis frame, a low/high-band energy split, zero-crossing rate, onset ratio, and crest factor. A 75 ms refractory interval limits duplicate hits. The classifier is intentionally lightweight and does not use FFTs or allocate in the real-time path. Initial classification is heuristic and requires real microphone/performance validation.
+The percussion detector processes the same worker-thread audio blocks as the pitch detector using 256-sample frames (~5.8 ms at 44.1 kHz, ~5.3 ms at 48 kHz). One-pole bands separate sub-160 Hz low energy, 160 Hz–4.2 kHz mid energy, and high-frequency residual. Classification combines relative band energy, zero-crossing rate, crest factor, attack/tail ratio, adaptive noise-floor tracking, and an onset gate. Hi-hats use a 28 ms refractory interval; kick/snare use 42 ms. The worker publishes each hit to a bounded SPSC queue; the GUI drains all queued events at 100 Hz instead of relying on a single latest-event snapshot. This reduces event loss and scheduling latency but is not sample-accurate. The classifier remains heuristic and requires real microphone/performance validation.
 
 ## Runtime diagnostics
 
@@ -116,7 +118,7 @@ MIDI output restoration uses an exact device-name match. If the saved device is 
 
 ## Validation
 
-CTest includes deterministic pitch-detector, note-tracker, MIDI queue, Pitch Bend, pitch-smoothing, drum-mapping, percussion-detector, and preset-storage executables. These tests validate synthetic signal response and filter behavior; they do not certify real-world microphone latency, room-noise rejection, MIDI driver behavior, CPU load, musical performance, or local settings behavior across Windows profiles.
+CTest includes deterministic pitch-detector, note-tracker, MIDI queue, Pitch Bend, pitch-smoothing, drum-mapping, percussion-detector, percussion-event-queue, and preset-storage executables. These tests validate synthetic signal response and filter behavior; they do not certify real-world microphone latency, room-noise rejection, MIDI driver behavior, CPU load, musical performance, or local settings behavior across Windows profiles.
 
 
 ## User interface (1.1.0)
