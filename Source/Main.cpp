@@ -4,8 +4,8 @@
 class VocalInstrumentApplication final : public juce::JUCEApplication
 {
 public:
-    const juce::String getApplicationName() override { return "Vocal Instrument"; }
-    const juce::String getApplicationVersion() override { return "0.1.0"; }
+    const juce::String getApplicationName() override { return "NOVOX"; }
+    const juce::String getApplicationVersion() override { return JUCE_APPLICATION_VERSION_STRING; }
     bool moreThanOneInstanceAllowed() override { return true; }
 
     void initialise(const juce::String&) override
@@ -24,7 +24,8 @@ public:
         {
             setUsingNativeTitleBar(true);
             setContentOwned(new MainComponent(), true);
-            centreWithSize(960, 620);
+            centreWithSize(1160, 780);
+            setResizeLimits(900, 700, 2400, 1600);
             setResizable(true, true);
             setVisible(true);
         }
