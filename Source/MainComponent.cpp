@@ -785,7 +785,7 @@ void MainComponent::timerCallback()
     currentInputRms = engine.getInputRms();
     currentInputPeak = engine.getInputPeak();
     currentInputClipping = engine.isInputClipping();
-    currentAnalysisWindowSamples = pitch.analysisWindowSamples;
+    currentAnalysisWindowSamples = rawPitch.analysisWindowSamples;
     if (auto* device = deviceManager.getCurrentAudioDevice())
     {
         audioAvailable = true; audioDeviceName = device->getName();

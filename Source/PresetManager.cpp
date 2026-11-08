@@ -106,9 +106,6 @@ bool PresetManager::savePreset(const juce::String& name, PresetData data, juce::
     object->setProperty("autoTuneEnabled",data.autoTuneEnabled); object->setProperty("autoTuneTonic",data.autoTuneTonic); object->setProperty("autoTuneScale",data.autoTuneScale);
     object->setProperty("noiseReductionEnabled", data.noiseReductionEnabled);
     object->setProperty("noiseReductionStrength", data.noiseReductionStrength);
-    object->setProperty("pitchStabilityEnabled", data.pitchStabilityEnabled);
-    object->setProperty("pitchDropToleranceCents", data.pitchDropToleranceCents);
-    object->setProperty("pitchDropHoldFrames", data.pitchDropHoldFrames);
     object->setProperty("inputChannelMode", data.inputChannelMode);
     object->setProperty("pitchBendRange", data.pitchBendRange);
     object->setProperty("midiChannel", data.midiChannel);
@@ -175,9 +172,6 @@ bool PresetManager::loadPreset(const juce::String& name, PresetData& data, juce:
     if(has("autoTuneScale"))loaded.autoTuneScale=static_cast<int>(object->getProperty("autoTuneScale"));
     if (has("noiseReductionEnabled")) loaded.noiseReductionEnabled = static_cast<bool>(object->getProperty("noiseReductionEnabled"));
     if (has("noiseReductionStrength")) loaded.noiseReductionStrength = static_cast<double>(object->getProperty("noiseReductionStrength"));
-    if (has("pitchStabilityEnabled")) loaded.pitchStabilityEnabled = static_cast<bool>(object->getProperty("pitchStabilityEnabled"));
-    if (has("pitchDropToleranceCents")) loaded.pitchDropToleranceCents = static_cast<double>(object->getProperty("pitchDropToleranceCents"));
-    if (has("pitchDropHoldFrames")) loaded.pitchDropHoldFrames = static_cast<int>(object->getProperty("pitchDropHoldFrames"));
     if (has("inputChannelMode")) loaded.inputChannelMode = static_cast<int>(object->getProperty("inputChannelMode"));
     loaded.pitchBendRange = static_cast<int>(object->getProperty("pitchBendRange"));
     loaded.midiChannel = static_cast<int>(object->getProperty("midiChannel"));

@@ -47,7 +47,6 @@ The processing pipeline is separated from the interface, keeping audio capture a
 - Note-onset and note-release confirmation, with semitone hysteresis to reduce unstable transitions.
 
 ### 🎚️ Audio refinement
-- Optional Pitch Stability Guard suppresses brief downward pitch glitches and short voicing dropouts before note and Pitch Bend output, while allowing persistent note changes through.
 - Optional noise gate for attenuating low-level background sound.
 - Two-second room-noise calibration that adapts the gate threshold to the measured noise floor.
 - Automatic strongest-channel selection, with explicit Left, Right, and Stereo mix modes.
