@@ -60,6 +60,8 @@ MainComponent::MainComponent()
     const int savedAutoTuneScale=juce::jlimit(0,2,settings->getIntValue("autoTuneScale",1));
     const bool savedNoiseReductionEnabled = settings->getBoolValue("noiseReductionEnabled", false);
     const double savedNoiseReductionStrength = juce::jlimit(0.0, 100.0, settings->getDoubleValue("noiseReductionStrength", 35.0));
+    const bool savedEqEnabled=settings->getBoolValue("inputEqualizerEnabled",false);
+    const double savedEqLow=juce::jlimit(-12.0,12.0,settings->getDoubleValue("equalizerLowDb",0.0)),savedEqMid=juce::jlimit(-12.0,12.0,settings->getDoubleValue("equalizerMidDb",0.0)),savedEqHigh=juce::jlimit(-12.0,12.0,settings->getDoubleValue("equalizerHighDb",0.0));
     const bool savedPitchStabilityEnabled = settings->getBoolValue("pitchStabilityEnabled", false);
     const double savedPitchDropTolerance = juce::jlimit(10.0, 150.0, settings->getDoubleValue("pitchDropToleranceCents", 45.0));
     const double legacyPitchDropFrames = settings->getDoubleValue("pitchDropHoldFrames", 3.0);
@@ -229,6 +231,10 @@ MainComponent::MainComponent()
         saveSettings(); repaint();
     };
     engine.setNoiseReductionStrength(static_cast<float>(savedNoiseReductionStrength / 100.0));engine.setNoiseReductionEnabled(savedNoiseReductionEnabled);addAndMakeVisible(noiseReductionSlider);
+    inputEqualizerEnabled.setToggleState(savedEqEnabled,juce::dontSendNotification);
+    inputEqualizerEnabled.onClick=[this]{engine.setInputEqualizerEnabled(inputEqualizerEnabled.getToggleState());settings->setValue("inputEqualizerEnabled",inputEqualizerEnabled.getToggleState());saveSettings();repaint();};addAndMakeVisible(inputEqualizerEnabled);
+    const auto setupEqSlider=[this](juce::Slider& slider,double value){slider.setRange(-12,12,.5);slider.setValue(value,juce::dontSendNotification);slider.setTextBoxStyle(juce::Slider::TextBoxRight,false,52,21);slider.setTextValueSuffix(" dB");slider.onValueChange=[this]{const auto l=(float)equalizerLowSlider.getValue(),m=(float)equalizerMidSlider.getValue(),h=(float)equalizerHighSlider.getValue();engine.setInputEqualizerGains(l,m,h);settings->setValue("equalizerLowDb",l);settings->setValue("equalizerMidDb",m);settings->setValue("equalizerHighDb",h);saveSettings();repaint();};addAndMakeVisible(slider);};
+    setupEqSlider(equalizerLowSlider,savedEqLow);setupEqSlider(equalizerMidSlider,savedEqMid);setupEqSlider(equalizerHighSlider,savedEqHigh);engine.setInputEqualizerGains((float)savedEqLow,(float)savedEqMid,(float)savedEqHigh);engine.setInputEqualizerEnabled(savedEqEnabled);
     pitchStabilityEnabled.setToggleState(savedPitchStabilityEnabled,juce::dontSendNotification);
     pitchStabilityEnabled.onClick=[this]{engine.setPitchStabilityGuard(pitchStabilityEnabled.getToggleState(),static_cast<float>(pitchDropToleranceSlider.getValue()),static_cast<float>(pitchDropHoldSlider.getValue()));settings->setValue("pitchStabilityEnabled",pitchStabilityEnabled.getToggleState());saveSettings();repaint();};addAndMakeVisible(pitchStabilityEnabled);
     pitchDropToleranceSlider.setRange(10.0,150.0,5.0);pitchDropToleranceSlider.setValue(savedPitchDropTolerance,juce::dontSendNotification);pitchDropToleranceSlider.setTextBoxStyle(juce::Slider::TextBoxRight,false,42,20);pitchDropToleranceSlider.setTextValueSuffix(" ct");
@@ -594,6 +600,7 @@ void MainComponent::layoutPlayPage(juce::Rectangle<int>)
     noteTransitionSlider.setVisible(false);
     autoTuneEnabled.setVisible(false);autoTuneKeySelector.setVisible(false);autoTuneScaleSelector.setVisible(false);
     noiseReductionEnabled.setVisible(false); noiseReductionSlider.setVisible(false);
+    inputEqualizerEnabled.setVisible(false);equalizerLowSlider.setVisible(false);equalizerMidSlider.setVisible(false);equalizerHighSlider.setVisible(false);
     pitchStabilityEnabled.setVisible(false);pitchDropToleranceSlider.setVisible(false);pitchDropHoldSlider.setVisible(false);
     midiNoteCleanupEnabled.setVisible(false); midiNoteMinimumDurationSlider.setVisible(false); midiNoteMinimumConfidenceSlider.setVisible(false); midiNoteGapBridgeSlider.setVisible(false);
     midiCleanupDurationLabel.setVisible(false); midiCleanupConfidenceLabel.setVisible(false); midiCleanupGapLabel.setVisible(false);
@@ -628,6 +635,7 @@ void MainComponent::layoutAudioPage(juce::Rectangle<int> a)
     noteTransitionEnabled.setVisible(true); noteTransitionSlider.setVisible(true);
     autoTuneEnabled.setVisible(true);autoTuneKeySelector.setVisible(true);autoTuneScaleSelector.setVisible(true);
     noiseReductionEnabled.setVisible(true);noiseReductionSlider.setVisible(true);inputChannelSelector.setVisible(true);calibrateNoiseButton.setVisible(true);
+    inputEqualizerEnabled.setVisible(true);equalizerLowSlider.setVisible(true);equalizerMidSlider.setVisible(true);equalizerHighSlider.setVisible(true);
     pitchStabilityEnabled.setVisible(true);pitchDropToleranceSlider.setVisible(true);pitchDropHoldSlider.setVisible(true);
     midiNoteCleanupEnabled.setVisible(true); midiNoteMinimumDurationSlider.setVisible(true); midiNoteMinimumConfidenceSlider.setVisible(true); midiNoteGapBridgeSlider.setVisible(true);
     midiCleanupDurationLabel.setVisible(true); midiCleanupConfidenceLabel.setVisible(true); midiCleanupGapLabel.setVisible(true);
@@ -646,6 +654,7 @@ void MainComponent::layoutAudioPage(juce::Rectangle<int> a)
     midiCleanupDurationLabel.setBounds(a.getX()+205, top+194, 170, 18); midiNoteMinimumDurationSlider.setBounds(a.getX()+205, top+212, 170, 26);
     midiCleanupConfidenceLabel.setBounds(a.getX()+385, top+194, 170, 18); midiNoteMinimumConfidenceSlider.setBounds(a.getX()+385, top+212, 170, 26);
     midiCleanupGapLabel.setBounds(a.getX()+565, top+194, 170, 18); midiNoteGapBridgeSlider.setBounds(a.getX()+565, top+212, 170, 26);
+    inputEqualizerEnabled.setBounds(a.getX()+14,top+250,150,26);equalizerLowSlider.setBounds(a.getX()+170,top+250,190,26);equalizerMidSlider.setBounds(a.getX()+370,top+250,190,26);equalizerHighSlider.setBounds(a.getX()+570,top+250,190,26);
 }
 
 void MainComponent::layoutPresetsPage(juce::Rectangle<int> a)
@@ -727,6 +736,7 @@ PresetData MainComponent::capturePresetData() const
     data.noteTransitionSmoothingEnabled = noteTransitionEnabled.getToggleState();
     data.noteTransitionDurationMs=noteTransitionSlider.getValue();data.autoTuneEnabled=autoTuneEnabled.getToggleState();data.autoTuneTonic=autoTuneKeySelector.getSelectedId()-1;data.autoTuneScale=autoTuneScaleSelector.getSelectedId()-1;
     data.noiseReductionEnabled = noiseReductionEnabled.getToggleState(); data.noiseReductionStrength = noiseReductionSlider.getValue();
+    data.inputEqualizerEnabled=inputEqualizerEnabled.getToggleState();data.equalizerLowDb=equalizerLowSlider.getValue();data.equalizerMidDb=equalizerMidSlider.getValue();data.equalizerHighDb=equalizerHighSlider.getValue();
     data.pitchStabilityEnabled=pitchStabilityEnabled.getToggleState();data.pitchDropToleranceCents=pitchDropToleranceSlider.getValue();data.pitchDropHoldMs=pitchDropHoldSlider.getValue();
     data.midiNoteCleanupEnabled=midiNoteCleanupEnabled.getToggleState(); data.midiNoteMinimumDurationMs=midiNoteMinimumDurationSlider.getValue(); data.midiNoteMinimumConfidence=midiNoteMinimumConfidenceSlider.getValue(); data.midiNoteGapBridgeMs=midiNoteGapBridgeSlider.getValue();
     data.inputChannelMode=inputChannelSelector.getSelectedId()-1;
@@ -749,6 +759,8 @@ void MainComponent::applyPresetData(PresetData data, const juce::String& name)
     engine.setAutoTune(data.autoTuneEnabled,data.autoTuneTonic,data.autoTuneScale);
     noiseReductionEnabled.setToggleState(data.noiseReductionEnabled, juce::dontSendNotification);
     noiseReductionSlider.setValue(data.noiseReductionStrength, juce::dontSendNotification);
+    inputEqualizerEnabled.setToggleState(data.inputEqualizerEnabled,juce::dontSendNotification);equalizerLowSlider.setValue(data.equalizerLowDb,juce::dontSendNotification);equalizerMidSlider.setValue(data.equalizerMidDb,juce::dontSendNotification);equalizerHighSlider.setValue(data.equalizerHighDb,juce::dontSendNotification);
+    engine.setInputEqualizerEnabled(data.inputEqualizerEnabled);engine.setInputEqualizerGains((float)data.equalizerLowDb,(float)data.equalizerMidDb,(float)data.equalizerHighDb);
     pitchStabilityEnabled.setToggleState(data.pitchStabilityEnabled,juce::dontSendNotification);pitchDropToleranceSlider.setValue(data.pitchDropToleranceCents,juce::dontSendNotification);pitchDropHoldSlider.setValue(data.pitchDropHoldMs,juce::dontSendNotification);
     engine.setPitchStabilityGuard(data.pitchStabilityEnabled,static_cast<float>(data.pitchDropToleranceCents),static_cast<float>(data.pitchDropHoldMs));
     midiNoteCleanupEnabled.setToggleState(data.midiNoteCleanupEnabled, juce::dontSendNotification);
@@ -774,6 +786,7 @@ void MainComponent::applyPresetData(PresetData data, const juce::String& name)
     settings->setValue("noteTransitionSmoothingEnabled", data.noteTransitionSmoothingEnabled);
     settings->setValue("noteTransitionDurationMs",data.noteTransitionDurationMs);settings->setValue("autoTuneEnabled",data.autoTuneEnabled);settings->setValue("autoTuneTonic",data.autoTuneTonic);settings->setValue("autoTuneScale",data.autoTuneScale);
     settings->setValue("noiseReductionEnabled", data.noiseReductionEnabled); settings->setValue("noiseReductionStrength", data.noiseReductionStrength);
+    settings->setValue("inputEqualizerEnabled",data.inputEqualizerEnabled);settings->setValue("equalizerLowDb",data.equalizerLowDb);settings->setValue("equalizerMidDb",data.equalizerMidDb);settings->setValue("equalizerHighDb",data.equalizerHighDb);
     settings->setValue("pitchStabilityEnabled",data.pitchStabilityEnabled);settings->setValue("pitchDropToleranceCents",data.pitchDropToleranceCents);settings->setValue("pitchDropHoldMs",data.pitchDropHoldMs);
     settings->setValue("inputChannelMode",data.inputChannelMode);
     settings->setValue("pitchBendRange", data.pitchBendRange); settings->setValue("midiChannel", data.midiChannel);

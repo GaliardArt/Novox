@@ -38,6 +38,7 @@ int main()
     original.midiChannel = 11;
     original.midiOutputName = "Virtual MIDI Device";
     original.noiseReductionEnabled = true;
+    original.inputEqualizerEnabled=true;original.equalizerLowDb=-3;original.equalizerMidDb=2.5;original.equalizerHighDb=4;
     original.noiseReductionStrength = 67.0;original.inputChannelMode=2;
     original.pitchStabilityEnabled = true;
     original.pitchDropToleranceCents = 62.0;
@@ -63,6 +64,7 @@ int main()
     expect(loaded.midiChannel == original.midiChannel, "MIDI channel round trip");
     expect(loaded.midiOutputName == original.midiOutputName, "MIDI output round trip");
     expect(loaded.noiseReductionEnabled == original.noiseReductionEnabled, "noise reduction toggle round trip");
+    expect(loaded.inputEqualizerEnabled==original.inputEqualizerEnabled,"EQ toggle round trip");expect(std::abs(loaded.equalizerLowDb-original.equalizerLowDb)<.0001,"EQ low round trip");expect(std::abs(loaded.equalizerMidDb-original.equalizerMidDb)<.0001,"EQ mid round trip");expect(std::abs(loaded.equalizerHighDb-original.equalizerHighDb)<.0001,"EQ high round trip");
     expect(std::abs(loaded.noiseReductionStrength - original.noiseReductionStrength) < 0.0001, "noise reduction strength round trip");
     expect(loaded.inputChannelMode==original.inputChannelMode,"input channel mode round trip");
     expect(loaded.pitchStabilityEnabled == original.pitchStabilityEnabled, "pitch stability toggle round trip");
@@ -111,7 +113,8 @@ int main()
     expect(clamped.pitchSmoothing == 100.0, "smoothing clamped");
     expect(clamped.pitchBendRange == 12, "bend range clamped");
     expect(clamped.midiChannel == 1, "MIDI channel clamped");
-    clamped.noiseReductionStrength=150.0;clamped.inputChannelMode=99;clamped.pitchDropToleranceCents=999.0;clamped.pitchDropHoldMs=99.0;clamped.sanitise();expect(clamped.noiseReductionStrength==100.0,"noise reduction strength clamped");expect(clamped.inputChannelMode==3,"input channel mode clamped");expect(clamped.pitchDropToleranceCents==150.0,"pitch drop tolerance clamped");expect(clamped.pitchDropHoldMs==80.0,"pitch drop hold duration clamped");expect(clamped.midiNoteMinimumDurationMs==120.0,"MIDI cleanup duration clamped");expect(clamped.midiNoteMinimumConfidence==0.0,"MIDI cleanup confidence clamped");expect(clamped.midiNoteGapBridgeMs==80.0,"MIDI cleanup gap clamped");
+    clamped.equalizerLowDb=-99;clamped.equalizerMidDb=99;clamped.equalizerHighDb=99;
+    clamped.noiseReductionStrength=150.0;clamped.inputChannelMode=99;clamped.pitchDropToleranceCents=999.0;clamped.pitchDropHoldMs=99.0;clamped.sanitise();expect(clamped.noiseReductionStrength==100.0,"noise reduction strength clamped");expect(clamped.equalizerLowDb==-12,"EQ low clamp");expect(clamped.equalizerMidDb==12,"EQ mid clamp");expect(clamped.equalizerHighDb==12,"EQ high clamp");expect(clamped.inputChannelMode==3,"input channel mode clamped");expect(clamped.pitchDropToleranceCents==150.0,"pitch drop tolerance clamped");expect(clamped.pitchDropHoldMs==80.0,"pitch drop hold duration clamped");expect(clamped.midiNoteMinimumDurationMs==120.0,"MIDI cleanup duration clamped");expect(clamped.midiNoteMinimumConfidence==0.0,"MIDI cleanup confidence clamped");expect(clamped.midiNoteGapBridgeMs==80.0,"MIDI cleanup gap clamped");
 
     expect(manager.deletePreset("Studio Voice", &error), "delete preset");
     expect(manager.listPresets().empty(), "list empty after deletion");

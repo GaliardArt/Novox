@@ -4,7 +4,7 @@
 
 namespace
 {
-    constexpr int presetSchemaVersion = 3;
+    constexpr int presetSchemaVersion = 4;
 
     void setError(juce::String* error, const juce::String& message)
     {
@@ -106,6 +106,8 @@ bool PresetManager::savePreset(const juce::String& name, PresetData data, juce::
     object->setProperty("autoTuneEnabled",data.autoTuneEnabled); object->setProperty("autoTuneTonic",data.autoTuneTonic); object->setProperty("autoTuneScale",data.autoTuneScale);
     object->setProperty("noiseReductionEnabled", data.noiseReductionEnabled);
     object->setProperty("noiseReductionStrength", data.noiseReductionStrength);
+    object->setProperty("inputEqualizerEnabled",data.inputEqualizerEnabled);
+    object->setProperty("equalizerLowDb",data.equalizerLowDb);object->setProperty("equalizerMidDb",data.equalizerMidDb);object->setProperty("equalizerHighDb",data.equalizerHighDb);
     object->setProperty("pitchStabilityEnabled", data.pitchStabilityEnabled);
     object->setProperty("pitchDropToleranceCents", data.pitchDropToleranceCents);
     object->setProperty("pitchDropHoldMs", data.pitchDropHoldMs);
@@ -182,6 +184,7 @@ bool PresetManager::loadPreset(const juce::String& name, PresetData& data, juce:
     if(has("autoTuneScale"))loaded.autoTuneScale=static_cast<int>(object->getProperty("autoTuneScale"));
     if (has("noiseReductionEnabled")) loaded.noiseReductionEnabled = static_cast<bool>(object->getProperty("noiseReductionEnabled"));
     if (has("noiseReductionStrength")) loaded.noiseReductionStrength = static_cast<double>(object->getProperty("noiseReductionStrength"));
+    if(schemaVersion>=4){if(has("inputEqualizerEnabled"))loaded.inputEqualizerEnabled=static_cast<bool>(object->getProperty("inputEqualizerEnabled"));if(has("equalizerLowDb"))loaded.equalizerLowDb=(double)object->getProperty("equalizerLowDb");if(has("equalizerMidDb"))loaded.equalizerMidDb=(double)object->getProperty("equalizerMidDb");if(has("equalizerHighDb"))loaded.equalizerHighDb=(double)object->getProperty("equalizerHighDb");}
     if (has("pitchStabilityEnabled")) loaded.pitchStabilityEnabled = static_cast<bool>(object->getProperty("pitchStabilityEnabled"));
     if (has("pitchDropToleranceCents")) loaded.pitchDropToleranceCents = static_cast<double>(object->getProperty("pitchDropToleranceCents"));
     if (schemaVersion >= 2 && has("pitchDropHoldMs"))

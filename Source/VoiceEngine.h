@@ -8,6 +8,7 @@
 #include "PitchSmoother.h"
 #include "PitchStabilityGuard.h"
 #include "MidiNoteCleanup.h"
+#include "InputEqualizer.h"
 #include <array>
 
 class VoiceEngine final : public juce::AudioIODeviceCallback,
@@ -31,6 +32,8 @@ public:
     void setInputGain(float gain) noexcept { inputGain.store(juce::jlimit(0.1f, 8.0f, gain)); }
     void setPitchSensitivity(float sensitivity) noexcept { detector.setSensitivity(sensitivity); }
     void setNoiseReductionEnabled(bool enabled) noexcept { noiseReducer.setEnabled(enabled); }
+    void setInputEqualizerEnabled(bool enabled) noexcept { inputEqualizer.setEnabled(enabled); }
+    void setInputEqualizerGains(float l,float m,float h) noexcept { inputEqualizer.setGains(l,m,h); }
     void setNoiseReductionStrength(float strength) noexcept { noiseReducer.setStrength(strength); }
     void beginNoiseCalibration() noexcept { noiseReducer.beginCalibration(); }
     int getNoiseCalibrationState() const noexcept { return noiseReducer.getCalibrationState(); }
@@ -61,6 +64,7 @@ private:
 
     PitchDetector detector;
     NoiseReducer noiseReducer;
+    InputEqualizer inputEqualizer;
     NoteTracker noteTracker;
     PitchSmoother pitchSmoother;
     PitchStabilityGuard pitchStabilityGuard;

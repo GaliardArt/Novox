@@ -17,7 +17,7 @@ juce_generate_juce_header(NOVOX)
 target_sources(NOVOX PRIVATE
     Source/Main.cpp Source/MainComponent.h Source/MainComponent.cpp
     Source/NovoxLookAndFeel.h Source/NovoxLookAndFeel.cpp
-    Source/PitchDetector.h Source/PitchDetector.cpp Source/NoiseReducer.h
+    Source/PitchDetector.h Source/PitchDetector.cpp Source/InputEqualizer.h Source/NoiseReducer.h
     Source/VoiceEngine.h Source/VoiceEngine.cpp Source/InputChannelSelector.h
     Source/MidiRouter.h Source/MidiRouter.cpp Source/MidiEventQueue.h Source/MidiNoteCleanup.h
     Source/NoteTracker.h Source/NoteTracker.cpp Source/PitchBend.h Source/PitchSmoother.h Source/PitchStabilityGuard.h

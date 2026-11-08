@@ -47,6 +47,7 @@ void VoiceEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     const auto deviceBlockSize = device != nullptr ? device->getCurrentBufferSizeSamples() : 512;
     detector.prepare(currentSampleRate, deviceBlockSize);
     noiseReducer.prepare(currentSampleRate, juce::jlimit(128, maxWorkerBlockSize, deviceBlockSize));
+    inputEqualizer.prepare(currentSampleRate);
     monoScratch.setSize(1, juce::jmax(maxWorkerBlockSize, deviceBlockSize));
     workerBlockSize = juce::jlimit(128, maxWorkerBlockSize, deviceBlockSize);
     sampleFifo.reset();
@@ -170,6 +171,7 @@ void VoiceEngine::run()
         lastObservedDroppedSamples = totalDroppedSamples;
         const auto elapsedSamples = static_cast<uint64_t>(readable) + droppedSinceLastBlock;
         const float elapsedSeconds = static_cast<float>(static_cast<double>(elapsedSamples) / currentSampleRate);
+        inputEqualizer.process(workerScratch.data(), readable);
         noiseReducer.process(workerScratch.data(), readable);
         const auto rawPitch = detector.process(workerScratch.data(), readable);
 

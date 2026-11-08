@@ -17,6 +17,8 @@ struct PresetData
     int autoTuneScale = 1;
     bool noiseReductionEnabled = false;
     double noiseReductionStrength = 35.0;
+    bool inputEqualizerEnabled = false;
+    double equalizerLowDb = 0.0, equalizerMidDb = 0.0, equalizerHighDb = 0.0;
     bool pitchStabilityEnabled = false;
     double pitchDropToleranceCents = 45.0;
     double pitchDropHoldMs = 30.0;
@@ -40,6 +42,9 @@ struct PresetData
         autoTuneScale = std::clamp(autoTuneScale, 0, 2);
         noiseReductionStrength = std::isfinite(noiseReductionStrength)
             ? std::clamp(noiseReductionStrength, 0.0, 100.0) : 35.0;
+        equalizerLowDb=std::isfinite(equalizerLowDb)?std::clamp(equalizerLowDb,-12.0,12.0):0.0;
+        equalizerMidDb=std::isfinite(equalizerMidDb)?std::clamp(equalizerMidDb,-12.0,12.0):0.0;
+        equalizerHighDb=std::isfinite(equalizerHighDb)?std::clamp(equalizerHighDb,-12.0,12.0):0.0;
         pitchDropToleranceCents = std::isfinite(pitchDropToleranceCents)
             ? std::clamp(pitchDropToleranceCents, 10.0, 150.0) : 45.0;
         pitchDropHoldMs = std::isfinite(pitchDropHoldMs)
