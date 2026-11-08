@@ -1,147 +1,142 @@
+<div align="center">
+
 # NOVOX
 
-**Version 1.2.0 — Native JUCE workspace**
+### YOUR VOICE. YOUR INSTRUMENT.
 
-NOVOX is an offline-first, standalone vocal instrument for turning voice into musical control data. It is written in C++ and uses JUCE for audio input, MIDI integration, and the desktop application.
+**A real-time vocal-to-MIDI instrument for expressive music creation.**
 
-## Native interface (1.2.0)
+[![Platform](https://img.shields.io/badge/platform-Windows-1f6feb?style=for-the-badge&logo=windows&logoColor=white)](https://www.microsoft.com/windows)
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?style=for-the-badge&logo=cplusplus&logoColor=white)](https://isocpp.org/)
+[![JUCE](https://img.shields.io/badge/audio%20framework-JUCE-20232A?style=for-the-badge)](https://juce.com/)
+[![CMake](https://img.shields.io/badge/build-CMake-064F8C?style=for-the-badge&logo=cmake&logoColor=white)](https://cmake.org/)
 
-The redesigned Play, MIDI, Audio and Presets workspaces are implemented directly in JUCE/C++. The executable does not embed a browser or require WebView2; the former web files remain in the repository as visual references only.
+</div>
 
-## Stable release (1.0.0)
+---
 
-- JUCE standalone desktop application and microphone capture
-- YIN-style fundamental-frequency estimation with confidence and RMS level
-- Adjustable pitch sensitivity to trade quiet-voice tracking against noise rejection
-- Optional JUCE noise gate on the pitch-analysis worker, with adjustable threshold strength and transparent bypass
-- Pitch analysis moved off the audio callback to a dedicated worker thread
-- Preallocated SPSC audio FIFO and sequence-stamped pitch snapshots
-- Note onset/release confirmation and semitone hysteresis
-- Configurable pitch smoothing and micro-variation deadband for MIDI Pitch Bend
-- Dedicated MIDI dispatch thread fed by a bounded SPSC event queue
-- Ordered asynchronous MIDI Note On/Off and 14-bit Pitch Bend delivery
-- Configurable Pitch Bend enable/disable and range from ±1 to ±12 semitones
-- Configurable MIDI output channel (1–16), captured per queued event
-- Persistent local preferences for input gain, sensitivity, smoothing, Pitch Bend enable/range, MIDI channel, and MIDI output
-- Saved MIDI output is automatically restored when that device is available; unavailable devices remain safely unselected
+## The voice is an instrument.
 
-- Named local presets for complete instrument configurations, with save/update, load, and delete controls
-- Live audio-device diagnostics: selected input, active channel count, sample rate, and device buffer size
-- Runtime counters for audio samples and MIDI events dropped by bounded real-time queues
-- Presets include input gain, pitch sensitivity/smoothing, optional noise-gate state/strength, Pitch Bend settings, and melodic MIDI channel/output preference
-- Automated pitch-detector, note-tracker, MIDI-queue, Pitch Bend, smoothing, and preset-storage regression tests
+**NOVOX turns vocal performance into MIDI control, giving your voice a direct connection to virtual instruments, DAWs, and musical workflows.**
 
-## Runtime diagnostics
+Sing a melody into a microphone and NOVOX tracks its fundamental pitch, identifies musical notes, and translates vocal movement into MIDI messages. The result is a standalone desktop instrument designed to make vocal expression useful beyond the audio track itself.
 
-The Audio tab reports the active audio input device, the number of enabled input channels, the current sample rate, and the device buffer size. It also displays cumulative counters for audio samples rejected when the audio FIFO or preallocated callback buffer cannot accept them, and MIDI events rejected when the bounded MIDI queue is full. These counters help distinguish a missing input device from signal-detection issues and expose overload instead of silently hiding it.
+Built in native **C++20** with **JUCE**, NOVOX brings audio capture, pitch analysis, note tracking, MIDI routing, and instrument controls together in one Windows application.
 
-## Local presets
+## From voice to MIDI
 
-Presets are stored as individual versioned `.novoxpreset` JSON files in the current user's NOVOX application-data directory. The Presets tab can save or update a named preset, load it, and delete it. A preset captures input gain, pitch sensitivity, pitch smoothing, Pitch Bend enable/range, and melodic MIDI channel/output preference. Loading a preset updates the active controls and local application preferences. Presets remain local and work without an account or network connection. If a preset references an unavailable MIDI output, NOVOX keeps the saved device preference without silently selecting a different output.
+<div align="center">
 
-## Local settings
+**MICROPHONE** &nbsp; → &nbsp; **PITCH ANALYSIS** &nbsp; → &nbsp; **NOTE TRACKING** &nbsp; → &nbsp; **MIDI OUTPUT**
 
-Preferences are stored in the current user's application settings directory using JUCE's local PropertiesFile support. Settings are written locally and restored on the next launch. NOVOX does not transmit preferences or require an account or network connection. If a saved MIDI output is not present at startup, NOVOX keeps the preference and waits for the user to reconnect or select an available device.
+<sub>A real-time signal path designed for monophonic vocal performance.</sub>
 
-## Quick start
+</div>
 
-See [docs/QUICKSTART.md](docs/QUICKSTART.md) for microphone setup, MIDI routing, first-use guidance, and troubleshooting.
+NOVOX listens to the incoming audio, estimates its fundamental frequency, and follows note transitions. Stable notes are converted into MIDI Note On and Note Off messages, while continuous pitch movement can be expressed through MIDI Pitch Bend.
 
-## Build and package on Windows
+The processing pipeline is separated from the interface, keeping audio capture and analysis independent from presentation and user controls.
 
-Requirements: Windows 10/11 x64, Visual Studio 2022 with Desktop development with C++, CMake 3.22+, Git, and the Microsoft Visual C++ 2015–2022 Redistributable (x64) on target machines.
+## What NOVOX does
+
+### 🎙️ Vocal pitch tracking
+- Real-time microphone and audio-device capture.
+- YIN-style fundamental-frequency estimation.
+- Pitch confidence and input-level monitoring.
+- Adjustable sensitivity for balancing quiet-voice detection and noise rejection.
+- Note-onset and note-release confirmation, with semitone hysteresis to reduce unstable transitions.
+
+### 🎚️ Audio refinement
+- Optional noise gate for attenuating low-level background sound.
+- Adjustable noise-gate strength and transparent bypass.
+- Pitch smoothing for more controlled MIDI Pitch Bend movement.
+- A micro-variation deadband to reduce unwanted pitch-wheel jitter while preserving expressive movement.
+
+### 🎹 MIDI performance
+- Selectable MIDI output devices.
+- MIDI channel selection from 1 to 16.
+- Ordered Note On and Note Off delivery.
+- Optional MIDI Pitch Bend with a configurable range from ±1 to ±12 semitones.
+- Continuous pitch expression derived from the tracked vocal pitch.
+
+### ⚙️ Instrument controls
+- Dedicated Play, MIDI, Audio, and Presets workspaces.
+- Local preferences restored between sessions.
+- Named presets for saving and recalling instrument configurations.
+- Audio-device diagnostics and counters for dropped audio samples and MIDI events.
+
+## Designed as a standalone instrument
+
+NOVOX is intended to work as a self-contained desktop application. It does not require an account, cloud processing, or a remote service during normal use.
+
+Audio capture, pitch analysis, note tracking, and MIDI dispatch run locally. Preferences and presets are also stored on the user's machine.
+
+The application is built around a native JUCE interface and a C++ audio engine. Its interface is organized into focused workspaces so that performance, MIDI routing, audio configuration, and presets remain easy to access.
+
+## Interface
+
+| Workspace | Purpose |
+|---|---|
+| **Play** | Follow detected notes, frequency, pitch confidence, and instrument activity. |
+| **MIDI** | Choose the MIDI destination, channel, and Pitch Bend behavior. |
+| **Audio** | Configure input gain and sensitivity, manage optional noise reduction, and inspect device diagnostics. |
+| **Presets** | Save, update, load, and delete local instrument configurations. |
+
+## Under the hood
+
+NOVOX uses a separated processing pipeline to keep time-sensitive audio work away from the graphical interface.
+
+- **Audio callback:** performs bounded channel mixing and writes samples into a preallocated single-producer/single-consumer FIFO.
+- **Pitch worker:** consumes audio blocks and runs pitch analysis outside the audio callback.
+- **Note tracking:** confirms note transitions and applies hysteresis to reduce false retriggers.
+- **MIDI dispatch:** sends queued MIDI events from a dedicated worker thread.
+- **Local storage:** persists preferences and versioned `.novoxpreset` files on the machine.
+
+This design helps avoid blocking operations in the audio callback and keeps MIDI event delivery ordered.
+
+## Technology
+
+| Technology | Responsibility |
+|---|---|
+| **C++20** | Core engine, signal processing, MIDI, and application logic |
+| **JUCE 8** | Audio I/O, MIDI devices, DSP utilities, and native interface |
+| **CMake** | Build system and dependency configuration |
+| **CTest** | Automated regression testing |
+| **GitHub Actions** | Windows build and test automation |
+
+## Build on Windows
+
+Requirements:
+
+- Windows 10/11, 64-bit
+- Visual Studio 2022 with **Desktop development with C++**
+- CMake 3.22 or newer
+- Git
+
+Configure, build, and run the automated tests:
 
 ```powershell
 cmake -S . -B build -A x64 -DBUILD_TESTING=ON
-cmake --build build --config Release --parallel 2
+cmake --build build --config Release --parallel
 ctest --test-dir build -C Release --output-on-failure
-cmake --install build --config Release --prefix dist
-cpack --config build/CPackConfig.cmake -C Release
 ```
 
-CMake fetches JUCE 8.0.6 on the first configure. An internet connection is needed for that dependency download. The application is designed to run offline after dependencies are available.
+The first CMake configuration downloads the pinned JUCE dependency. After dependencies are available, NOVOX is designed to run offline.
 
-The packaging commands create a portable ZIP named `NOVOX-1.2.0-Windows-x64.zip` in the build directory and an install layout under `dist/`. An optional Inno Setup definition is provided at `installer/NOVOX.iss`; compile it from the repository root after creating `dist/` if Inno Setup 6 is installed. The portable ZIP is the canonical package and does not require the installer.
+## Testing and reliability
 
-## Regression coverage
+The project includes automated tests for pitch detection, note tracking, MIDI event queuing, Pitch Bend conversion, pitch smoothing, noise reduction, and preset storage.
 
-- `NOVOXPitchTests`: known frequencies, 44.1/48 kHz sample rates, sensitivity response, silence/low-level rejection, harmonic-rich input, broadband noise, and invalid input.
-- `NOVOXTrackingTests`: onset debounce, transient rejection, release debounce, note transitions, and semitone hysteresis.
-- `NOVOXMidiQueueTests`: empty queue, FIFO order and payload for note and bend events, bounded-capacity overflow, recovery, and ring-buffer wraparound.
-- `NOVOXPitchBendTests`: center, positive/negative direction, clamping, configurable range, invalid input, and fractional semitone offsets.
-- `NOVOXPitchSmootherTests`: transparent mode, convergence, micro-variation rejection, reset, invalid values, and parameter clamping.
+These tests cover deterministic processing behavior. Real microphones, room acoustics, audio drivers, MIDI devices, and DAW routing still require practical testing on the target system.
 
-- `NOVOXPresetManagerTests`: preset-name sanitising, full settings round trip, value clamping, listing, and deletion.
+---
 
-The tests are deterministic. They do not replace microphone, room-noise, end-to-end latency, MIDI-driver, or musical-performance testing. Before publishing a stable binary, complete the manual checks in [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
+<div align="center">
 
-## Continuous integration
+**NOVOX**
 
-GitHub Actions configures and compiles the Windows x64 Release build and runs CTest on pushes and pull requests targeting `main` or `dev/**`. Workflow: `.github/workflows/windows-build.yml`.
+*Your voice. Translated into musical control.*
 
-## Engineering notes
+<sub>Native Windows application · C++20 · JUCE</sub>
 
-- The audio callback performs bounded channel mixing and FIFO writes only; pitch detection runs on a worker thread.
-- Pitch sensitivity is published atomically to the pitch worker. Higher values lower the RMS and confidence gates, allowing quieter signals through at the cost of admitting more noise.
-- Optional noise reduction uses JUCE's lightweight noise gate on the worker thread before YIN analysis. It attenuates low-level input below a configurable threshold; it is not neural denoising and cannot remove steady background noise while a voice is active. It is disabled by default.
-- Pitch smoothing is applied only to the MIDI bend control, not the raw detector display or note-onset logic.
-- The smoothing control uses a one-pole response plus a small deadband. It suppresses small frame-to-frame fluctuations while larger pitch movement remains responsive; it is not intended to remove expressive vibrato completely.
-- Audio FIFO overflow and callback blocks larger than the prepared scratch buffer are counted and dropped without blocking the callback.
-- The MIDI queue is bounded and lock-free for one GUI producer and one MIDI dispatch consumer. The worker preserves event order and sends messages independently of the GUI timer.
-- Each queued MIDI event captures its channel at enqueue time, so changing channels cannot redirect already queued note-offs.
-- Pitch Bend is calculated from the fractional semitone offset relative to the tracked note and encoded using the standard 14-bit MIDI wheel value. The configured range is applied symmetrically, with asymmetric integer scaling around MIDI center 8192.
-- Pitch Bend updates are sent only for new analysis frames and changes of at least two wheel units, limiting redundant queue traffic.
-- Closing or changing MIDI output drains pending events and stops the dispatch worker before releasing the device handle.
-
-- Preferences are saved immediately after a control change and on shutdown. The saved output device is matched by its JUCE device name; if no exact match exists, NOVOX does not silently select a different device.
-
-## GitHub Actions: build and distribution
-
-Two workflows automate the Windows x64 pipeline:
-
-- `.github/workflows/windows-build.yml` runs on pushes and pull requests targeting `main` or `dev/**`. It configures CMake, builds Release, runs CTest, creates the install layout and portable ZIP, then uploads the ZIP as a downloadable Actions artifact for 14 days.
-- `.github/workflows/release.yml` runs when a version tag matching `vMAJOR.MINOR.PATCH` is pushed (or can be started manually for an existing tag). It verifies that the tag matches the CMake project version, rebuilds and tests that exact tagged source, creates the portable ZIP and SHA-256 checksum, and publishes both files in a GitHub Release.
-
-### Publishing a stable version
-
-After the maintainer has approved the exact source commit for publication:
-
-```powershell
-git checkout dev/yin-midi
-git pull
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-The tag must point to the validated source commit and match `project(NOVOX VERSION ...)` in `CMakeLists.txt`. Pushing the tag starts the release workflow. The workflow does not merge branches or create/move tags. It publishes only after the clean Windows build and all CTest cases pass.
-
-The workflow publishes the portable ZIP as the canonical package and includes its SHA-256 checksum. The optional Inno Setup installer remains a separate maintainer-controlled step; no third-party installer or driver is bundled automatically.
-
-## Version 1.1.0 — Modern UI
-
-The interface is organized into four native JUCE tabs: Play, MIDI, Audio, and Presets. The redesign introduces a compact dark graphite theme with a restrained coral accent, a dedicated live pitch screen, separated MIDI routing controls, audio tuning and diagnostics, and a focused preset-management page. The audio engine, pitch detector, note tracker, MIDI routing, settings storage, and preset format remain unchanged.
-
-
-## UI Design System 1.0
-
-The shared native JUCE visual foundation uses a graphite palette, coral primary accent, teal secondary accent, consistent control styling, rounded surfaces, and clearer focus and interaction states. This layer is intentionally separate from the audio and MIDI processing pipeline; the Play, MIDI, Audio, and Presets workflows remain functionally unchanged while later interface iterations can refine each page independently.
-
-
-## WebView2 interface foundation
-
-The Windows desktop target embeds JUCE WebBrowserComponent using the Microsoft Edge WebView2 backend. The frontend in `UI/` is served locally by JUCE's resource provider; it does not load remote pages, CDN assets, or require internet at runtime. CMake downloads a pinned Microsoft.Web.WebView2 NuGet package during configuration when absent. Existing native Play, MIDI, Audio, and Presets tabs remain available during the gradual transition. The initial JavaScript bridge exposes a read-only `getNovoxStatus` function and a UI-ready event. Audio capture, pitch detection, and MIDI dispatch remain in native C++.
-
-
-## Web UI — first visual pass
-
-The first WebView2 visual pass introduced dedicated workspace navigation for Play, MIDI, Audio, and Presets, with read-only status snapshots. Subsequent MIDI bridge work now makes output selection, channel, and Pitch Bend controls interactive on the web MIDI page. The other web pages remain presentation-only while their native actions are integrated. All frontend assets are local and work without a remote server or CDN.
-
-
-## Web MIDI controls
-
-The WebView2 MIDI workspace now reads the available MIDI destinations and can refresh the device list, select or disconnect an output, change the MIDI channel, and enable/disable Pitch Bend or adjust its semitone range. These actions call validated native JUCE handlers; the C++ MIDI router remains responsible for device access and MIDI dispatch. Settings continue to use the existing local persistence path.
-
-
-## Web UI visual redesign
-
-The WebView2 workspace now follows the shared NOVOX design guide: a compact top tab bar, nested graphite surfaces (`#1C1C1E`, `#2C2C2E`, `#3A3A3C`), rounded panel hierarchy, restrained LED indicators, cyan complementary accents, coral pitch accents, and a 12-note pitch visualization. The layout is adapted for the melodic voice-to-MIDI workflow; drum triggers and formant controls from the generic reference are intentionally excluded. The frontend remains local and offline-capable.
+</div>
