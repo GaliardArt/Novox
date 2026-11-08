@@ -138,7 +138,7 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
     const int lowerOctaveLag = selectedLag * 2;
     if (lowerOctaveLag <= maxLag)
     {
-        const auto estimateAmplitude = [this](double frequency)
+        const auto estimateAmplitude = [this, analysisWindowSize](double frequency)
         {
             double real = 0.0;
             double imaginary = 0.0;
