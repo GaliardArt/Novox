@@ -138,6 +138,11 @@ void VoiceEngine::audioDeviceIOCallbackWithContext(const float* const* input,
     sampleFifo.finishedWrite(writable);
     if (writable < numSamples)
         droppedAudioSamples.fetch_add(static_cast<uint64_t>(numSamples - writable), std::memory_order_relaxed);
+
+    // Wake the pitch worker as soon as a block is available instead of relying
+    // on its periodic 1 ms polling timeout.
+    if (writable > 0)
+        notify();
 }
 
 void VoiceEngine::run()
@@ -152,7 +157,7 @@ void VoiceEngine::run()
         const int requested = juce::jmin(sampleFifo.getNumReady(), workerBlockSize);
         if (requested <= 0)
         {
-            wait(1);
+            wait(-1);
             continue;
         }
 

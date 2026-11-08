@@ -27,7 +27,7 @@ public:
     PitchResult getLatestPitch() const noexcept;
     int getActiveNote() const noexcept { return latestActiveNote.load(std::memory_order_relaxed); }
     void setMidiRouter(MidiRouter* router) noexcept { midiRouter = router; }
-    void requestReset() noexcept { resetRequested.store(true, std::memory_order_release); }
+    void requestReset() noexcept { resetRequested.store(true, std::memory_order_release); notify(); }
 
     void setInputGain(float gain) noexcept { inputGain.store(juce::jlimit(0.1f, 8.0f, gain)); }
     void setPitchSensitivity(float sensitivity) noexcept { detector.setSensitivity(sensitivity); }
