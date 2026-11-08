@@ -240,14 +240,37 @@ MainComponent::MainComponent()
             [this](const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion complete)
             {
                 const auto pitch = engine.getLatestPitch();
+                auto* audioDevice = deviceManager.getCurrentAudioDevice();
                 auto* data = new juce::DynamicObject();
+
                 data->setProperty("note", noteLabel.getText());
                 data->setProperty("frequencyHz", pitch.voiced ? pitch.frequencyHz : 0.0f);
                 data->setProperty("confidence", pitch.voiced ? pitch.confidence : 0.0f);
+                data->setProperty("inputRms", pitch.voiced ? pitch.rms : 0.0f);
+
                 data->setProperty("midiConnected", midiRouter.isOpen());
+                data->setProperty("midiOutputName", midiRouter.isOpen() ? preferredMidiOutputName : juce::String{});
                 data->setProperty("midiChannel", midiRouter.getChannel());
                 data->setProperty("pitchBendEnabled", pitchBendEnabled.getToggleState());
                 data->setProperty("pitchBendRange", static_cast<int>(bendRangeSlider.getValue()));
+
+                data->setProperty("audioAvailable", audioDevice != nullptr);
+                data->setProperty("audioInputName", audioDevice != nullptr
+                    ? audioDevice->getName() : juce::String("No input device"));
+                data->setProperty("audioInputChannels", audioDevice != nullptr
+                    ? audioDevice->getActiveInputChannels().countNumberOfSetBits() : 0);
+                data->setProperty("sampleRate", audioDevice != nullptr
+                    ? audioDevice->getCurrentSampleRate() : 0.0);
+                data->setProperty("bufferSize", audioDevice != nullptr
+                    ? audioDevice->getCurrentBufferSizeSamples() : 0);
+                data->setProperty("inputGain", gainSlider.getValue());
+                data->setProperty("pitchSensitivity", sensitivitySlider.getValue());
+                data->setProperty("pitchSmoothing", smoothingSlider.getValue());
+                data->setProperty("droppedAudioSamples",
+                    static_cast<juce::int64>(engine.getDroppedAudioSamples()));
+                data->setProperty("droppedMidiEvents",
+                    static_cast<juce::int64>(midiRouter.getDroppedEvents()));
+
                 complete(juce::var(data));
             })
         .withEventListener("novoxUiReady", [this](juce::var)

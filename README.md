@@ -124,3 +124,8 @@ The shared native JUCE visual foundation uses a graphite palette, coral primary 
 ## WebView2 interface foundation
 
 The Windows desktop target embeds JUCE WebBrowserComponent using the Microsoft Edge WebView2 backend. The frontend in `UI/` is served locally by JUCE's resource provider; it does not load remote pages, CDN assets, or require internet at runtime. CMake downloads a pinned Microsoft.Web.WebView2 NuGet package during configuration when absent. Existing native Play, MIDI, Audio, and Presets tabs remain available during the gradual transition. The initial JavaScript bridge exposes a read-only `getNovoxStatus` function and a UI-ready event. Audio capture, pitch detection, and MIDI dispatch remain in native C++.
+
+
+## Web UI — first visual pass
+
+The WebView2 presentation now has a dedicated workspace navigation for Play, MIDI, Audio, and Presets. The native C++ bridge provides read-only live snapshots for pitch, MIDI routing, audio-device metadata, detection parameters, and runtime queue diagnostics. The web pages are presentation-only in this milestone: configuration and preset mutations remain in the existing native tabs until their bridge actions are implemented and tested. All frontend assets are local and work without a remote server or CDN.

@@ -1,1 +1,120 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>NOVOX</title><link rel="stylesheet" href="styles.css"></head><body><main class="shell"><header class="topbar"><div class="brand"><b class="mark">N</b><div><strong>NOVOX</strong><small>Your voice. Your instrument.</small></div></div><span class="connection"><i></i><span id="connection-label">Connecting to audio engine</span></span></header><section class="hero"><div class="eyebrow">LIVE PERFORMANCE <span>•</span> MONOPHONIC TRACKING</div><div class="pitch-card"><div><span class="muted">DETECTED NOTE</span><div class="note" id="note">--</div><div class="frequency" id="frequency">Waiting for signal</div></div><div class="visual"><div class="orbit one"></div><div class="orbit two"></div><div class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div></section><section class="grid"><article class="panel"><div class="heading">ENGINE STATUS <b>NATIVE C++</b></div><div class="metric"><strong id="midi-state">Not connected</strong><small>MIDI output</small></div><div class="row"><div class="metric"><strong id="midi-channel">1</strong><small>MIDI channel</small></div><div class="metric"><strong id="bend-range">±2 st</strong><small>Pitch Bend range</small></div></div></article><article class="panel"><div class="heading">PITCH TRACKING <b>YIN</b></div><div class="confidence"><span>Confidence</span><strong id="confidence">—</strong></div><div class="meter"><i id="meter-fill"></i></div><p>Audio analysis and MIDI dispatch remain in the native engine. This web layer presents live state.</p></article></section><footer><span>NOVOX DESKTOP</span><span>WEBVIEW2 · OFFLINE</span></footer></main><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>NOVOX</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#" aria-label="NOVOX home">
+        <span class="brand-mark">N</span>
+        <span class="brand-copy"><strong>NOVOX</strong><small>Your voice. Your instrument.</small></span>
+      </a>
+
+      <div class="nav-caption">WORKSPACE</div>
+      <nav class="main-nav" aria-label="Main navigation">
+        <button class="nav-item active" data-view="play" type="button"><span class="nav-icon">◉</span><span>Play</span><kbd>01</kbd></button>
+        <button class="nav-item" data-view="midi" type="button"><span class="nav-icon">⌁</span><span>MIDI</span><kbd>02</kbd></button>
+        <button class="nav-item" data-view="audio" type="button"><span class="nav-icon">∿</span><span>Audio</span><kbd>03</kbd></button>
+        <button class="nav-item" data-view="presets" type="button"><span class="nav-icon">▤</span><span>Presets</span><kbd>04</kbd></button>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="engine-card">
+          <div class="engine-heading"><span class="status-dot" id="engine-dot"></span><span>ENGINE</span><span class="engine-version">C++</span></div>
+          <strong id="engine-state">Connecting</strong>
+          <small>Local processing · Offline</small>
+        </div>
+        <div class="sidebar-foot"><span class="tiny-mark">N</span><span>NOVOX DESKTOP</span><span class="version">1.1</span></div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="page-header">
+        <div>
+          <div class="breadcrumb">NOVOX <span>/</span> <strong id="breadcrumb-current">PLAY</strong></div>
+          <h1 id="page-title">Performance</h1>
+          <p id="page-subtitle">Your voice, translated into musical expression.</p>
+        </div>
+        <div class="header-status"><span class="live-pulse" id="header-live-pulse"></span><span id="connection-label">Connecting to engine</span></div>
+      </header>
+
+      <section class="view active" id="view-play" data-page="play">
+        <div class="section-kicker">LIVE PERFORMANCE <span>•</span> MONOPHONIC PITCH TRACKING</div>
+        <div class="performance-layout">
+          <article class="pitch-stage">
+            <div class="stage-top"><span class="overline">DETECTED NOTE</span><span class="listening-pill"><i></i> <span id="listening-label">LISTENING</span></span></div>
+            <div class="pitch-main">
+              <div class="pitch-copy"><div class="note" id="note">--</div><div class="frequency" id="frequency">Waiting for signal</div></div>
+              <div class="orbital-visual" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="orbit orbit-c"></div><div class="waveform"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+            </div>
+            <div class="stage-bottom"><span>VOICE INPUT</span><span id="input-device-short">Waiting for audio device</span></div>
+          </article>
+
+          <div class="side-metrics">
+            <article class="metric-card confidence-card">
+              <div class="card-label">PITCH CONFIDENCE <span class="mini-icon">◌</span></div>
+              <div class="metric-value"><strong id="confidence">—</strong><span> / 100%</span></div>
+              <div class="meter"><i id="meter-fill"></i></div>
+              <small>YIN detection certainty</small>
+            </article>
+            <article class="metric-card midi-card">
+              <div class="card-label">MIDI OUTPUT <span class="mini-icon">⌁</span></div>
+              <div class="connection-value"><i id="midi-dot"></i><strong id="midi-state">Not connected</strong></div>
+              <small id="midi-device">Choose an output in MIDI settings</small>
+            </article>
+          </div>
+        </div>
+
+        <div class="section-heading"><div><span class="section-kicker">AT A GLANCE</span><h2>Instrument status</h2></div><span class="subtle-tag">LIVE DATA</span></div>
+        <div class="overview-grid">
+          <article class="overview-card"><span class="overview-icon coral">♫</span><div><small>MIDI CHANNEL</small><strong id="midi-channel">01</strong></div><span class="card-arrow">↗</span></article>
+          <article class="overview-card"><span class="overview-icon teal">↕</span><div><small>PITCH BEND RANGE</small><strong id="bend-range">±2 <em>semitones</em></strong></div><span class="card-arrow">↗</span></article>
+          <article class="overview-card"><span class="overview-icon green">∿</span><div><small>INPUT LEVEL</small><strong id="input-level">—</strong></div><span class="card-arrow">↗</span></article>
+        </div>
+      </section>
+
+      <section class="view" id="view-midi" data-page="midi">
+        <div class="section-kicker">ROUTING & EXPRESSION</div>
+        <div class="section-heading page-section-heading"><div><h2>MIDI configuration</h2><p>Current routing state from the native MIDI engine.</p></div><span class="subtle-tag">READ ONLY</span></div>
+        <div class="settings-grid">
+          <article class="detail-card wide"><div class="detail-icon coral">⌁</div><div class="detail-label">OUTPUT DEVICE</div><strong id="midi-output-name">No output selected</strong><p id="midi-output-description">Select a MIDI destination from the existing MIDI settings tab.</p><span class="detail-state" id="midi-output-state">DISCONNECTED</span></article>
+          <article class="detail-card"><div class="detail-icon teal">#</div><div class="detail-label">MIDI CHANNEL</div><strong class="large-number" id="midi-channel-detail">01</strong><p>Channel range: 1–16</p></article>
+          <article class="detail-card"><div class="detail-icon coral">↕</div><div class="detail-label">PITCH BEND</div><strong id="bend-state">Enabled</strong><p>Range <b id="bend-range-detail">±2 semitones</b></p></article>
+        </div>
+        <div class="info-strip"><span class="info-symbol">i</span><p>Configuration controls are being connected to the native engine in the next integration stage. Your current MIDI settings remain available in the original MIDI tab.</p></div>
+      </section>
+
+      <section class="view" id="view-audio" data-page="audio">
+        <div class="section-kicker">INPUT & DETECTION</div>
+        <div class="section-heading page-section-heading"><div><h2>Audio environment</h2><p>Input device and analysis parameters currently active.</p></div><span class="subtle-tag">LIVE DATA</span></div>
+        <article class="detail-card audio-device-card"><div class="device-top"><div><div class="detail-label">ACTIVE INPUT DEVICE</div><strong id="audio-device-name">No input device</strong></div><span class="device-indicator" id="audio-device-state">UNAVAILABLE</span></div><div class="device-specs"><div><small>INPUT CHANNELS</small><strong id="audio-channels">—</strong></div><div><small>SAMPLE RATE</small><strong id="sample-rate">—</strong></div><div><small>BUFFER SIZE</small><strong id="buffer-size">—</strong></div></div></article>
+        <div class="section-heading compact-heading"><div><span class="section-kicker">PROCESSING</span><h2>Detection parameters</h2></div></div>
+        <div class="parameter-grid">
+          <article class="parameter-card"><small>INPUT GAIN</small><strong id="input-gain">100%</strong><div class="parameter-track"><i id="gain-fill"></i></div></article>
+          <article class="parameter-card"><small>PITCH SENSITIVITY</small><strong id="sensitivity">50%</strong><div class="parameter-track"><i id="sensitivity-fill"></i></div></article>
+          <article class="parameter-card"><small>PITCH SMOOTHING</small><strong id="smoothing">35%</strong><div class="parameter-track"><i id="smoothing-fill"></i></div></article>
+        </div>
+        <div class="section-heading compact-heading"><div><span class="section-kicker">RUNTIME HEALTH</span><h2>Diagnostics</h2></div></div>
+        <div class="diagnostics-row"><div><small>DROPPED AUDIO SAMPLES</small><strong id="dropped-audio">0</strong></div><div><small>DROPPED MIDI EVENTS</small><strong id="dropped-midi">0</strong></div><div><small>INPUT RMS</small><strong id="input-rms">0.000</strong></div></div>
+        <div class="info-strip"><span class="info-symbol">i</span><p>Audio controls remain available in the original Audio tab while the web interface is being integrated.</p></div>
+      </section>
+
+      <section class="view" id="view-presets" data-page="presets">
+        <div class="section-kicker">SOUND & WORKFLOW</div>
+        <div class="section-heading page-section-heading"><div><h2>Your presets</h2><p>Keep your preferred vocal instrument setup close at hand.</p></div><span class="subtle-tag">LOCAL STORAGE</span></div>
+        <article class="presets-intro"><div class="preset-art"><span>✳</span><i></i><i></i><i></i></div><div><span class="overline">PERSONAL CONFIGURATIONS</span><h3>Make NOVOX feel like your instrument.</h3><p>Presets are stored locally on this computer. They can capture input gain, pitch sensitivity, smoothing, Pitch Bend, and MIDI routing preferences.</p></div></article>
+        <div class="info-strip"><span class="info-symbol">i</span><p>Preset management is not yet connected to this web page. Use the existing Presets tab to save, load, update, or delete your local configurations.</p></div>
+        <div class="privacy-note"><span class="privacy-icon">⌑</span><div><strong>Private by design</strong><p>Your presets stay on your computer. NOVOX does not need an account or cloud connection.</p></div></div>
+      </section>
+
+      <footer class="app-footer"><span>© NOVOX · YOUR VOICE. YOUR INSTRUMENT.</span><span><i></i> LOCAL ENGINE <b>·</b> OFFLINE FIRST</span></footer>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

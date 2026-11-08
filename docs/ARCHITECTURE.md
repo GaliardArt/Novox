@@ -121,3 +121,8 @@ The UI redesign changes presentation and control placement only. Audio capture, 
 ## Web presentation layer (transition foundation)
 
 On Windows, JUCE WebBrowserComponent uses WebView2 to render the local frontend in `UI/`. The resource provider serves only the allow-listed HTML, CSS, and JavaScript files from the application's adjacent UI directory. Native integration is enabled only for this bundled local content. The JavaScript bridge currently exposes a read-only status snapshot and a frontend-ready event. The WebView is presentation-only: it does not own audio callbacks, pitch analysis, note tracking, or MIDI dispatch. Existing native tabs remain intact until their web equivalents are implemented and validated.
+
+
+## Web UI navigation and status bridge
+
+The WebView2 layer presents four read-only workspace pages: Play, MIDI, Audio, and Presets. The navigation and page state are handled locally in JavaScript. The native `getNovoxStatus` bridge returns a snapshot containing detected pitch and confidence, MIDI connection/channel/Pitch Bend state, audio device metadata, current input gain/sensitivity/smoothing, and audio/MIDI queue-drop counters. No audio callback, pitch detector, MIDI dispatch, or preset persistence logic is moved into the browser. Until each web control has a safe native command counterpart, users continue to configure the corresponding feature in the existing JUCE tabs.
