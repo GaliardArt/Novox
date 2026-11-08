@@ -43,6 +43,24 @@ void NovoxLookAndFeel::applyTo(juce::Component& component)
 void NovoxLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button,
     const juce::Colour& baseColour, bool highlighted, bool down)
 {
+    const auto bounds = button.getLocalBounds().toFloat().reduced(0.5f);
+    if (button.getComponentID() == "novox-nav")
+    {
+        if (button.getToggleState())
+        {
+            g.setColour(accent.withAlpha(0.14f));
+            g.fillRoundedRectangle(bounds, 9.0f);
+            g.setColour(accent);
+            g.fillRoundedRectangle(bounds.getX(), bounds.getY() + 9.0f, 3.0f, bounds.getHeight() - 18.0f, 1.5f);
+        }
+        else if (highlighted || down)
+        {
+            g.setColour(surface.withAlpha(0.72f));
+            g.fillRoundedRectangle(bounds, 9.0f);
+        }
+        return;
+    }
+
     auto colour = baseColour;
     if (!button.isEnabled())
         colour = surface.withAlpha(0.45f);
@@ -51,7 +69,6 @@ void NovoxLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& but
     else if (highlighted)
         colour = button.getToggleState() ? accentHover : surface.brighter(0.12f);
 
-    const auto bounds = button.getLocalBounds().toFloat().reduced(0.5f);
     g.setColour(colour);
     g.fillRoundedRectangle(bounds, 8.0f);
     if (!button.getToggleState() && !down)

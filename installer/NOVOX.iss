@@ -1,8 +1,8 @@
-; NOVOX 1.0.0 optional Inno Setup 6 installer.
+; NOVOX 1.2.0 optional Inno Setup 6 installer.
 ; Run from the repository root after: cmake --install build --config Release --prefix dist
 
 #define AppName "NOVOX"
-#define AppVersion "1.0.0"
+#define AppVersion "1.2.0"
 #define AppPublisher "NOVOX Project"
 
 [Setup]

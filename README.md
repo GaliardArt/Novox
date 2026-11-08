@@ -1,8 +1,12 @@
 # NOVOX
 
-**Version 1.1.0 — WebView2 foundation in development**
+**Version 1.2.0 — Native JUCE workspace**
 
 NOVOX is an offline-first, standalone vocal instrument for turning voice into musical control data. It is written in C++ and uses JUCE for audio input, MIDI integration, and the desktop application.
+
+## Native interface (1.2.0)
+
+The redesigned Play, MIDI, Audio and Presets workspaces are implemented directly in JUCE/C++. The executable does not embed a browser or require WebView2; the former web files remain in the repository as visual references only.
 
 ## Stable release (1.0.0)
 
@@ -56,7 +60,7 @@ cpack --config build/CPackConfig.cmake -C Release
 
 CMake fetches JUCE 8.0.6 on the first configure. An internet connection is needed for that dependency download. The application is designed to run offline after dependencies are available.
 
-The packaging commands create a portable ZIP named `NOVOX-1.1.0-Windows-x64.zip` in the build directory and an install layout under `dist/`. An optional Inno Setup definition is provided at `installer/NOVOX.iss`; compile it from the repository root after creating `dist/` if Inno Setup 6 is installed. The portable ZIP is the canonical package and does not require the installer.
+The packaging commands create a portable ZIP named `NOVOX-1.2.0-Windows-x64.zip` in the build directory and an install layout under `dist/`. An optional Inno Setup definition is provided at `installer/NOVOX.iss`; compile it from the repository root after creating `dist/` if Inno Setup 6 is installed. The portable ZIP is the canonical package and does not require the installer.
 
 ## Regression coverage
 

@@ -16,7 +16,7 @@ AudioDeviceManager
        |                         +---- PitchDetector (YIN + sensitivity gate)
        |                         +---- sequence-stamped PitchResult
        |
-       +---- MainComponent (GUI / 60 Hz refresh + diagnostics)
+       +---- MainComponent (native JUCE GUI / 100 Hz tracking + diagnostics)
                   |
                   +---- NoteTracker (new frames only)
                   |       +---- onset/release debounce
@@ -53,7 +53,7 @@ AudioDeviceManager
 - `PitchBend`: pure conversion from semitone offset to the standard 14-bit pitch-wheel value.
 - `MidiRouter`: MIDI output selection, channel-aware bounded event queue, and dedicated MIDI dispatch thread.
 - `MidiEventQueue`: fixed-capacity, lock-free SPSC queue preserving Note On, Note Off, and Pitch Bend order and payload.
-- `MainComponent`: tabbed JUCE interface (Play, MIDI, Audio, Presets), visual feedback, controls, live audio-device diagnostics, dropped-sample/event counters, and local preference restoration/persistence through JUCE `ApplicationProperties`.
+- `MainComponent`: fully native JUCE workspace (Play, MIDI, Audio, Presets), custom Graphics-rendered panels, controls, live audio-device diagnostics, dropped-sample/event counters, and local preference restoration/persistence through JUCE `ApplicationProperties`.
 - `PresetData`: complete, validated snapshot of the active instrument configuration.
 - `PresetManager`: versioned JSON preset files stored in the user's NOVOX application-data directory; supports listing, save/update, load, and delete.
 
@@ -107,32 +107,14 @@ MIDI output restoration uses an exact device-name match. If the saved device is 
 CTest includes deterministic pitch-detector, note-tracker, MIDI queue, Pitch Bend, pitch-smoothing, preset-storage executables. These tests validate synthetic signal response and filter behavior; they do not certify real-world microphone latency, room-noise rejection, MIDI driver behavior, CPU load, musical performance, or local settings behavior across Windows profiles.
 
 
-## User interface (1.1.0)
+## Native JUCE workspace (1.2.0)
 
-The main window uses native JUCE components arranged in four tabs:
-- **Play:** live detected note, frequency/confidence, Pitch Bend feedback.
-- **MIDI:** output selection, channel, Pitch Bend configuration.
-- **Audio:** input gain, pitch sensitivity, pitch smoothing, active device metadata, and dropped-sample/event diagnostics.
-- **Presets:** local preset selection, save/update, load, and delete.
+The complete application interface is rendered directly by JUCE components and `juce::Graphics`. The former HTML/CSS/JavaScript workspace remains in the repository as a visual reference only; the executable does not load it. WebView2 is not required or downloaded during configuration.
 
-The UI redesign changes presentation and control placement only. Audio capture, worker-thread analysis, note tracking, MIDI event generation, and preset persistence remain in their existing modules.
+The interface is split into four native workspaces:
+- **Play:** live note, frequency, YIN confidence, pitch-class dial and MIDI connection state.
+- **MIDI:** output selection, channel and Pitch Bend enable/range.
+- **Audio:** input device metadata, gain, pitch sensitivity, smoothing and runtime counters.
+- **Presets:** local preset save/update, load and delete.
 
-
-## Web presentation layer (transition foundation)
-
-On Windows, JUCE WebBrowserComponent uses WebView2 to render the local frontend in `UI/`. The resource provider serves only the allow-listed HTML, CSS, and JavaScript files from the application's adjacent UI directory. Native integration is enabled only for this bundled local content. The JavaScript bridge currently exposes a read-only status snapshot and a frontend-ready event. The WebView is presentation-only: it does not own audio callbacks, pitch analysis, note tracking, or MIDI dispatch. Existing native tabs remain intact until their web equivalents are implemented and validated.
-
-
-## Web UI navigation and status bridge
-
-The WebView2 layer presents four workspace pages: Play, MIDI, Audio, and Presets. The navigation and page state are handled locally in JavaScript. The native `getNovoxStatus` bridge returns a snapshot containing detected pitch and confidence, MIDI connection/channel/Pitch Bend state, audio device metadata, current input gain/sensitivity/smoothing, and audio/MIDI queue-drop counters. The Play, Audio, and Presets pages remain presentation-only in this stage; MIDI output, channel, and Pitch Bend controls are connected to validated native commands. No audio callback, pitch detector, or MIDI dispatch logic is moved into the browser.
-
-
-## MIDI controls through the WebView2 bridge
-
-The web MIDI page can request the available output names and issue bounded configuration commands for output selection, channel (1–16), Pitch Bend enablement, and Pitch Bend range (1–12 semitones). Native handlers validate each request and delegate to the existing JUCE controls, MIDI router, and local settings persistence. MIDI device access, note events, Pitch Bend generation, and dispatch remain native C++ responsibilities.
-
-
-## Web workspace visual system
-
-The frontend uses a top-aligned workspace tab bar and nested graphite surfaces with a restrained accent system: cyan for complementary indicators, coral for detected pitch, and green for connection status. The Play page includes a 12-note pitch-class visualization that highlights the detected note. Reference-only percussion triggers and formant controls are excluded because NOVOX is a melodic voice-to-MIDI instrument. All presentation remains in local HTML/CSS/JavaScript; audio and MIDI processing stay native.
+The UI is presentation and control only. Audio capture, YIN pitch detection, note tracking, Pitch Bend generation, MIDI dispatch and preset persistence remain in their existing C++ modules.
