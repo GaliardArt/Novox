@@ -129,6 +129,27 @@ namespace
     }
 
 
+    void testDominantThirdHarmonic()
+    {
+        constexpr double sampleRate = 48000.0;
+        constexpr double fundamental = 220.0;
+        auto signal = makeSine(fundamental, sampleRate, 0.4, 0.025f);
+        const auto second = makeSine(fundamental * 2.0, sampleRate, 0.4, 0.10f);
+        const auto third = makeSine(fundamental * 3.0, sampleRate, 0.4, 0.45f);
+        for (size_t i = 0; i < signal.size(); ++i)
+            signal[i] += second[i] + third[i];
+
+        const auto result = analyseSignal(signal, sampleRate);
+        check(result.voiced && std::abs(result.frequencyHz - fundamental) <= 5.0f,
+              "Fundamental is retained when the third harmonic dominates",
+              "expected 220 Hz, detected " + std::to_string(result.frequencyHz) + " Hz");
+
+        const auto pureTone = analyseSignal(makeSine(660.0, sampleRate, 0.4), sampleRate);
+        check(pureTone.voiced && std::abs(pureTone.frequencyHz - 660.0f) <= 5.0f,
+              "Third-subharmonic check does not lower a clean high tone",
+              "detected " + std::to_string(pureTone.frequencyHz) + " Hz");
+    }
+
     void testAntiAliasing()
     {
         constexpr double sampleRate = 48000.0;
@@ -209,6 +230,7 @@ int main()
     testHarmonicSignal();
     testAntiAliasing();
     testOctaveErrorCorrection();
+    testDominantThirdHarmonic();
     testNoiseRejection();
     testAdaptiveAnalysisWindow();
     testInvalidInput();

@@ -131,39 +131,63 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
     if (selectedLag < 0)
         return result;
 
-    // YIN may select the second harmonic when the fundamental is weak.
-    // Check the actual spectral energy at half the selected frequency before
-    // correcting down an octave. A Hann-windowed projection reduces leakage,
-    // while the relative threshold keeps clean single-frequency tones intact.
-    const int lowerOctaveLag = selectedLag * 2;
-    if (lowerOctaveLag <= maxLag)
+    // YIN can lock onto a strong harmonic when the fundamental is weak.
+    // Compare Hann-windowed sinusoidal projections before accepting a lower
+    // subharmonic. Requiring support from multiple harmonics avoids lowering
+    // clean single-tone inputs just because of spectral leakage.
+    const auto estimateAmplitude = [this, analysisWindowSize](double frequency)
     {
-        const auto estimateAmplitude = [this, analysisWindowSize](double frequency)
+        double real = 0.0;
+        double imaginary = 0.0;
+        double windowSum = 0.0;
+        for (int i = 0; i < analysisWindowSize; ++i)
         {
-            double real = 0.0;
-            double imaginary = 0.0;
-            double windowSum = 0.0;
-            for (int i = 0; i < analysisWindowSize; ++i)
-            {
-                const double window = 0.5 - 0.5 * std::cos(
-                    2.0 * 3.14159265358979323846 * i / (analysisWindowSize - 1));
-                const double phase = 2.0 * 3.14159265358979323846
-                                   * frequency * i / currentSampleRate;
-                const double value = static_cast<double>(analysisFrame[static_cast<size_t>(i)]) * window;
-                real += value * std::cos(phase);
-                imaginary -= value * std::sin(phase);
-                windowSum += window;
-            }
-            return 2.0 * std::sqrt(real * real + imaginary * imaginary) / windowSum;
-        };
+            const double window = 0.5 - 0.5 * std::cos(
+                2.0 * 3.14159265358979323846 * i / (analysisWindowSize - 1));
+            const double phase = 2.0 * 3.14159265358979323846
+                               * frequency * i / currentSampleRate;
+            const double value = static_cast<double>(analysisFrame[static_cast<size_t>(i)]) * window;
+            real += value * std::cos(phase);
+            imaginary -= value * std::sin(phase);
+            windowSum += window;
+        }
+        return 2.0 * std::sqrt(real * real + imaginary * imaginary) / windowSum;
+    };
 
-        const double selectedFrequency = currentSampleRate / static_cast<double>(selectedLag);
-        const double lowerFrequency = currentSampleRate / static_cast<double>(lowerOctaveLag);
-        const double selectedAmplitude = estimateAmplitude(selectedFrequency);
+    const double selectedFrequency = currentSampleRate / static_cast<double>(selectedLag);
+    const double selectedAmplitude = estimateAmplitude(selectedFrequency);
+    const int octaveLag = selectedLag * 2;
+    if (octaveLag <= maxLag)
+    {
+        const double lowerFrequency = currentSampleRate / static_cast<double>(octaveLag);
         const double lowerAmplitude = estimateAmplitude(lowerFrequency);
+        const double thirdHarmonicAmplitude = estimateAmplitude(lowerFrequency * 3.0);
+        const double minimumSupport = std::max(0.0015, selectedAmplitude * 0.02);
 
-        if (lowerAmplitude > std::max(0.001, selectedAmplitude * 0.03))
-            selectedLag = lowerOctaveLag;
+        if (lowerAmplitude > std::max(0.0015, selectedAmplitude * 0.03)
+            && thirdHarmonicAmplitude > minimumSupport)
+        {
+            selectedLag = octaveLag;
+        }
+    }
+
+    // Also check a third-subharmonic candidate. This covers voices whose
+    // second or third harmonic dominates the fundamental without assuming
+    // that every strong partial is an octave relationship.
+    const int thirdSubharmonicLag = selectedLag * 3;
+    if (thirdSubharmonicLag <= maxLag)
+    {
+        const double candidateFrequency = currentSampleRate / static_cast<double>(thirdSubharmonicLag);
+        const double fundamentalAmplitude = estimateAmplitude(candidateFrequency);
+        const double secondHarmonicAmplitude = estimateAmplitude(candidateFrequency * 2.0);
+        const double thirdHarmonicAmplitude = estimateAmplitude(candidateFrequency * 3.0);
+        const double minimumSupport = std::max(0.0015, thirdHarmonicAmplitude * 0.025);
+
+        if (fundamentalAmplitude > std::max(0.0015, thirdHarmonicAmplitude * 0.03)
+            && secondHarmonicAmplitude > minimumSupport)
+        {
+            selectedLag = thirdSubharmonicLag;
+        }
     }
 
     float refinedLag = static_cast<float>(selectedLag);
