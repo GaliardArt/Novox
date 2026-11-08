@@ -4,6 +4,7 @@
 #include "MidiRouter.h"
 #include "NoteTracker.h"
 #include "PitchSmoother.h"
+#include "PitchStabilityGuard.h"
 #include "PresetManager.h"
 #include "NovoxLookAndFeel.h"
 #include <cstdint>
@@ -51,6 +52,8 @@ private:
     MidiRouter midiRouter;
     NoteTracker noteTracker;
     PitchSmoother pitchSmoother;
+    PitchStabilityGuard pitchStabilityGuard;
+    PitchResult latestGuardedPitch;
     juce::AudioDeviceManager deviceManager;
 
     juce::ComboBox midiOutputSelector, channelSelector, presetSelector;
@@ -59,9 +62,10 @@ private:
     juce::ToggleButton noteTransitionEnabled { "Note transition smoothing" };
     juce::ToggleButton autoTuneEnabled { "Auto-Tune" };
     juce::ToggleButton noiseReductionEnabled { "Noise reduction (gate)" };
+    juce::ToggleButton pitchStabilityEnabled { "Pitch Stability Guard" };
     juce::ComboBox autoTuneKeySelector, autoTuneScaleSelector, inputChannelSelector;
     juce::TextButton calibrateNoiseButton { "Calibrate 2s" };
-    juce::Slider bendRangeSlider, gainSlider, sensitivitySlider, smoothingSlider, noteTransitionSlider, noiseReductionSlider;
+    juce::Slider bendRangeSlider, gainSlider, sensitivitySlider, smoothingSlider, noteTransitionSlider, noiseReductionSlider, pitchDropToleranceSlider, pitchDropHoldSlider;
     juce::TextEditor presetNameEditor;
     juce::TextButton savePresetButton { "Save / Update" },
                      loadPresetButton { "Load preset" },

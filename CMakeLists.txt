@@ -20,7 +20,7 @@ target_sources(NOVOX PRIVATE
     Source/PitchDetector.h Source/PitchDetector.cpp Source/NoiseReducer.h
     Source/VoiceEngine.h Source/VoiceEngine.cpp Source/InputChannelSelector.h
     Source/MidiRouter.h Source/MidiRouter.cpp Source/MidiEventQueue.h
-    Source/NoteTracker.h Source/NoteTracker.cpp Source/PitchBend.h Source/PitchSmoother.h
+    Source/NoteTracker.h Source/NoteTracker.cpp Source/PitchBend.h Source/PitchSmoother.h Source/PitchStabilityGuard.h
     Source/PresetData.h Source/PresetManager.h Source/PresetManager.cpp
 )
 target_compile_definitions(NOVOX PRIVATE
@@ -68,12 +68,15 @@ if(BUILD_TESTING)
     add_executable(NOVOXInputChannelTests Tests/InputChannelSelectorTests.cpp)
     target_include_directories(NOVOXInputChannelTests PRIVATE Source)
     add_test(NAME NOVOX.InputChannelSelector COMMAND NOVOXInputChannelTests)
+    add_executable(NOVOXPitchStabilityTests Tests/PitchStabilityGuardTests.cpp)
+    target_include_directories(NOVOXPitchStabilityTests PRIVATE Source)
+    add_test(NAME NOVOX.PitchStabilityGuard COMMAND NOVOXPitchStabilityTests)
     if(MSVC)
-        foreach(testTarget NOVOXPitchTests NOVOXTrackingTests NOVOXMidiQueueTests NOVOXPitchBendTests NOVOXPitchSmootherTests NOVOXPresetManagerTests NOVOXNoiseReducerTests NOVOXInputChannelTests)
+        foreach(testTarget NOVOXPitchTests NOVOXTrackingTests NOVOXMidiQueueTests NOVOXPitchBendTests NOVOXPitchSmootherTests NOVOXPresetManagerTests NOVOXNoiseReducerTests NOVOXInputChannelTests NOVOXPitchStabilityTests)
             target_compile_options(${testTarget} PRIVATE /W4 /permissive-)
         endforeach()
     else()
-        foreach(testTarget NOVOXPitchTests NOVOXTrackingTests NOVOXMidiQueueTests NOVOXPitchBendTests NOVOXPitchSmootherTests NOVOXPresetManagerTests NOVOXNoiseReducerTests NOVOXInputChannelTests)
+        foreach(testTarget NOVOXPitchTests NOVOXTrackingTests NOVOXMidiQueueTests NOVOXPitchBendTests NOVOXPitchSmootherTests NOVOXPresetManagerTests NOVOXNoiseReducerTests NOVOXInputChannelTests NOVOXPitchStabilityTests)
             target_compile_options(${testTarget} PRIVATE -Wall -Wextra -Wpedantic)
         endforeach()
     endif()

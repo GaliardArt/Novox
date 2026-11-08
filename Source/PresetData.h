@@ -17,6 +17,9 @@ struct PresetData
     int autoTuneScale = 1;
     bool noiseReductionEnabled = false;
     double noiseReductionStrength = 35.0;
+    bool pitchStabilityEnabled = false;
+    double pitchDropToleranceCents = 45.0;
+    int pitchDropHoldFrames = 3;
     int inputChannelMode = 0;
     int pitchBendRange = 2;
     int midiChannel = 1;
@@ -33,6 +36,8 @@ struct PresetData
             ? std::clamp(noteTransitionStability, 3.0, 12.0) : 6.0;
         autoTuneTonic=std::clamp(autoTuneTonic,0,11); autoTuneScale=std::clamp(autoTuneScale,0,2);
         noiseReductionStrength = std::isfinite(noiseReductionStrength) ? std::clamp(noiseReductionStrength, 0.0, 100.0) : 35.0;
+        pitchDropToleranceCents = std::isfinite(pitchDropToleranceCents) ? std::clamp(pitchDropToleranceCents, 10.0, 150.0) : 45.0;
+        pitchDropHoldFrames = std::clamp(pitchDropHoldFrames, 1, 8);
         inputChannelMode = std::clamp(inputChannelMode, 0, 3);
         pitchBendRange = std::clamp(pitchBendRange, 1, 12);
         midiChannel = std::clamp(midiChannel, 1, 16);
