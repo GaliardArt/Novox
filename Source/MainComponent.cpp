@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include "PitchBend.h"
+#include <cmath>
 
 namespace
 {
@@ -33,6 +34,10 @@ MainComponent::MainComponent()
     const int savedBendRange = juce::jlimit(1, 12, settings->getIntValue("pitchBendRange", 2));
     const int savedChannel = juce::jlimit(1, 16, settings->getIntValue("midiChannel", 1));
     const bool savedBendEnabled = settings->getBoolValue("pitchBendEnabled", true);
+    const bool savedDrumMidiEnabled = settings->getBoolValue("drumMidiEnabled", false);
+    const int savedKickNote = DrumMapping::clampNote(settings->getIntValue("drumKickNote", DrumMapping::defaultKick));
+    const int savedSnareNote = DrumMapping::clampNote(settings->getIntValue("drumSnareNote", DrumMapping::defaultSnare));
+    const int savedHiHatNote = DrumMapping::clampNote(settings->getIntValue("drumHiHatNote", DrumMapping::defaultHiHat));
     preferredMidiOutputName = settings->getValue("midiOutputName");
 
     title.setText("NOVOX", juce::dontSendNotification);
@@ -63,6 +68,65 @@ MainComponent::MainComponent()
     percussionLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     percussionLabel.setJustificationType(juce::Justification::centred);
     addAndMakeVisible(percussionLabel);
+
+    drumMidiEnabled.setToggleState(savedDrumMidiEnabled, juce::dontSendNotification);
+    drumMidiEnabled.onClick = [this] {
+        settings->setValue("drumMidiEnabled", drumMidiEnabled.getToggleState());
+        if (!drumMidiEnabled.getToggleState())
+            releaseAllDrumNotes();
+        saveSettings();
+    };
+    addAndMakeVisible(drumMidiEnabled);
+
+    drumMappingLabel.setText("General MIDI drum mapping (channel 10)", juce::dontSendNotification);
+    drumMappingLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+    drumMappingLabel.setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(drumMappingLabel);
+
+    const auto populateDrumNotes = [](juce::ComboBox& selector, int selectedNote) {
+        for (int note = DrumMapping::minimumNote; note <= DrumMapping::maximumNote; ++note)
+            selector.addItem(juce::String(note) + " - "
+                + juce::String(DrumMapping::gmName(note).data()), note + 1);
+        selector.setSelectedId(selectedNote + 1, juce::dontSendNotification);
+    };
+    populateDrumNotes(kickNoteSelector, savedKickNote);
+    populateDrumNotes(snareNoteSelector, savedSnareNote);
+    populateDrumNotes(hiHatNoteSelector, savedHiHatNote);
+    kickNoteSelector.onChange = [this] {
+        if (pendingDrumNotes[0] >= 0) {
+            midiRouter.drumNoteOff(pendingDrumNotes[0]);
+            pendingDrumNotes[0] = -1;
+        }
+        settings->setValue("drumKickNote", kickNoteSelector.getSelectedId() - 1);
+        saveSettings();
+    };
+    snareNoteSelector.onChange = [this] {
+        if (pendingDrumNotes[1] >= 0) {
+            midiRouter.drumNoteOff(pendingDrumNotes[1]);
+            pendingDrumNotes[1] = -1;
+        }
+        settings->setValue("drumSnareNote", snareNoteSelector.getSelectedId() - 1);
+        saveSettings();
+    };
+    hiHatNoteSelector.onChange = [this] {
+        if (pendingDrumNotes[2] >= 0) {
+            midiRouter.drumNoteOff(pendingDrumNotes[2]);
+            pendingDrumNotes[2] = -1;
+        }
+        settings->setValue("drumHiHatNote", hiHatNoteSelector.getSelectedId() - 1);
+        saveSettings();
+    };
+    addAndMakeVisible(kickNoteSelector);
+    addAndMakeVisible(snareNoteSelector);
+    addAndMakeVisible(hiHatNoteSelector);
+
+    kickLabel.setText("Kick", juce::dontSendNotification);
+    snareLabel.setText("Snare", juce::dontSendNotification);
+    hiHatLabel.setText("Hi-hat", juce::dontSendNotification);
+    for (auto* label : { &kickLabel, &snareLabel, &hiHatLabel }) {
+        label->setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+        addAndMakeVisible(*label);
+    }
 
     gainLabel.setText("Input gain", juce::dontSendNotification);
     gainLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
@@ -163,13 +227,14 @@ MainComponent::MainComponent()
     else
         deviceManager.addAudioCallback(&engine);
 
-    setSize(960, 900);
+    setSize(960, 1120);
     startTimerHz(60);
 }
 
 MainComponent::~MainComponent()
 {
     stopTimer();
+    releaseAllDrumNotes();
     if (noteTracker.getActiveNote() >= 0)
     {
         resetPitchBend();
@@ -189,6 +254,7 @@ void MainComponent::saveSettings()
 
 void MainComponent::refreshMidiOutputs()
 {
+    releaseAllDrumNotes();
     const int activeNote = noteTracker.getActiveNote();
     if (activeNote >= 0)
     {
@@ -222,6 +288,7 @@ void MainComponent::refreshMidiOutputs()
 
 void MainComponent::selectMidiOutput()
 {
+    releaseAllDrumNotes();
     const int activeNote = noteTracker.getActiveNote();
     if (activeNote >= 0)
     {
@@ -327,6 +394,72 @@ void MainComponent::updateNoteTracking(const PitchResult& pitch)
     sendPitchBend(pitch);
 }
 
+
+void MainComponent::dispatchPercussion(const VocalPercussionResult& percussion)
+{
+    if (!drumMidiEnabled.getToggleState() || !midiRouter.isOpen())
+        return;
+
+    int slot = -1;
+    int note = -1;
+    switch (percussion.type)
+    {
+        case VocalPercussionType::kick:
+            slot = static_cast<int>(DrumMapping::Part::kick);
+            note = kickNoteSelector.getSelectedId() - 1;
+            break;
+        case VocalPercussionType::snare:
+            slot = static_cast<int>(DrumMapping::Part::snare);
+            note = snareNoteSelector.getSelectedId() - 1;
+            break;
+        case VocalPercussionType::hiHat:
+            slot = static_cast<int>(DrumMapping::Part::hiHat);
+            note = hiHatNoteSelector.getSelectedId() - 1;
+            break;
+        case VocalPercussionType::none:
+            return;
+    }
+
+    if (slot < 0 || note < DrumMapping::minimumNote || note > DrumMapping::maximumNote)
+        return;
+
+    if (pendingDrumNotes[static_cast<size_t>(slot)] >= 0)
+        midiRouter.drumNoteOff(pendingDrumNotes[static_cast<size_t>(slot)]);
+
+    const auto velocity = static_cast<juce::uint8>(
+        juce::jlimit(1, 127, static_cast<int>(std::lround(percussion.confidence * 127.0f))));
+    midiRouter.drumNoteOn(note, velocity);
+    pendingDrumNotes[static_cast<size_t>(slot)] = note;
+    drumNoteOffTimes[static_cast<size_t>(slot)] =
+        juce::Time::getMillisecondCounter() + 90U;
+}
+
+void MainComponent::releaseDueDrumNotes()
+{
+    const auto now = juce::Time::getMillisecondCounter();
+    for (size_t i = 0; i < pendingDrumNotes.size(); ++i)
+    {
+        if (pendingDrumNotes[i] >= 0
+            && static_cast<int32_t>(now - drumNoteOffTimes[i]) >= 0)
+        {
+            midiRouter.drumNoteOff(pendingDrumNotes[i]);
+            pendingDrumNotes[i] = -1;
+        }
+    }
+}
+
+void MainComponent::releaseAllDrumNotes()
+{
+    for (auto& note : pendingDrumNotes)
+    {
+        if (note >= 0)
+        {
+            midiRouter.drumNoteOff(note);
+            note = -1;
+        }
+    }
+}
+
 void MainComponent::paint(juce::Graphics& g)
 {
     g.fillAll(juce::Colour(0xff15191f));
@@ -366,15 +499,28 @@ void MainComponent::resized()
     channelSelector.setBounds(area.removeFromTop(34).withSizeKeepingCentre(240, 34));
     area.removeFromTop(6);
     refreshButton.setBounds(area.removeFromTop(36).withSizeKeepingCentre(180, 32));
+    area.removeFromTop(12);
+    drumMidiEnabled.setBounds(area.removeFromTop(28).withSizeKeepingCentre(300, 28));
+    drumMappingLabel.setBounds(area.removeFromTop(24));
+    auto mappingRow = area.removeFromTop(32).withSizeKeepingCentre(660, 32);
+    const int cellWidth = mappingRow.getWidth() / 3;
+    kickLabel.setBounds(mappingRow.removeFromLeft(cellWidth / 3));
+    kickNoteSelector.setBounds(mappingRow.removeFromLeft(cellWidth * 2 / 3));
+    snareLabel.setBounds(mappingRow.removeFromLeft(cellWidth / 3));
+    snareNoteSelector.setBounds(mappingRow.removeFromLeft(cellWidth * 2 / 3));
+    hiHatLabel.setBounds(mappingRow.removeFromLeft(cellWidth / 3));
+    hiHatNoteSelector.setBounds(mappingRow);
 }
 
 void MainComponent::timerCallback()
 {
     const auto pitch = engine.getLatestPitch();
     const auto percussion = engine.getLatestPercussion();
+    releaseDueDrumNotes();
     if (percussion.sequence != 0 && percussion.sequence != lastPercussionSequence)
     {
         lastPercussionSequence = percussion.sequence;
+        dispatchPercussion(percussion);
         const char* hitName = "Unknown";
         switch (percussion.type)
         {

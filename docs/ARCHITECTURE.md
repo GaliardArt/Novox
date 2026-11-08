@@ -13,7 +13,8 @@ AudioDeviceManager
        |                         v
        |                VoiceEngine worker thread
        |                         |
-       |                         +---- PitchDetector (YIN + sensitivity gate)\n       |                         +---- VocalPercussionDetector (transient features)
+       |                         +---- PitchDetector (YIN + sensitivity gate)
+       |                         +---- VocalPercussionDetector (transient features)
        |                         +---- sequence-stamped PitchResult
        |
        +---- MainComponent (GUI / 60 Hz refresh)
@@ -25,6 +26,7 @@ AudioDeviceManager
                   +---- PitchSmoother (MIDI bend only)
                   |
                   +---- PitchBend (fractional semitone -> 14-bit wheel)
+                  +---- DrumMapping (GM note assignments, channel 10)
                   |
                   +---- MidiRouter (GUI producer)
                   |           |
@@ -37,13 +39,15 @@ AudioDeviceManager
                               |
                               +---- local PropertiesFile
                                     (gain, sensitivity, smoothing,
-                                     bend settings, MIDI channel/output)
+                                     bend settings, MIDI channel/output, drum mapping)
 ```
 
 ## Core modules
 
 - `VoiceEngine`: audio capture handoff, preallocated SPSC FIFO, worker lifecycle, and coherent latest-pitch publication.
-- `PitchDetector`: YIN-style monophonic fundamental estimation with adjustable RMS and confidence thresholds.\n- `VocalPercussionDetector`: bounded, allocation-free transient analysis for kick-, snare-, and hi-hat-like vocal sounds; runs on the audio worker and publishes visual feedback to the GUI.
+- `PitchDetector`: YIN-style monophonic fundamental estimation with adjustable RMS and confidence thresholds.
+- `DrumMapping`: GM percussion note defaults, configurable note range, and fixed channel 10 routing.
+- `VocalPercussionDetector`: bounded, allocation-free transient analysis for kick-, snare-, and hi-hat-like vocal sounds; runs on the audio worker and publishes visual feedback to the GUI.
 - `NoteTracker`: note onset/offset confirmation and pitch-boundary hysteresis.
 - `PitchSmoother`: optional one-pole smoothing and deadband applied to MIDI bend offsets; raw pitch display and note detection remain unfiltered.
 - `PitchBend`: pure conversion from semitone offset to the standard 14-bit pitch-wheel value.
@@ -51,9 +55,17 @@ AudioDeviceManager
 - `MidiEventQueue`: fixed-capacity, lock-free SPSC queue preserving Note On, Note Off, and Pitch Bend order and payload.
 - `MainComponent`: visual feedback, controls, and local preference restoration/persistence through JUCE `ApplicationProperties`.
 
-## Vocal percussion detection\n\nThe percussion detector processes the same worker-thread audio blocks as the pitch detector. It uses a 256-sample analysis frame, a low/high-band energy split, zero-crossing rate, onset ratio, and crest factor. A 75 ms refractory interval limits duplicate hits. The classifier is intentionally lightweight and does not use FFTs or allocate in the real-time path. Initial classification is heuristic and requires real microphone/performance validation. This milestone provides visual event feedback only; MIDI drum mapping is a later step.\n\n## Local preferences
+## MIDI drum mapping
 
-JUCE `ApplicationProperties` owns a per-user `PropertiesFile` in the NOVOX application settings directory. The application stores input gain, pitch sensitivity, pitch smoothing, Pitch Bend enable state, Pitch Bend range, MIDI channel, and the preferred MIDI output name. Numeric values are clamped to supported UI ranges when loaded. Values are saved after user changes and again during shutdown.
+The GUI can optionally convert recognized kick, snare, and hi-hat events into MIDI note triggers. Drum messages always use General MIDI channel 10, independent of the selected melodic channel and Pitch Bend. Defaults are note 36 (Bass Drum 1), 38 (Acoustic Snare), and 42 (Closed Hi-Hat); the UI allows assignments across notes 35–81 and persists them locally. Trigger velocity is derived from detector confidence. The GUI sends a short 90 ms note gate and releases pending drum notes when the feature is disabled, the output changes, or the application closes.
+
+## Vocal percussion detection
+
+The percussion detector processes the same worker-thread audio blocks as the pitch detector. It uses a 256-sample analysis frame, a low/high-band energy split, zero-crossing rate, onset ratio, and crest factor. A 75 ms refractory interval limits duplicate hits. The classifier is intentionally lightweight and does not use FFTs or allocate in the real-time path. Initial classification is heuristic and requires real microphone/performance validation.
+
+## Local preferences
+
+JUCE `ApplicationProperties` owns a per-user `PropertiesFile` in the NOVOX application settings directory. The application stores input gain, pitch sensitivity, pitch smoothing, Pitch Bend enable state, Pitch Bend range, MIDI channel, preferred MIDI output name, drum MIDI enable state, and kick/snare/hi-hat note assignments. Numeric values are clamped to supported UI ranges when loaded. Values are saved after user changes and again during shutdown.
 
 MIDI output restoration uses an exact device-name match. If the saved device is absent, NOVOX leaves the output unselected rather than choosing another device. The preference remains saved until the user explicitly selects a different output or chooses no output.
 
@@ -90,4 +102,4 @@ MIDI output restoration uses an exact device-name match. If the saved device is 
 
 ## Validation
 
-CTest includes deterministic pitch-detector, note-tracker, MIDI queue, Pitch Bend, and pitch-smoothing executables. These tests validate synthetic signal response and filter behavior; they do not certify real-world microphone latency, room-noise rejection, MIDI driver behavior, CPU load, musical performance, or local settings behavior across Windows profiles.
+CTest includes deterministic pitch-detector, note-tracker, MIDI queue, Pitch Bend, pitch-smoothing, drum-mapping, and percussion-detector executables. These tests validate synthetic signal response and filter behavior; they do not certify real-world microphone latency, room-noise rejection, MIDI driver behavior, CPU load, musical performance, or local settings behavior across Windows profiles.

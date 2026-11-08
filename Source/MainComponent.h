@@ -5,6 +5,9 @@
 #include "NoteTracker.h"
 #include "PitchSmoother.h"
 #include "VocalPercussionDetector.h"
+#include "DrumMapping.h"
+#include <array>
+#include <cstdint>
 
 class MainComponent final : public juce::Component,
                             private juce::Timer
@@ -25,6 +28,9 @@ private:
     void sendPitchBend(const PitchResult& pitch);
     void resetPitchBend();
     void saveSettings();
+    void dispatchPercussion(const VocalPercussionResult& percussion);
+    void releaseDueDrumNotes();
+    void releaseAllDrumNotes();
 
     juce::ApplicationProperties appProperties;
     juce::PropertiesFile* settings = nullptr;
@@ -38,15 +44,20 @@ private:
     juce::Label title, status, noteLabel, frequencyLabel, midiLabel, percussionLabel;
     juce::Label gainLabel, bendRangeLabel, channelLabel, pitchBendLabel;
     juce::Label sensitivityLabel, smoothingLabel;
+    juce::Label drumMappingLabel, kickLabel, snareLabel, hiHatLabel;
     juce::Slider gainSlider, bendRangeSlider, sensitivitySlider, smoothingSlider;
     juce::ComboBox midiOutputSelector, channelSelector;
+    juce::ComboBox kickNoteSelector, snareNoteSelector, hiHatNoteSelector;
     juce::TextButton refreshButton { "Refresh MIDI" };
     juce::ToggleButton pitchBendEnabled { "Enable Pitch Bend" };
+    juce::ToggleButton drumMidiEnabled { "Send percussion to MIDI (channel 10)" };
     juce::AudioDeviceManager deviceManager;
 
     uint64_t lastPitchSequence = 0;
     int lastPitchBendValue = 8192;
     uint64_t lastPercussionSequence = 0;
+    std::array<int, 3> pendingDrumNotes { -1, -1, -1 };
+    std::array<uint32_t, 3> drumNoteOffTimes {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

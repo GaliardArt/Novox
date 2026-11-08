@@ -18,11 +18,13 @@ public:
     void noteOn(int note, juce::uint8 velocity = 100);
     void noteOff(int note);
     void pitchBend(int value);
+    void drumNoteOn(int note, juce::uint8 velocity = 100);
+    void drumNoteOff(int note);
     uint64_t getDroppedEvents() const noexcept { return droppedEvents.load(); }
 
 private:
     void run() override;
-    void enqueue(const MidiEvent& event) noexcept;
+    void enqueue(const MidiEvent& event, bool percussionChannel = false) noexcept;
 
     juce::Array<juce::MidiDeviceInfo> devices;
     std::unique_ptr<juce::MidiOutput> output;

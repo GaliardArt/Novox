@@ -2,7 +2,7 @@
 
 NOVOX is an offline-first, standalone vocal instrument for turning voice into musical control data. It is written in C++ and uses JUCE for audio input, MIDI integration, and the desktop application.
 
-## Current milestone (0.6.0 — vocal percussion detection)
+## Current milestone (0.7.0 — MIDI drum mapping)
 
 - JUCE standalone desktop application and microphone capture
 - YIN-style fundamental-frequency estimation with confidence and RMS level
@@ -15,12 +15,21 @@ NOVOX is an offline-first, standalone vocal instrument for turning voice into mu
 - Ordered asynchronous MIDI Note On/Off and 14-bit Pitch Bend delivery
 - Configurable Pitch Bend enable/disable and range from ±1 to ±12 semitones
 - Configurable MIDI output channel (1–16), captured per queued event
-- Persistent local preferences for input gain, sensitivity, smoothing, bend enable/range, MIDI channel, and preferred MIDI output
+- Persistent local preferences for input gain, sensitivity, smoothing, bend enable/range, MIDI channel/output, drum MIDI enable state, and drum note assignments
 - Saved MIDI output is automatically restored when that device is available; unavailable devices remain safely unselected
 - Real-time vocal percussion classification for kick, snare, and hi-hat with confidence feedback
-- Automated pitch-detector, note-tracker, MIDI-queue, Pitch Bend, smoothing, and percussion regression tests
+- Optional MIDI drum triggering on General MIDI channel 10, with configurable kick/snare/hi-hat note assignments and velocity derived from detector confidence
+- Automated pitch-detector, note-tracker, MIDI-queue, Pitch Bend, smoothing, drum-mapping, and percussion regression tests
 
-## Vocal percussion detection\n\nA lightweight transient classifier runs on the existing audio worker (never inside the audio callback). It estimates low/high-band energy, zero-crossing rate, onset strength, and crest factor to identify kick-like, snare-like, and hi-hat-like vocal transients. Detection is intended as an initial vocal-percussion layer; microphone and performance testing are still required. Percussion events are currently displayed in the app and are not yet mapped to MIDI drum notes.\n\n## Local settings
+## MIDI drum mapping
+
+Percussion MIDI is disabled by default. When enabled, kick/snare/hi-hat events are sent on fixed General MIDI channel 10, independently of the melodic channel and Pitch Bend. Default note assignments are 36 (Bass Drum 1), 38 (Acoustic Snare), and 42 (Closed Hi-Hat); each can be changed in the UI across the standard GM percussion range. Trigger velocity follows detection confidence. Notes are released after a short 90 ms gate, and pending notes are released when MIDI output changes, the feature is disabled, or the application closes.
+
+## Vocal percussion detection
+
+The lightweight transient classifier runs on the audio worker and provides the kick/snare/hi-hat events used by the MIDI mapper. It remains heuristic and requires real microphone/performance validation.
+
+## Local settings
 
 Preferences are stored in the current user's application settings directory using JUCE's local PropertiesFile support. Settings are written locally and restored on the next launch. NOVOX does not transmit preferences or require an account or network connection. If a saved MIDI output is not present at startup, NOVOX keeps the preference and waits for the user to reconnect or select an available device.
 
@@ -42,7 +51,10 @@ CMake fetches JUCE 8.0.6 on the first configure. An internet connection is neede
 - `NOVOXTrackingTests`: onset debounce, transient rejection, release debounce, note transitions, and semitone hysteresis.
 - `NOVOXMidiQueueTests`: empty queue, FIFO order and payload for note and bend events, bounded-capacity overflow, recovery, and ring-buffer wraparound.
 - `NOVOXPitchBendTests`: center, positive/negative direction, clamping, configurable range, invalid input, and fractional semitone offsets.
-- `NOVOXPitchSmootherTests`: transparent mode, convergence, micro-variation rejection, reset, invalid values, and parameter clamping.\n- `NOVOXVocalPercussionTests`: synthetic kick/snare/hi-hat transients, silence, sustained-tone rejection, and invalid input.
+- `NOVOXPitchSmootherTests`: transparent mode, convergence, micro-variation rejection, reset, invalid values, and parameter clamping.
+- `NOVOXDrumMappingTests`: GM channel, default note assignments, range clamping, and note labels.
+- `NOVOXDrumMappingTests`: GM channel, default note assignments, range clamping, and note labels.
+- `NOVOXVocalPercussionTests`: synthetic kick/snare/hi-hat transients, silence, sustained-tone rejection, and invalid input.
 
 The tests are deterministic. They do not replace microphone, room-noise, end-to-end latency, MIDI-driver, or musical-performance testing. Local preference read/write behavior still needs an end-to-end Windows application check.
 
