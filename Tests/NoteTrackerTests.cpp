@@ -86,6 +86,28 @@ namespace
               "Confirmed transition sends note-off then note-on");
     }
 
+    void testOptionalTransitionSmoothing()
+    {
+        NoteTracker tracker;
+        tracker.process(note(69.0f));
+        tracker.process(note(69.0f));
+        tracker.process(note(69.0f));
+        tracker.setTransitionSmoothing(true, 6);
+        for (int i = 0; i < 5; ++i)
+            check(tracker.process(note(70.0f)).noteOn == -1,
+                  "Enabled transition smoothing waits for configured stability");
+        const auto update = tracker.process(note(70.0f));
+        check(update.noteOff == 69 && update.noteOn == 70,
+              "Enabled transition smoothing commits after six stable frames");
+
+        tracker.setTransitionSmoothing(false, 12);
+        tracker.process(note(71.0f));
+        tracker.process(note(71.0f));
+        const auto directUpdate = tracker.process(note(71.0f));
+        check(directUpdate.noteOn == 71,
+              "Disabled transition smoothing preserves original three-frame behavior");
+    }
+
     void testHysteresis()
     {
         NoteTracker tracker;
@@ -114,6 +136,7 @@ int main()
     testTransientRejection();
     testReleaseDebounce();
     testNoteTransition();
+    testOptionalTransitionSmoothing();
     testHysteresis();
     std::cout << "\nChecks: " << checks << ", failures: " << failures << '\n';
     return failures == 0 ? 0 : 1;

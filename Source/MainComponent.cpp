@@ -53,6 +53,8 @@ MainComponent::MainComponent()
     const double savedGain = juce::jlimit(0.1, 4.0, settings->getDoubleValue("inputGain", 1.0));
     const double savedSensitivity = juce::jlimit(0.0, 100.0, settings->getDoubleValue("pitchSensitivity", 50.0));
     const double savedSmoothing = juce::jlimit(0.0, 100.0, settings->getDoubleValue("pitchSmoothing", 35.0));
+    const bool savedNoteTransitionEnabled = settings->getBoolValue("noteTransitionSmoothingEnabled", false);
+    const double savedNoteTransitionStability = juce::jlimit(3.0, 12.0, settings->getDoubleValue("noteTransitionStability", 6.0));
     const int savedBendRange = juce::jlimit(1, 12, settings->getIntValue("pitchBendRange", 2));
     const int savedChannel = juce::jlimit(1, 16, settings->getIntValue("midiChannel", 1));
     const bool savedBendEnabled = settings->getBoolValue("pitchBendEnabled", true);
@@ -156,6 +158,33 @@ MainComponent::MainComponent()
     };
     addAndMakeVisible(smoothingSlider);
 
+    noteTransitionEnabled.setToggleState(savedNoteTransitionEnabled, juce::dontSendNotification);
+    noteTransitionEnabled.onClick = [this]
+    {
+        noteTracker.setTransitionSmoothing(noteTransitionEnabled.getToggleState(),
+                                          static_cast<int>(noteTransitionSlider.getValue()));
+        settings->setValue("noteTransitionSmoothingEnabled", noteTransitionEnabled.getToggleState());
+        saveSettings();
+        repaint();
+    };
+    addAndMakeVisible(noteTransitionEnabled);
+
+    noteTransitionSlider.setRange(3, 12, 1);
+    noteTransitionSlider.setValue(savedNoteTransitionStability, juce::dontSendNotification);
+    noteTransitionSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 58, 23);
+    noteTransitionSlider.setTextValueSuffix(" frames");
+    noteTransitionSlider.onValueChange = [this]
+    {
+        noteTracker.setTransitionSmoothing(noteTransitionEnabled.getToggleState(),
+                                          static_cast<int>(noteTransitionSlider.getValue()));
+        settings->setValue("noteTransitionStability", noteTransitionSlider.getValue());
+        saveSettings();
+        repaint();
+    };
+    noteTracker.setTransitionSmoothing(savedNoteTransitionEnabled,
+                                       static_cast<int>(savedNoteTransitionStability));
+    addAndMakeVisible(noteTransitionSlider);
+
     presetNameEditor.setText("My Preset", juce::dontSendNotification);
     presetNameEditor.setInputRestrictions(48);
     presetNameEditor.setTextToShowWhenEmpty("Preset name", NovoxLookAndFeel::textSecondary);
@@ -224,7 +253,7 @@ void MainComponent::styleControls()
     styleButton(savePresetButton, true);
     styleButton(loadPresetButton);
     styleButton(deletePresetButton);
-    for (auto* slider : { &gainSlider, &sensitivitySlider, &smoothingSlider, &bendRangeSlider })
+    for (auto* slider : { &gainSlider, &sensitivitySlider, &smoothingSlider, &bendRangeSlider, &noteTransitionSlider })
     {
         slider->setColour(juce::Slider::trackColourId, NovoxLookAndFeel::accent);
         slider->setColour(juce::Slider::thumbColourId, NovoxLookAndFeel::textPrimary);
@@ -233,6 +262,7 @@ void MainComponent::styleControls()
         slider->setColour(juce::Slider::textBoxOutlineColourId, NovoxLookAndFeel::border);
     }
     pitchBendEnabled.setColour(juce::ToggleButton::textColourId, NovoxLookAndFeel::textPrimary);
+    noteTransitionEnabled.setColour(juce::ToggleButton::textColourId, NovoxLookAndFeel::textPrimary);
     presetNameEditor.setColour(juce::TextEditor::backgroundColourId, NovoxLookAndFeel::panel);
     presetNameEditor.setColour(juce::TextEditor::textColourId, NovoxLookAndFeel::textPrimary);
     presetNameEditor.setColour(juce::TextEditor::outlineColourId, NovoxLookAndFeel::border);
@@ -378,15 +408,15 @@ void MainComponent::paint(juce::Graphics& g)
         drawText(g, "SAMPLE RATE   " + (audioAvailable ? juce::String(sampleRate / 1000.0, 1) + " kHz" : "—"), { x + 18.0f + specW, specY, specW, 16.0f }, 8.0f, NovoxLookAndFeel::textSecondary);
         drawText(g, "BUFFER SIZE   " + (audioAvailable ? juce::String(bufferSize) : "—"), { x + 18.0f + specW * 2.0f, specY, specW, 16.0f }, 8.0f, NovoxLookAndFeel::textSecondary);
 
-        const float gap = 13.0f, cardW = (cw - gap * 2.0f) / 3.0f, paramY = top + 126.0f, paramH = 116.0f;
-        for (int i = 0; i < 3; ++i) drawCard(g, { x + i * (cardW + gap), paramY, cardW, paramH });
-        const juce::String names[] = { "INPUT GAIN", "PITCH SENSITIVITY", "PITCH SMOOTHING" };
-        const juce::String values[] = { juce::String(gainSlider.getValue() * 100.0, 0) + "%", juce::String(sensitivitySlider.getValue(), 0) + "%", juce::String(smoothingSlider.getValue(), 0) + "%" };
-        const juce::Colour colours[] = { NovoxLookAndFeel::accent, NovoxLookAndFeel::teal, NovoxLookAndFeel::success };
-        for (int i = 0; i < 3; ++i)
+        const float gap = 10.0f, cardW = (cw - gap * 3.0f) / 4.0f, paramY = top + 126.0f, paramH = 138.0f;
+        for (int i = 0; i < 4; ++i) drawCard(g, { x + i * (cardW + gap), paramY, cardW, paramH });
+        const juce::String names[] = { "INPUT GAIN", "PITCH SENSITIVITY", "PITCH BEND SMOOTHING", "NOTE TRANSITIONS" };
+        const juce::String values[] = { juce::String(gainSlider.getValue() * 100.0, 0) + "%", juce::String(sensitivitySlider.getValue(), 0) + "%", juce::String(smoothingSlider.getValue(), 0) + "%", noteTransitionEnabled.getToggleState() ? "STABILIZING" : "DIRECT" };
+        const juce::Colour colours[] = { NovoxLookAndFeel::accent, NovoxLookAndFeel::teal, NovoxLookAndFeel::success, noteTransitionEnabled.getToggleState() ? NovoxLookAndFeel::success : NovoxLookAndFeel::textSecondary };
+        for (int i = 0; i < 4; ++i)
         {
-            drawText(g, names[i], { x + i * (cardW + gap) + 15.0f, paramY + 14.0f, cardW - 30.0f, 15.0f }, 8.0f, NovoxLookAndFeel::textSecondary, true);
-            drawText(g, values[i], { x + i * (cardW + gap) + 15.0f, paramY + 37.0f, cardW - 30.0f, 27.0f }, 19.0f, colours[i], true);
+            drawText(g, names[i], { x + i * (cardW + gap) + 12.0f, paramY + 12.0f, cardW - 24.0f, 22.0f }, 7.5f, NovoxLookAndFeel::textSecondary, true);
+            drawText(g, values[i], { x + i * (cardW + gap) + 12.0f, paramY + 39.0f, cardW - 24.0f, 25.0f }, 16.0f, colours[i], true);
         }
         const float diagY = paramY + paramH + 14.0f, diagH = ch - (diagY - y), colW = cw / 3.0f;
         drawCard(g, { x, diagY, cw, diagH });
@@ -458,6 +488,8 @@ void MainComponent::layoutPlayPage(juce::Rectangle<int>)
     gainSlider.setVisible(false);
     sensitivitySlider.setVisible(false);
     smoothingSlider.setVisible(false);
+    noteTransitionEnabled.setVisible(false);
+    noteTransitionSlider.setVisible(false);
     presetSelector.setVisible(false);
     presetNameEditor.setVisible(false);
     savePresetButton.setVisible(false);
@@ -483,9 +515,13 @@ void MainComponent::layoutAudioPage(juce::Rectangle<int> a)
     layoutPlayPage({});
     const int top = 142 + 86 + 126, gap = 13, cardW = (a.getWidth() - gap * 2) / 3;
     gainSlider.setVisible(true); sensitivitySlider.setVisible(true); smoothingSlider.setVisible(true);
-    gainSlider.setBounds(a.getX() + 15, top + 72, cardW - 30, 30);
-    sensitivitySlider.setBounds(a.getX() + cardW + gap + 15, top + 72, cardW - 30, 30);
-    smoothingSlider.setBounds(a.getX() + 2 * (cardW + gap) + 15, top + 72, cardW - 30, 30);
+    noteTransitionEnabled.setVisible(true); noteTransitionSlider.setVisible(true);
+    const int fourGap = 10, fourCardW = (a.getWidth() - fourGap * 3) / 4;
+    gainSlider.setBounds(a.getX() + 12, top + 72, fourCardW - 24, 30);
+    sensitivitySlider.setBounds(a.getX() + fourCardW + fourGap + 12, top + 72, fourCardW - 24, 30);
+    smoothingSlider.setBounds(a.getX() + 2 * (fourCardW + fourGap) + 12, top + 72, fourCardW - 24, 30);
+    noteTransitionEnabled.setBounds(a.getX() + 3 * (fourCardW + fourGap) + 12, top + 69, fourCardW - 24, 26);
+    noteTransitionSlider.setBounds(a.getX() + 3 * (fourCardW + fourGap) + 12, top + 101, fourCardW - 24, 27);
 }
 
 void MainComponent::layoutPresetsPage(juce::Rectangle<int> a)
@@ -582,6 +618,8 @@ PresetData MainComponent::capturePresetData() const
     PresetData data;
     data.inputGain = gainSlider.getValue(); data.pitchSensitivity = sensitivitySlider.getValue();
     data.pitchSmoothing = smoothingSlider.getValue(); data.pitchBendEnabled = pitchBendEnabled.getToggleState();
+    data.noteTransitionSmoothingEnabled = noteTransitionEnabled.getToggleState();
+    data.noteTransitionStability = noteTransitionSlider.getValue();
     data.pitchBendRange = static_cast<int>(bendRangeSlider.getValue());
     data.midiChannel = channelSelector.getSelectedId(); data.midiOutputName = preferredMidiOutputName.toStdString();
     data.sanitise(); return data;
@@ -595,6 +633,10 @@ void MainComponent::applyPresetData(PresetData data, const juce::String& name)
     gainSlider.setValue(data.inputGain, juce::dontSendNotification);
     sensitivitySlider.setValue(data.pitchSensitivity, juce::dontSendNotification);
     smoothingSlider.setValue(data.pitchSmoothing, juce::dontSendNotification);
+    noteTransitionEnabled.setToggleState(data.noteTransitionSmoothingEnabled, juce::dontSendNotification);
+    noteTransitionSlider.setValue(data.noteTransitionStability, juce::dontSendNotification);
+    noteTracker.setTransitionSmoothing(data.noteTransitionSmoothingEnabled,
+                                       static_cast<int>(data.noteTransitionStability));
     pitchBendEnabled.setToggleState(data.pitchBendEnabled, juce::dontSendNotification);
     bendRangeSlider.setValue(data.pitchBendRange, juce::dontSendNotification);
     channelSelector.setSelectedId(data.midiChannel, juce::dontSendNotification);
@@ -603,6 +645,8 @@ void MainComponent::applyPresetData(PresetData data, const juce::String& name)
     midiRouter.setChannel(data.midiChannel); preferredMidiOutputName = juce::String(data.midiOutputName);
     settings->setValue("inputGain", data.inputGain); settings->setValue("pitchSensitivity", data.pitchSensitivity);
     settings->setValue("pitchSmoothing", data.pitchSmoothing); settings->setValue("pitchBendEnabled", data.pitchBendEnabled);
+    settings->setValue("noteTransitionSmoothingEnabled", data.noteTransitionSmoothingEnabled);
+    settings->setValue("noteTransitionStability", data.noteTransitionStability);
     settings->setValue("pitchBendRange", data.pitchBendRange); settings->setValue("midiChannel", data.midiChannel);
     settings->setValue("midiOutputName", preferredMidiOutputName); settings->setValue("lastPresetName", name);
     refreshMidiOutputs(); saveSettings(); operationStatus = "Loaded preset: " + name; repaint();

@@ -57,7 +57,9 @@ NoteUpdate NoteTracker::process(const PitchResult& pitch) noexcept
     }
 
     ++candidateFrames;
-    if (candidateFrames >= onsetConfirmations)
+    const int requiredConfirmations = activeNote >= 0 && transitionSmoothingEnabled
+        ? transitionConfirmations : onsetConfirmations;
+    if (candidateFrames >= requiredConfirmations)
     {
         update.noteOff = activeNote;
         update.noteOn = candidateNote;

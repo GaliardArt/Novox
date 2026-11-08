@@ -1,5 +1,6 @@
 #pragma once
 #include "PitchDetector.h"
+#include <algorithm>
 
 struct NoteUpdate
 {
@@ -12,6 +13,11 @@ class NoteTracker
 public:
     NoteUpdate process(const PitchResult& pitch) noexcept;
     void reset() noexcept;
+    void setTransitionSmoothing(bool enabled, int confirmationFrames) noexcept
+    {
+        transitionSmoothingEnabled = enabled;
+        transitionConfirmations = std::clamp(confirmationFrames, 3, 12);
+    }
     int getActiveNote() const noexcept { return activeNote; }
 
 private:
@@ -21,6 +27,8 @@ private:
     int candidateNote = -1;
     int candidateFrames = 0;
     int silentFrames = 0;
+    int transitionConfirmations = 6;
+    bool transitionSmoothingEnabled = false;
 
     static constexpr int onsetConfirmations = 3;
     static constexpr int releaseConfirmations = 4;

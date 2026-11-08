@@ -56,7 +56,8 @@ private:
     juce::ComboBox midiOutputSelector, channelSelector, presetSelector;
     juce::TextButton refreshButton { "Refresh" };
     juce::ToggleButton pitchBendEnabled { "Pitch Bend" };
-    juce::Slider bendRangeSlider, gainSlider, sensitivitySlider, smoothingSlider;
+    juce::ToggleButton noteTransitionEnabled { "Note transition smoothing" };
+    juce::Slider bendRangeSlider, gainSlider, sensitivitySlider, smoothingSlider, noteTransitionSlider;
     juce::TextEditor presetNameEditor;
     juce::TextButton savePresetButton { "Save / Update" },
                      loadPresetButton { "Load preset" },
