@@ -66,3 +66,12 @@ If a saved MIDI output is unavailable, NOVOX leaves it unselected instead of sil
 - Pitch tracking is monophonic; simultaneous sung notes/chords are not separated.
 - MIDI event decisions are made on the pitch worker for every processed audio block; delivery remains asynchronous and is not sample-accurate.
 - The automated tests use deterministic synthetic signals and do not certify every microphone, audio driver, MIDI device, or DAW configuration.
+
+### Optional ASIO build support (Windows)
+
+NOVOX can use ASIO devices through JUCE when the Steinberg ASIO SDK is available at build time. The SDK is not bundled with the repository. Download the SDK under Steinberg's terms, then configure CMake with either:
+
+- `-DNOVOX_ASIO_SDK_ROOT="C:/path/to/asiosdk"`, or
+- the `ASIO_SDK_DIR` environment variable pointing to the SDK root.
+
+CMake detects `common/iasiodrv.h` and enables the JUCE ASIO backend. If the SDK is not present, the normal Windows build continues with the available native audio backends; ASIO is simply omitted.

@@ -573,7 +573,7 @@ void MainComponent::layoutMidiPage(juce::Rectangle<int> a)
 void MainComponent::layoutAudioPage(juce::Rectangle<int> a)
 {
     layoutPlayPage({});
-    const int top = 142 + 86 + 126, gap = 13, cardW = (a.getWidth() - gap * 2) / 3;
+    const int top = 142 + 86 + 126, gap = 13;
     audioSetupButton.setVisible(true);
     audioSetupButton.setBounds(a.getRight() - 142, 194, 124, 30);
     gainSlider.setVisible(true); sensitivitySlider.setVisible(true); smoothingSlider.setVisible(true);

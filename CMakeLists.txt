@@ -28,8 +28,29 @@ target_compile_definitions(NOVOX PRIVATE
     JUCE_USE_CURL=0
     JUCE_APPLICATION_NAME_STRING="$<TARGET_PROPERTY:NOVOX,JUCE_PRODUCT_NAME>"
     JUCE_APPLICATION_VERSION_STRING="${PROJECT_VERSION}"
-    $<$<PLATFORM_ID:Windows>:JUCE_ASIO=1>
 )
+# JUCE's ASIO backend requires the Steinberg ASIO SDK headers at build time.
+# Keep ordinary Windows builds independent from the separately licensed SDK,
+# while enabling ASIO automatically when the SDK is supplied.
+if(WIN32)
+    set(NOVOX_ASIO_SDK_ROOT "" CACHE PATH "Path to the Steinberg ASIO SDK")
+    find_path(NOVOX_ASIO_COMMON_INCLUDE_DIR
+        NAMES iasiodrv.h
+        HINTS "${NOVOX_ASIO_SDK_ROOT}" "$ENV{ASIO_SDK_DIR}"
+        PATH_SUFFIXES common
+    )
+    if(NOVOX_ASIO_COMMON_INCLUDE_DIR)
+        get_filename_component(NOVOX_ASIO_SDK_ROOT_DETECTED "${NOVOX_ASIO_COMMON_INCLUDE_DIR}" DIRECTORY)
+        target_include_directories(NOVOX PRIVATE
+            "${NOVOX_ASIO_COMMON_INCLUDE_DIR}"
+            "${NOVOX_ASIO_SDK_ROOT_DETECTED}/host/pc"
+        )
+        target_compile_definitions(NOVOX PRIVATE JUCE_ASIO=1)
+        message(STATUS "NOVOX: ASIO enabled using SDK at ${NOVOX_ASIO_SDK_ROOT_DETECTED}")
+    else()
+        message(STATUS "NOVOX: ASIO disabled (Steinberg ASIO SDK not found). Set NOVOX_ASIO_SDK_ROOT or ASIO_SDK_DIR to enable it.")
+    endif()
+endif()
 target_link_libraries(NOVOX PRIVATE
     juce::juce_audio_utils juce::juce_audio_devices juce::juce_audio_basics juce::juce_dsp
     juce::juce_recommended_config_flags juce::juce_recommended_warning_flags
