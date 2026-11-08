@@ -12,6 +12,9 @@ struct PresetData
     bool pitchBendEnabled = true;
     bool noteTransitionSmoothingEnabled = false;
     double noteTransitionStability = 6.0;
+    bool autoTuneEnabled = false;
+    int autoTuneTonic = 0;
+    int autoTuneScale = 1;
     int pitchBendRange = 2;
     int midiChannel = 1;
     std::string midiOutputName;
@@ -25,6 +28,7 @@ struct PresetData
             ? std::clamp(pitchSmoothing, 0.0, 100.0) : 35.0;
         noteTransitionStability = std::isfinite(noteTransitionStability)
             ? std::clamp(noteTransitionStability, 3.0, 12.0) : 6.0;
+        autoTuneTonic=std::clamp(autoTuneTonic,0,11); autoTuneScale=std::clamp(autoTuneScale,0,2);
         pitchBendRange = std::clamp(pitchBendRange, 1, 12);
         midiChannel = std::clamp(midiChannel, 1, 16);
         if (midiOutputName.size() > 256)

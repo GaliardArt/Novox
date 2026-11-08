@@ -1,5 +1,6 @@
 #pragma once
 #include "PitchDetector.h"
+#include "ScaleQuantizer.h"
 #include <algorithm>
 
 struct NoteUpdate
@@ -18,6 +19,7 @@ public:
         transitionSmoothingEnabled = enabled;
         transitionConfirmations = std::clamp(confirmationFrames, 3, 12);
     }
+    void setAutoTune(bool enabled,int tonic,MusicalScale scale) noexcept { autoTuneEnabled=enabled;scaleTonic=std::clamp(tonic,0,11);musicalScale=scale;candidateNote=-1;candidateFrames=0; }
     int getActiveNote() const noexcept { return activeNote; }
 
 private:
@@ -29,6 +31,9 @@ private:
     int silentFrames = 0;
     int transitionConfirmations = 6;
     bool transitionSmoothingEnabled = false;
+    bool autoTuneEnabled = false;
+    int scaleTonic = 0;
+    MusicalScale musicalScale = MusicalScale::major;
 
     static constexpr int onsetConfirmations = 3;
     static constexpr int releaseConfirmations = 4;

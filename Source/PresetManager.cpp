@@ -103,6 +103,7 @@ bool PresetManager::savePreset(const juce::String& name, PresetData data, juce::
     object->setProperty("pitchBendEnabled", data.pitchBendEnabled);
     object->setProperty("noteTransitionSmoothingEnabled", data.noteTransitionSmoothingEnabled);
     object->setProperty("noteTransitionStability", data.noteTransitionStability);
+    object->setProperty("autoTuneEnabled",data.autoTuneEnabled); object->setProperty("autoTuneTonic",data.autoTuneTonic); object->setProperty("autoTuneScale",data.autoTuneScale);
     object->setProperty("pitchBendRange", data.pitchBendRange);
     object->setProperty("midiChannel", data.midiChannel);
     object->setProperty("midiOutputName", juce::String(data.midiOutputName));
@@ -162,8 +163,10 @@ bool PresetManager::loadPreset(const juce::String& name, PresetData& data, juce:
     loaded.pitchBendEnabled = static_cast<bool>(object->getProperty("pitchBendEnabled"));
     if (has("noteTransitionSmoothingEnabled"))
         loaded.noteTransitionSmoothingEnabled = static_cast<bool>(object->getProperty("noteTransitionSmoothingEnabled"));
-    if (has("noteTransitionStability"))
-        loaded.noteTransitionStability = static_cast<double>(object->getProperty("noteTransitionStability"));
+    if (has("noteTransitionStability")) loaded.noteTransitionStability=static_cast<double>(object->getProperty("noteTransitionStability"));
+    if(has("autoTuneEnabled"))loaded.autoTuneEnabled=static_cast<bool>(object->getProperty("autoTuneEnabled"));
+    if(has("autoTuneTonic"))loaded.autoTuneTonic=static_cast<int>(object->getProperty("autoTuneTonic"));
+    if(has("autoTuneScale"))loaded.autoTuneScale=static_cast<int>(object->getProperty("autoTuneScale"));
     loaded.pitchBendRange = static_cast<int>(object->getProperty("pitchBendRange"));
     loaded.midiChannel = static_cast<int>(object->getProperty("midiChannel"));
     loaded.midiOutputName = object->getProperty("midiOutputName").toString().toStdString();

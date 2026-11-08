@@ -15,6 +15,7 @@ NoteUpdate NoteTracker::process(const PitchResult& pitch) noexcept
 {
     NoteUpdate update;
     int detectedNote = pitch.voiced ? frequencyToMidiNote(pitch.frequencyHz) : -1;
+    if(detectedNote>=0&&autoTuneEnabled) detectedNote=ScaleQuantizer::quantize(detectedNote,scaleTonic,musicalScale);
 
     if (detectedNote < 0)
     {
