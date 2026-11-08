@@ -20,7 +20,7 @@ void VoiceEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     sampleFifo.reset();
     droppedAudioSamples.store(0);
     publishPitch(PitchResult {});
-    startThread(juce::Thread::Priority::high);
+    startThread(juce::Thread::Priority::normal);
 }
 
 void VoiceEngine::audioDeviceStopped()
