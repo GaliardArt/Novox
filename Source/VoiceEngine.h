@@ -8,6 +8,7 @@ class VoiceEngine final : public juce::AudioIODeviceCallback,
 {
 public:
     VoiceEngine();
+    ~VoiceEngine() override;
 
     void audioDeviceIOCallbackWithContext(const float* const* inputChannelData,
         int numInputChannels, float* const* outputChannelData, int numOutputChannels,
