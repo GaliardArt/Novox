@@ -49,6 +49,7 @@ The processing pipeline is separated from the interface, keeping audio capture a
 
 ### 🎚️ Audio refinement
 - Optional Pitch Stability Guard suppresses brief downward pitch glitches and short voicing dropouts before note and Pitch Bend output, while allowing persistent note changes through.
+- Optional three-band input EQ before pitch detection: low shelf at 120 Hz, mid bell at 1 kHz, and high shelf at 5 kHz, each adjustable by ±12 dB with independent bypass.
 - Optional noise gate for attenuating low-level background sound.
 - Two-second room-noise calibration that adapts the gate threshold to the measured noise floor.
 - Automatic strongest-channel selection, with explicit Left, Right, and Stereo mix modes.
@@ -131,7 +132,7 @@ The first CMake configuration downloads the pinned JUCE dependency. After depend
 
 ## Testing and reliability
 
-The project includes automated tests for pitch detection, note tracking, MIDI event queuing, Pitch Bend conversion, pitch smoothing, noise reduction, and preset storage.
+The project includes automated tests for pitch detection at multiple sample rates, input equalizer response and bypass, note tracking, MIDI event queuing, Pitch Bend conversion, pitch smoothing, noise reduction, and preset storage.
 
 These tests cover deterministic processing behavior. Real microphones, room acoustics, audio drivers, MIDI devices, and DAW routing still require practical testing on the target system.
 
