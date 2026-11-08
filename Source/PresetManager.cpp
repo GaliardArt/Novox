@@ -104,10 +104,6 @@ bool PresetManager::savePreset(const juce::String& name, PresetData data, juce::
     object->setProperty("pitchBendRange", data.pitchBendRange);
     object->setProperty("midiChannel", data.midiChannel);
     object->setProperty("midiOutputName", juce::String(data.midiOutputName));
-    object->setProperty("drumMidiEnabled", data.drumMidiEnabled);
-    object->setProperty("drumKickNote", data.drumKickNote);
-    object->setProperty("drumSnareNote", data.drumSnareNote);
-    object->setProperty("drumHiHatNote", data.drumHiHatNote);
 
     const auto json = juce::JSON::toString(juce::var(object), true);
     if (!fileForName(safeName).replaceWithText(json))
@@ -146,9 +142,7 @@ bool PresetManager::loadPreset(const juce::String& name, PresetData& data, juce:
         return object->hasProperty(juce::Identifier(key));
     };
     const char* required[] = {
-        "inputGain", "pitchSensitivity", "pitchSmoothing", "pitchBendEnabled",
-        "pitchBendRange", "midiChannel", "midiOutputName", "drumMidiEnabled",
-        "drumKickNote", "drumSnareNote", "drumHiHatNote"
+        "inputGain", "pitchSensitivity", "pitchSmoothing", "pitchBendEnabled", "pitchBendRange", "midiChannel", "midiOutputName"
     };
     for (const auto* key : required)
     {
@@ -167,10 +161,6 @@ bool PresetManager::loadPreset(const juce::String& name, PresetData& data, juce:
     loaded.pitchBendRange = static_cast<int>(object->getProperty("pitchBendRange"));
     loaded.midiChannel = static_cast<int>(object->getProperty("midiChannel"));
     loaded.midiOutputName = object->getProperty("midiOutputName").toString().toStdString();
-    loaded.drumMidiEnabled = static_cast<bool>(object->getProperty("drumMidiEnabled"));
-    loaded.drumKickNote = static_cast<int>(object->getProperty("drumKickNote"));
-    loaded.drumSnareNote = static_cast<int>(object->getProperty("drumSnareNote"));
-    loaded.drumHiHatNote = static_cast<int>(object->getProperty("drumHiHatNote"));
     loaded.sanitise();
     data = std::move(loaded);
     return true;

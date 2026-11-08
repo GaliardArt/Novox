@@ -1,5 +1,4 @@
 #include "MidiRouter.h"
-#include "DrumMapping.h"
 #include <algorithm>
 
 MidiRouter::MidiRouter() : juce::Thread("NOVOX MIDI Dispatch") {}
@@ -71,23 +70,10 @@ void MidiRouter::pitchBend(int value)
         enqueue({ MidiEvent::Type::pitchBend, 0, 0, std::clamp(value, 0, 16383) });
 }
 
-void MidiRouter::drumNoteOn(int note, juce::uint8 velocity)
-{
-    if (output != nullptr && juce::isPositiveAndBelow(note, 128))
-        enqueue({ MidiEvent::Type::noteOn, note, velocity }, true);
-}
-
-void MidiRouter::drumNoteOff(int note)
-{
-    if (output != nullptr && juce::isPositiveAndBelow(note, 128))
-        enqueue({ MidiEvent::Type::noteOff, note, 0 }, true);
-}
-
-void MidiRouter::enqueue(const MidiEvent& event, bool percussionChannel) noexcept
+void MidiRouter::enqueue(const MidiEvent& event) noexcept
 {
     auto stampedEvent = event;
-    stampedEvent.channel = percussionChannel ? DrumMapping::midiChannel
-        : midiChannel.load(std::memory_order_relaxed);
+    stampedEvent.channel = midiChannel.load(std::memory_order_relaxed);
 
     if (!eventQueue.push(stampedEvent))
     {

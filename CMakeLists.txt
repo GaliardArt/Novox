@@ -19,7 +19,6 @@ target_sources(NOVOX PRIVATE
     Source/VoiceEngine.h Source/VoiceEngine.cpp
     Source/MidiRouter.h Source/MidiRouter.cpp Source/MidiEventQueue.h
     Source/NoteTracker.h Source/NoteTracker.cpp Source/PitchBend.h Source/PitchSmoother.h
-    Source/VocalPercussionDetector.h Source/VocalPercussionDetector.cpp Source/DrumMapping.h
     Source/PresetData.h Source/PresetManager.h Source/PresetManager.cpp
 )
 target_compile_definitions(NOVOX PRIVATE
@@ -54,18 +53,6 @@ if(BUILD_TESTING)
     target_include_directories(NOVOXPitchSmootherTests PRIVATE Source)
     add_test(NAME NOVOX.PitchSmoother COMMAND NOVOXPitchSmootherTests)
 
-    add_executable(NOVOXDrumMappingTests Tests/DrumMappingTests.cpp)
-    target_include_directories(NOVOXDrumMappingTests PRIVATE Source)
-    add_test(NAME NOVOX.DrumMapping COMMAND NOVOXDrumMappingTests)
-
-    add_executable(NOVOXVocalPercussionTests Tests/VocalPercussionDetectorTests.cpp Source/VocalPercussionDetector.cpp)
-    target_include_directories(NOVOXVocalPercussionTests PRIVATE Source)
-    add_test(NAME NOVOX.VocalPercussionDetector COMMAND NOVOXVocalPercussionTests)
-
-    add_executable(NOVOXPercussionQueueTests Tests/PercussionEventQueueTests.cpp)
-    target_include_directories(NOVOXPercussionQueueTests PRIVATE Source)
-    add_test(NAME NOVOX.PercussionEventQueue COMMAND NOVOXPercussionQueueTests)
-
     add_executable(NOVOXPresetManagerTests Tests/PresetManagerTests.cpp Source/PresetManager.cpp)
     target_include_directories(NOVOXPresetManagerTests PRIVATE Source)
     target_link_libraries(NOVOXPresetManagerTests PRIVATE juce::juce_core)
@@ -77,9 +64,6 @@ if(BUILD_TESTING)
         target_compile_options(NOVOXMidiQueueTests PRIVATE /W4 /permissive-)
         target_compile_options(NOVOXPitchBendTests PRIVATE /W4 /permissive-)
         target_compile_options(NOVOXPitchSmootherTests PRIVATE /W4 /permissive-)
-        target_compile_options(NOVOXVocalPercussionTests PRIVATE /W4 /permissive-)
-        target_compile_options(NOVOXPercussionQueueTests PRIVATE /W4 /permissive-)
-        target_compile_options(NOVOXDrumMappingTests PRIVATE /W4 /permissive-)
         target_compile_options(NOVOXPresetManagerTests PRIVATE /W4 /permissive-)
     else()
         target_compile_options(NOVOXPitchTests PRIVATE -Wall -Wextra -Wpedantic)
@@ -87,9 +71,6 @@ if(BUILD_TESTING)
         target_compile_options(NOVOXMidiQueueTests PRIVATE -Wall -Wextra -Wpedantic)
         target_compile_options(NOVOXPitchBendTests PRIVATE -Wall -Wextra -Wpedantic)
         target_compile_options(NOVOXPitchSmootherTests PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(NOVOXVocalPercussionTests PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(NOVOXPercussionQueueTests PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(NOVOXDrumMappingTests PRIVATE -Wall -Wextra -Wpedantic)
         target_compile_options(NOVOXPresetManagerTests PRIVATE -Wall -Wextra -Wpedantic)
     endif()
 endif()

@@ -1,6 +1,6 @@
 # NOVOX quick start
 
-NOVOX turns a monophonic vocal line into MIDI notes and optional Pitch Bend. It can also recognize vocal percussion-like sounds and send mapped drum notes. It is a standalone Windows application; it does not require an account or network connection during use.
+NOVOX turns a monophonic vocal line into MIDI notes and optional Pitch Bend. It is a standalone Windows application; it does not require an account or network connection during use.
 
 ## Requirements
 
@@ -27,12 +27,6 @@ NOVOX turns a monophonic vocal line into MIDI notes and optional Pitch Bend. It 
 - **Enable Pitch Bend** turns continuous pitch-wheel output on or off.
 - **Pitch Bend range** must match the receiving instrument's pitch-bend range for bends to sound in tune. The range is configurable from ±1 to ±12 semitones.
 - **MIDI channel** selects the channel for melodic notes and Pitch Bend.
-
-## Vocal percussion
-
-Percussion MIDI is off by default. Enable **Send percussion to MIDI (channel 10)** to send detected kick, snare, and hi-hat events on General MIDI channel 10. The three note assignments can be changed independently. The receiving instrument must support the selected GM percussion notes.
-
-The percussion detector is heuristic and responds to the spectral character of the vocal hit: use a low, compact “b/p” for kick, a mid-band “p/tsh” burst for snare, and a bright “ts” burst for hi-hat. Keep microphone distance and input gain consistent, avoid clipping, and reduce room noise. Its response still depends on vocal technique and microphone frequency response; it is not a replacement for a dedicated drum trigger or sample-based drum instrument.
 
 ## Presets and local preferences
 
@@ -61,13 +55,8 @@ If a saved MIDI output is unavailable, NOVOX leaves it unselected instead of sil
 - Set the receiving instrument's Pitch Bend range to the same value selected in NOVOX.
 - Verify that the receiving instrument responds to Pitch Bend on the selected MIDI channel.
 
-**Drum notes do not sound**
-- Enable percussion MIDI in NOVOX.
-- Confirm that the receiving instrument maps the selected notes to percussion and listens on channel 10.
-
 ## Known limitations
 
 - Pitch tracking is monophonic; simultaneous sung notes/chords are not separated.
 - MIDI event generation is GUI-timer-driven and is not sample-accurate.
-- Vocal percussion classification is heuristic and requires calibration to the user's voice and microphone.
 - The automated tests use deterministic synthetic signals and do not certify every microphone, audio driver, MIDI device, or DAW configuration.

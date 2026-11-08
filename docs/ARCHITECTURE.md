@@ -14,8 +14,6 @@ AudioDeviceManager
        |                VoiceEngine worker thread
        |                         |
        |                         +---- PitchDetector (YIN + sensitivity gate)
-       |                         +---- VocalPercussionDetector (adaptive multi-band transient features)
-       |                         +---- bounded SPSC percussion event queue
        |                         +---- sequence-stamped PitchResult
        |
        +---- MainComponent (GUI / 60 Hz refresh + diagnostics)
@@ -27,7 +25,6 @@ AudioDeviceManager
                   +---- PitchSmoother (MIDI bend only)
                   |
                   +---- PitchBend (fractional semitone -> 14-bit wheel)
-                  +---- DrumMapping (GM note assignments, channel 10)
                   |
                   +---- MidiRouter (GUI producer)
                   |           |
@@ -40,7 +37,7 @@ AudioDeviceManager
                               |
                               +---- local PropertiesFile
                                     (gain, sensitivity, smoothing,
-                                     bend settings, MIDI channel/output, drum mapping)
+                                     bend settings, MIDI channel/output)
                   |
                   +---- PresetManager
                               |
@@ -51,25 +48,14 @@ AudioDeviceManager
 
 - `VoiceEngine`: audio capture handoff, preallocated SPSC FIFO, worker lifecycle, and coherent latest-pitch publication.
 - `PitchDetector`: YIN-style monophonic fundamental estimation with adjustable RMS and confidence thresholds.
-- `DrumMapping`: GM percussion note defaults, configurable note range, and fixed channel 10 routing.
-- `VocalPercussionDetector`: bounded, allocation-free transient analysis for kick-, snare-, and hi-hat-like vocal sounds; runs on the audio worker and publishes visual feedback to the GUI.
 - `NoteTracker`: note onset/offset confirmation and pitch-boundary hysteresis.
 - `PitchSmoother`: optional one-pole smoothing and deadband applied to MIDI bend offsets; raw pitch display and note detection remain unfiltered.
 - `PitchBend`: pure conversion from semitone offset to the standard 14-bit pitch-wheel value.
 - `MidiRouter`: MIDI output selection, channel-aware bounded event queue, and dedicated MIDI dispatch thread.
 - `MidiEventQueue`: fixed-capacity, lock-free SPSC queue preserving Note On, Note Off, and Pitch Bend order and payload.
-- `PercussionEventQueue`: fixed-capacity SPSC queue that preserves each worker-thread drum hit until the GUI can dispatch it; overflow is counted.
 - `MainComponent`: tabbed JUCE interface (Play, MIDI, Audio, Presets), visual feedback, controls, live audio-device diagnostics, dropped-sample/event counters, and local preference restoration/persistence through JUCE `ApplicationProperties`.
 - `PresetData`: complete, validated snapshot of the active instrument configuration.
 - `PresetManager`: versioned JSON preset files stored in the user's NOVOX application-data directory; supports listing, save/update, load, and delete.
-
-## MIDI drum mapping
-
-The GUI can optionally convert recognized kick, snare, and hi-hat events into MIDI note triggers. Drum messages always use General MIDI channel 10, independent of the selected melodic channel and Pitch Bend. Defaults are note 36 (Bass Drum 1), 38 (Acoustic Snare), and 42 (Closed Hi-Hat); the UI allows assignments across notes 35–81 and persists them locally. Trigger velocity is derived from detector confidence. Part-specific gates are 80 ms (kick), 65 ms (snare), and 42 ms (closed hi-hat). Pending notes are released when the feature is disabled, the output changes, or the application closes.
-
-## Vocal percussion detection
-
-The percussion detector processes the same worker-thread audio blocks as the pitch detector using 256-sample frames (~5.8 ms at 44.1 kHz, ~5.3 ms at 48 kHz). One-pole bands separate sub-160 Hz low energy, 160 Hz–4.2 kHz mid energy, and high-frequency residual. Classification combines relative band energy, zero-crossing rate, crest factor, attack/tail ratio, adaptive noise-floor tracking, and an onset gate. Hi-hats use a 28 ms refractory interval; kick/snare use 42 ms. The worker publishes each hit to a bounded SPSC queue; the GUI drains all queued events at 100 Hz instead of relying on a single latest-event snapshot. This reduces event loss and scheduling latency but is not sample-accurate. The classifier remains heuristic and requires real microphone/performance validation.
 
 ## Runtime diagnostics
 
@@ -77,11 +63,11 @@ The GUI periodically reads the current `AudioIODevice` metadata and exposes the 
 
 ## Presets
 
-Each preset is a versioned JSON file with schema version 1 and a `.novoxpreset` extension. The snapshot includes gain, sensitivity, smoothing, Pitch Bend enable/range, melodic MIDI channel and preferred output name, percussion enable state, and all three General MIDI drum-note assignments. Values are clamped to supported ranges when saved and loaded. Preset names are trimmed, length-limited, and stripped of filesystem-reserved characters. Loading a preset applies its values to the UI, audio engine, MIDI router, and local preferences. An unavailable saved MIDI device remains unselected; the application never substitutes another device automatically.
+Each preset is a versioned JSON file with schema version 1 and a `.novoxpreset` extension. The snapshot includes gain, sensitivity, smoothing, Pitch Bend enable/range, melodic MIDI channel and preferred output name. Values are clamped to supported ranges when saved and loaded. Preset names are trimmed, length-limited, and stripped of filesystem-reserved characters. Loading a preset applies its values to the UI, audio engine, MIDI router, and local preferences. An unavailable saved MIDI device remains unselected; the application never substitutes another device automatically.
 
 ## Local preferences
 
-JUCE `ApplicationProperties` owns a per-user `PropertiesFile` in the NOVOX application settings directory. The application stores input gain, pitch sensitivity, pitch smoothing, Pitch Bend enable state, Pitch Bend range, MIDI channel, preferred MIDI output name, drum MIDI enable state, and kick/snare/hi-hat note assignments. Numeric values are clamped to supported UI ranges when loaded. Values are saved after user changes and again during shutdown.
+JUCE `ApplicationProperties` owns a per-user `PropertiesFile` in the NOVOX application settings directory. The application stores input gain, pitch sensitivity, pitch smoothing, Pitch Bend enable state, Pitch Bend range, MIDI channel, preferred MIDI output name. Numeric values are clamped to supported UI ranges when loaded. Values are saved after user changes and again during shutdown.
 
 MIDI output restoration uses an exact device-name match. If the saved device is absent, NOVOX leaves the output unselected rather than choosing another device. The preference remains saved until the user explicitly selects a different output or chooses no output.
 
@@ -118,14 +104,14 @@ MIDI output restoration uses an exact device-name match. If the saved device is 
 
 ## Validation
 
-CTest includes deterministic pitch-detector, note-tracker, MIDI queue, Pitch Bend, pitch-smoothing, drum-mapping, percussion-detector, percussion-event-queue, and preset-storage executables. These tests validate synthetic signal response and filter behavior; they do not certify real-world microphone latency, room-noise rejection, MIDI driver behavior, CPU load, musical performance, or local settings behavior across Windows profiles.
+CTest includes deterministic pitch-detector, note-tracker, MIDI queue, Pitch Bend, pitch-smoothing, preset-storage executables. These tests validate synthetic signal response and filter behavior; they do not certify real-world microphone latency, room-noise rejection, MIDI driver behavior, CPU load, musical performance, or local settings behavior across Windows profiles.
 
 
 ## User interface (1.1.0)
 
 The main window uses native JUCE components arranged in four tabs:
-- **Play:** live detected note, frequency/confidence, Pitch Bend feedback, and vocal percussion activity.
-- **MIDI:** output selection, channel, Pitch Bend configuration, percussion enablement, and General MIDI drum-note mapping.
+- **Play:** live detected note, frequency/confidence, Pitch Bend feedback.
+- **MIDI:** output selection, channel, Pitch Bend configuration.
 - **Audio:** input gain, pitch sensitivity, pitch smoothing, active device metadata, and dropped-sample/event diagnostics.
 - **Presets:** local preset selection, save/update, load, and delete.
 

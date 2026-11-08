@@ -37,10 +37,6 @@ int main()
     original.pitchBendRange = 7;
     original.midiChannel = 11;
     original.midiOutputName = "Virtual MIDI Device";
-    original.drumMidiEnabled = true;
-    original.drumKickNote = 40;
-    original.drumSnareNote = 44;
-    original.drumHiHatNote = 46;
 
     juce::String error;
     expect(manager.savePreset("Studio Voice", original, &error), "save preset");
@@ -57,10 +53,6 @@ int main()
     expect(loaded.pitchBendRange == original.pitchBendRange, "Pitch Bend range round trip");
     expect(loaded.midiChannel == original.midiChannel, "MIDI channel round trip");
     expect(loaded.midiOutputName == original.midiOutputName, "MIDI output round trip");
-    expect(loaded.drumMidiEnabled == original.drumMidiEnabled, "drum toggle round trip");
-    expect(loaded.drumKickNote == original.drumKickNote, "kick mapping round trip");
-    expect(loaded.drumSnareNote == original.drumSnareNote, "snare mapping round trip");
-    expect(loaded.drumHiHatNote == original.drumHiHatNote, "hi-hat mapping round trip");
 
     PresetData clamped;
     clamped.inputGain = 99.0;
@@ -68,17 +60,12 @@ int main()
     clamped.pitchSmoothing = 150.0;
     clamped.pitchBendRange = 99;
     clamped.midiChannel = 0;
-    clamped.drumKickNote = 1;
-    clamped.drumSnareNote = 127;
-    clamped.drumHiHatNote = -5;
     clamped.sanitise();
     expect(clamped.inputGain == 4.0, "input gain clamped");
     expect(clamped.pitchSensitivity == 0.0, "sensitivity clamped");
     expect(clamped.pitchSmoothing == 100.0, "smoothing clamped");
     expect(clamped.pitchBendRange == 12, "bend range clamped");
     expect(clamped.midiChannel == 1, "MIDI channel clamped");
-    expect(clamped.drumKickNote == 35 && clamped.drumSnareNote == 81
-           && clamped.drumHiHatNote == 35, "drum notes clamped");
 
     expect(manager.deletePreset("Studio Voice", &error), "delete preset");
     expect(manager.listPresets().empty(), "list empty after deletion");

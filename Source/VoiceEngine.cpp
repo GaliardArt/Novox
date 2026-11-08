@@ -16,11 +16,9 @@ void VoiceEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     const auto sampleRate = device != nullptr ? device->getCurrentSampleRate() : 44100.0;
     const auto deviceBlockSize = device != nullptr ? device->getCurrentBufferSizeSamples() : 512;
     detector.prepare(sampleRate, deviceBlockSize);
-    percussionDetector.prepare(sampleRate);
     monoScratch.setSize(1, juce::jmax(maxWorkerBlockSize, deviceBlockSize));
     workerBlockSize = juce::jlimit(128, maxWorkerBlockSize, deviceBlockSize);
     sampleFifo.reset();
-    percussionEvents.reset();
     droppedAudioSamples.store(0);
     publishPitch(PitchResult {});
     startThread(juce::Thread::Priority::normal);
@@ -31,10 +29,8 @@ void VoiceEngine::audioDeviceStopped()
     signalThreadShouldExit();
     stopThread(-1);
     sampleFifo.reset();
-    percussionEvents.reset();
     monoScratch.setSize(0, 0);
     publishPitch(PitchResult {});
-    percussionDetector.reset();
 }
 
 void VoiceEngine::audioDeviceIOCallbackWithContext(const float* const* input,
@@ -101,11 +97,6 @@ void VoiceEngine::run()
         if (readable > 0)
         {
             publishPitch(detector.process(workerScratch.data(), readable));
-            for (int offset = 0; offset < readable; offset += 256)
-            {
-                const int count = juce::jmin(256, readable - offset);
-                publishPercussion(percussionDetector.process(workerScratch.data() + offset, count));
-            }
         }
     }
 }
@@ -118,19 +109,6 @@ void VoiceEngine::publishPitch(const PitchResult& result) noexcept
     latestRms.store(result.rms, std::memory_order_relaxed);
     latestVoiced.store(result.voiced, std::memory_order_relaxed);
     latestSequence.fetch_add(1, std::memory_order_release);
-}
-
-void VoiceEngine::publishPercussion(const VocalPercussionResult& result) noexcept
-{
-    if (result.type == VocalPercussionType::none)
-        return;
-
-    percussionEvents.push(result);
-    latestPercussionSequence.fetch_add(1, std::memory_order_acq_rel);
-    latestPercussionType.store(static_cast<uint8_t>(result.type), std::memory_order_relaxed);
-    latestPercussionConfidence.store(result.confidence, std::memory_order_relaxed);
-    latestPercussionRms.store(result.rms, std::memory_order_relaxed);
-    latestPercussionSequence.fetch_add(1, std::memory_order_release);
 }
 
 PitchResult VoiceEngine::getLatestPitch() const noexcept
@@ -154,23 +132,3 @@ PitchResult VoiceEngine::getLatestPitch() const noexcept
     }
 }
 
-VocalPercussionResult VoiceEngine::getLatestPercussion() const noexcept
-{
-    VocalPercussionResult result;
-    for (;;)
-    {
-        const auto before = latestPercussionSequence.load(std::memory_order_acquire);
-        if ((before & 1U) != 0U)
-            continue;
-        result.type = static_cast<VocalPercussionType>(
-            latestPercussionType.load(std::memory_order_relaxed));
-        result.confidence = latestPercussionConfidence.load(std::memory_order_relaxed);
-        result.rms = latestPercussionRms.load(std::memory_order_relaxed);
-        const auto after = latestPercussionSequence.load(std::memory_order_acquire);
-        if (before == after)
-        {
-            result.sequence = after / 2U;
-            return result;
-        }
-    }
-}

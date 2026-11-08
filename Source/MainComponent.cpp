@@ -35,11 +35,11 @@ MainComponent::MainComponent()
     const int savedBendRange = juce::jlimit(1, 12, settings->getIntValue("pitchBendRange", 2));
     const int savedChannel = juce::jlimit(1, 16, settings->getIntValue("midiChannel", 1));
     const bool savedBendEnabled = settings->getBoolValue("pitchBendEnabled", true);
-    const bool savedDrumMidiEnabled = settings->getBoolValue("drumMidiEnabled", false);
-    const int savedKickNote = DrumMapping::clampNote(settings->getIntValue("drumKickNote", DrumMapping::defaultKick));
-    const int savedSnareNote = DrumMapping::clampNote(settings->getIntValue("drumSnareNote", DrumMapping::defaultSnare));
-    const int savedHiHatNote = DrumMapping::clampNote(settings->getIntValue("drumHiHatNote", DrumMapping::defaultHiHat));
     preferredMidiOutputName = settings->getValue("midiOutputName");
+    settings->removeValue("drumMidiEnabled");
+    settings->removeValue("drumKickNote");
+    settings->removeValue("drumSnareNote");
+    settings->removeValue("drumHiHatNote");
 
     title.setText("NOVOX", juce::dontSendNotification);
     title.setFont(juce::FontOptions(26.0f, juce::Font::bold));
@@ -65,11 +65,6 @@ MainComponent::MainComponent()
     midiLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     midiPage.addAndMakeVisible(midiLabel);
 
-    percussionLabel.setText("Percussion: waiting", juce::dontSendNotification);
-    percussionLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-    percussionLabel.setJustificationType(juce::Justification::centred);
-    playPage.addAndMakeVisible(percussionLabel);
-
     audioDiagnosticsLabel.setText("Audio input: checking device...", juce::dontSendNotification);
     audioDiagnosticsLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     audioDiagnosticsLabel.setJustificationType(juce::Justification::centred);
@@ -79,65 +74,6 @@ MainComponent::MainComponent()
     performanceDiagnosticsLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     performanceDiagnosticsLabel.setJustificationType(juce::Justification::centred);
     audioPage.addAndMakeVisible(performanceDiagnosticsLabel);
-
-    drumMidiEnabled.setToggleState(savedDrumMidiEnabled, juce::dontSendNotification);
-    drumMidiEnabled.onClick = [this] {
-        settings->setValue("drumMidiEnabled", drumMidiEnabled.getToggleState());
-        if (!drumMidiEnabled.getToggleState())
-            releaseAllDrumNotes();
-        saveSettings();
-    };
-    midiPage.addAndMakeVisible(drumMidiEnabled);
-
-    drumMappingLabel.setText("General MIDI drum mapping (channel 10)", juce::dontSendNotification);
-    drumMappingLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-    drumMappingLabel.setJustificationType(juce::Justification::centred);
-    midiPage.addAndMakeVisible(drumMappingLabel);
-
-    const auto populateDrumNotes = [](juce::ComboBox& selector, int selectedNote) {
-        for (int note = DrumMapping::minimumNote; note <= DrumMapping::maximumNote; ++note)
-            selector.addItem(juce::String(note) + " - "
-                + juce::String(DrumMapping::gmName(note).data()), note + 1);
-        selector.setSelectedId(selectedNote + 1, juce::dontSendNotification);
-    };
-    populateDrumNotes(kickNoteSelector, savedKickNote);
-    populateDrumNotes(snareNoteSelector, savedSnareNote);
-    populateDrumNotes(hiHatNoteSelector, savedHiHatNote);
-    kickNoteSelector.onChange = [this] {
-        if (pendingDrumNotes[0] >= 0) {
-            midiRouter.drumNoteOff(pendingDrumNotes[0]);
-            pendingDrumNotes[0] = -1;
-        }
-        settings->setValue("drumKickNote", kickNoteSelector.getSelectedId() - 1);
-        saveSettings();
-    };
-    snareNoteSelector.onChange = [this] {
-        if (pendingDrumNotes[1] >= 0) {
-            midiRouter.drumNoteOff(pendingDrumNotes[1]);
-            pendingDrumNotes[1] = -1;
-        }
-        settings->setValue("drumSnareNote", snareNoteSelector.getSelectedId() - 1);
-        saveSettings();
-    };
-    hiHatNoteSelector.onChange = [this] {
-        if (pendingDrumNotes[2] >= 0) {
-            midiRouter.drumNoteOff(pendingDrumNotes[2]);
-            pendingDrumNotes[2] = -1;
-        }
-        settings->setValue("drumHiHatNote", hiHatNoteSelector.getSelectedId() - 1);
-        saveSettings();
-    };
-    midiPage.addAndMakeVisible(kickNoteSelector);
-    midiPage.addAndMakeVisible(snareNoteSelector);
-    midiPage.addAndMakeVisible(hiHatNoteSelector);
-
-    kickLabel.setText("Kick", juce::dontSendNotification);
-    snareLabel.setText("Snare", juce::dontSendNotification);
-    hiHatLabel.setText("Hi-hat", juce::dontSendNotification);
-    for (auto* label : { &kickLabel, &snareLabel, &hiHatLabel }) {
-        label->setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-        addAndMakeVisible(*label);
-    }
 
     gainLabel.setText("Input gain", juce::dontSendNotification);
     gainLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
@@ -300,7 +236,6 @@ MainComponent::~MainComponent()
     stopTimer();
     tabs.setLookAndFeel(nullptr);
     setLookAndFeel(nullptr);
-    releaseAllDrumNotes();
     if (noteTracker.getActiveNote() >= 0)
     {
         resetPitchBend();
@@ -320,7 +255,6 @@ void MainComponent::saveSettings()
 
 void MainComponent::refreshMidiOutputs()
 {
-    releaseAllDrumNotes();
     const int activeNote = noteTracker.getActiveNote();
     if (activeNote >= 0)
     {
@@ -354,7 +288,6 @@ void MainComponent::refreshMidiOutputs()
 
 void MainComponent::selectMidiOutput()
 {
-    releaseAllDrumNotes();
     const int activeNote = noteTracker.getActiveNote();
     if (activeNote >= 0)
     {
@@ -461,73 +394,6 @@ void MainComponent::updateNoteTracking(const PitchResult& pitch)
 }
 
 
-void MainComponent::dispatchPercussion(const VocalPercussionResult& percussion)
-{
-    if (!drumMidiEnabled.getToggleState() || !midiRouter.isOpen())
-        return;
-
-    int slot = -1;
-    int note = -1;
-    switch (percussion.type)
-    {
-        case VocalPercussionType::kick:
-            slot = static_cast<int>(DrumMapping::Part::kick);
-            note = kickNoteSelector.getSelectedId() - 1;
-            break;
-        case VocalPercussionType::snare:
-            slot = static_cast<int>(DrumMapping::Part::snare);
-            note = snareNoteSelector.getSelectedId() - 1;
-            break;
-        case VocalPercussionType::hiHat:
-            slot = static_cast<int>(DrumMapping::Part::hiHat);
-            note = hiHatNoteSelector.getSelectedId() - 1;
-            break;
-        case VocalPercussionType::none:
-            return;
-    }
-
-    if (slot < 0 || note < DrumMapping::minimumNote || note > DrumMapping::maximumNote)
-        return;
-
-    if (pendingDrumNotes[static_cast<size_t>(slot)] >= 0)
-        midiRouter.drumNoteOff(pendingDrumNotes[static_cast<size_t>(slot)]);
-
-    const auto velocity = static_cast<juce::uint8>(
-        juce::jlimit(1, 127, static_cast<int>(std::lround(percussion.confidence * 127.0f))));
-    midiRouter.drumNoteOn(note, velocity);
-    pendingDrumNotes[static_cast<size_t>(slot)] = note;
-    const uint32_t gateMs = percussion.type == VocalPercussionType::kick ? 80U
-        : (percussion.type == VocalPercussionType::snare ? 65U : 42U);
-    drumNoteOffTimes[static_cast<size_t>(slot)] =
-        juce::Time::getMillisecondCounter() + gateMs;
-}
-
-void MainComponent::releaseDueDrumNotes()
-{
-    const auto now = juce::Time::getMillisecondCounter();
-    for (size_t i = 0; i < pendingDrumNotes.size(); ++i)
-    {
-        if (pendingDrumNotes[i] >= 0
-            && static_cast<int32_t>(now - drumNoteOffTimes[i]) >= 0)
-        {
-            midiRouter.drumNoteOff(pendingDrumNotes[i]);
-            pendingDrumNotes[i] = -1;
-        }
-    }
-}
-
-void MainComponent::releaseAllDrumNotes()
-{
-    for (auto& note : pendingDrumNotes)
-    {
-        if (note >= 0)
-        {
-            midiRouter.drumNoteOff(note);
-            note = -1;
-        }
-    }
-}
-
 PresetData MainComponent::capturePresetData() const
 {
     PresetData data;
@@ -538,10 +404,6 @@ PresetData MainComponent::capturePresetData() const
     data.pitchBendRange = static_cast<int>(bendRangeSlider.getValue());
     data.midiChannel = channelSelector.getSelectedId();
     data.midiOutputName = preferredMidiOutputName.toStdString();
-    data.drumMidiEnabled = drumMidiEnabled.getToggleState();
-    data.drumKickNote = kickNoteSelector.getSelectedId() - 1;
-    data.drumSnareNote = snareNoteSelector.getSelectedId() - 1;
-    data.drumHiHatNote = hiHatNoteSelector.getSelectedId() - 1;
     data.sanitise();
     return data;
 }
@@ -549,7 +411,6 @@ PresetData MainComponent::capturePresetData() const
 void MainComponent::applyPresetData(PresetData data, const juce::String& presetName)
 {
     data.sanitise();
-    releaseAllDrumNotes();
     if (noteTracker.getActiveNote() >= 0)
     {
         resetPitchBend();
@@ -565,10 +426,6 @@ void MainComponent::applyPresetData(PresetData data, const juce::String& presetN
     pitchBendEnabled.setToggleState(data.pitchBendEnabled, juce::dontSendNotification);
     bendRangeSlider.setValue(data.pitchBendRange, juce::dontSendNotification);
     channelSelector.setSelectedId(data.midiChannel, juce::dontSendNotification);
-    drumMidiEnabled.setToggleState(data.drumMidiEnabled, juce::dontSendNotification);
-    kickNoteSelector.setSelectedId(data.drumKickNote + 1, juce::dontSendNotification);
-    snareNoteSelector.setSelectedId(data.drumSnareNote + 1, juce::dontSendNotification);
-    hiHatNoteSelector.setSelectedId(data.drumHiHatNote + 1, juce::dontSendNotification);
 
     engine.setInputGain(static_cast<float>(data.inputGain));
     engine.setPitchSensitivity(static_cast<float>(data.pitchSensitivity / 100.0));
@@ -581,10 +438,6 @@ void MainComponent::applyPresetData(PresetData data, const juce::String& presetN
     settings->setValue("pitchBendEnabled", data.pitchBendEnabled);
     settings->setValue("pitchBendRange", data.pitchBendRange);
     settings->setValue("midiChannel", data.midiChannel);
-    settings->setValue("drumMidiEnabled", data.drumMidiEnabled);
-    settings->setValue("drumKickNote", data.drumKickNote);
-    settings->setValue("drumSnareNote", data.drumSnareNote);
-    settings->setValue("drumHiHatNote", data.drumHiHatNote);
     settings->setValue("midiOutputName", preferredMidiOutputName);
     settings->setValue("lastPresetName", presetName);
     refreshMidiOutputs();
@@ -685,7 +538,6 @@ void MainComponent::resized()
     frequencyLabel.setBounds(play.removeFromTop(38));
     pitchBendLabel.setBounds(play.removeFromTop(34));
     play.removeFromTop(24);
-    percussionLabel.setBounds(play.removeFromTop(42));
     auto midi = midiPage.getLocalBounds().reduced(34);
     midiLabel.setBounds(midi.removeFromTop(34));
     midi.removeFromTop(12);
@@ -701,20 +553,6 @@ void MainComponent::resized()
     bendRangeLabel.setBounds(midi.removeFromTop(24));
     bendRangeSlider.setBounds(midi.removeFromTop(42));
     midi.removeFromTop(18);
-    drumMidiEnabled.setBounds(midi.removeFromTop(32));
-    drumMappingLabel.setBounds(midi.removeFromTop(30));
-    midi.removeFromTop(8);
-    auto mapping = midi.removeFromTop(76);
-    const int cell = mapping.getWidth() / 3;
-    auto kick = mapping.removeFromLeft(cell).reduced(6, 0);
-    kickLabel.setBounds(kick.removeFromTop(24));
-    kickNoteSelector.setBounds(kick.removeFromTop(40));
-    auto snare = mapping.removeFromLeft(cell).reduced(6, 0);
-    snareLabel.setBounds(snare.removeFromTop(24));
-    snareNoteSelector.setBounds(snare.removeFromTop(40));
-    auto hat = mapping.reduced(6, 0);
-    hiHatLabel.setBounds(hat.removeFromTop(24));
-    hiHatNoteSelector.setBounds(hat.removeFromTop(40));
     auto audio = audioPage.getLocalBounds().reduced(34);
     gainLabel.setBounds(audio.removeFromTop(26));
     gainSlider.setBounds(audio.removeFromTop(48));
@@ -746,7 +584,6 @@ void MainComponent::resized()
 void MainComponent::timerCallback()
 {
     const auto pitch = engine.getLatestPitch();
-    releaseDueDrumNotes();
 
     if (auto* audioDevice = deviceManager.getCurrentAudioDevice())
     {
@@ -767,26 +604,8 @@ void MainComponent::timerCallback()
     performanceDiagnosticsLabel.setText(
         "Dropped audio samples: " + juce::String(static_cast<juce::int64>(engine.getDroppedAudioSamples()))
         + "  |  Dropped MIDI events: "
-        + juce::String(static_cast<juce::int64>(midiRouter.getDroppedEvents()))
-        + "  |  Dropped percussion events: "
-        + juce::String(static_cast<juce::int64>(engine.getDroppedPercussionEvents())),
+        + juce::String(static_cast<juce::int64>(midiRouter.getDroppedEvents())),
         juce::dontSendNotification);
-    VocalPercussionResult percussion;
-    while (engine.popPercussionEvent(percussion))
-    {
-        dispatchPercussion(percussion);
-        const char* hitName = "Unknown";
-        switch (percussion.type)
-        {
-            case VocalPercussionType::kick: hitName = "Kick"; break;
-            case VocalPercussionType::snare: hitName = "Snare"; break;
-            case VocalPercussionType::hiHat: hitName = "Hi-hat"; break;
-            case VocalPercussionType::none: break;
-        }
-        percussionLabel.setText("Percussion: " + juce::String(hitName)
-            + "  |  confidence " + juce::String(percussion.confidence * 100.0f, 0) + "%",
-            juce::dontSendNotification);
-    }
     noteLabel.setText(pitch.voiced ? noteNameFromMidi(noteTracker.getActiveNote()) : "--",
                       juce::dontSendNotification);
     frequencyLabel.setText(juce::String(pitch.frequencyHz, 1) + " Hz  |  confidence "
