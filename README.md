@@ -2,17 +2,17 @@
 
 NOVOX is an offline-first, standalone vocal instrument for turning voice into musical control data. It is written in C++ and uses JUCE for audio input, MIDI integration, and the desktop application.
 
-## Current milestone (0.2.2 — implementation in validation)
+## Current milestone (0.2.3 — implementation in validation)
 
-- JUCE standalone desktop application
-- Microphone/audio input capture
+- JUCE standalone desktop application and microphone capture
 - YIN-style fundamental-frequency estimation with confidence and RMS level
 - Pitch analysis moved off the audio callback to a dedicated worker thread
-- Preallocated single-producer/single-consumer audio FIFO between capture and analysis
-- Sequence-stamped pitch snapshots so note tracking only consumes new analysis frames
-- Note onset/release confirmation and semitone hysteresis to reduce MIDI chatter
-- Selectable MIDI output and input gain
-- Automated pitch-detector and note-tracker regression tests through CTest
+- Preallocated SPSC audio FIFO and sequence-stamped pitch snapshots
+- Note onset/release confirmation and semitone hysteresis
+- Dedicated MIDI dispatch thread fed by a bounded SPSC event queue
+- Ordered asynchronous MIDI Note On/Off delivery, isolated from the GUI timer
+- Audio FIFO overflow and oversized callback blocks counted as dropped samples
+- Automated pitch-detector, note-tracker, and MIDI-queue regression tests
 
 ## Build on Windows
 
@@ -28,18 +28,20 @@ CMake fetches JUCE 8.0.6 on the first configure. An internet connection is neede
 
 ## Regression coverage
 
-- `NOVOXPitchTests`: known sine-wave frequencies, 44.1/48 kHz sample rates, silence and low-level rejection, harmonic-rich input, broadband-noise rejection, and invalid input handling.
+- `NOVOXPitchTests`: known frequencies, 44.1/48 kHz sample rates, silence/low-level rejection, harmonic-rich input, broadband noise, and invalid input.
 - `NOVOXTrackingTests`: onset debounce, transient rejection, release debounce, note transitions, and semitone hysteresis.
+- `NOVOXMidiQueueTests`: empty queue, FIFO order and payload, bounded-capacity overflow, recovery, and ring-buffer wraparound.
 
-The generated-signal tests are deterministic. They do not replace microphone, room-noise, end-to-end latency, or musical-performance testing.
+The tests are deterministic. They do not replace microphone, room-noise, end-to-end latency, MIDI-driver, or musical-performance testing.
 
 ## Continuous integration
 
-GitHub Actions configures and compiles the Windows x64 Release build and runs CTest on pushes and pull requests targeting `main` or `dev/**`. The workflow is in `.github/workflows/windows-build.yml`.
+GitHub Actions configures and compiles the Windows x64 Release build and runs CTest on pushes and pull requests targeting `main` or `dev/**`. Workflow: `.github/workflows/windows-build.yml`.
 
 ## Engineering notes
 
-- The audio callback now performs bounded channel mixing and FIFO writes only; pitch detection runs on a dedicated worker thread.
-- The FIFO is preallocated and lock-free for the single audio producer and single analysis consumer. If it fills, excess incoming samples are counted and dropped rather than blocking the audio callback.
-- The MIDI note tracker consumes each published analysis frame once, applies onset/release confirmation, and uses a small semitone hysteresis margin.
-- MIDI events are still dispatched by the GUI timer. A dedicated timestamped MIDI event queue remains a future improvement for tighter timing.
+- The audio callback performs bounded channel mixing and FIFO writes only; pitch detection runs on a worker thread.
+- Audio FIFO overflow and callback blocks larger than the prepared scratch buffer are counted and dropped without blocking the callback.
+- The MIDI queue is bounded and lock-free for one GUI producer and one MIDI dispatch consumer. The worker preserves event order and sends messages independently of the GUI timer.
+- Closing or changing MIDI output drains pending events and stops the dispatch worker before releasing the device handle.
+- MIDI event generation still originates from the GUI timer. Moving pitch tracking to the analysis worker and sample-timestamped scheduling remain future improvements.
