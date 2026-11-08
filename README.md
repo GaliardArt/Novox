@@ -2,7 +2,7 @@
 
 NOVOX is an offline-first, standalone vocal instrument for turning voice into musical control data. It is written in C++ and uses JUCE for audio input, MIDI integration, and the desktop application.
 
-## Current milestone (0.8.0 — local presets)
+## Current milestone (0.9.0 — integration diagnostics)
 
 - JUCE standalone desktop application and microphone capture
 - YIN-style fundamental-frequency estimation with confidence and RMS level
@@ -20,8 +20,14 @@ NOVOX is an offline-first, standalone vocal instrument for turning voice into mu
 - Real-time vocal percussion classification for kick, snare, and hi-hat with confidence feedback
 - Optional MIDI drum triggering on General MIDI channel 10, with configurable kick/snare/hi-hat note assignments and velocity derived from detector confidence
 - Named local presets for complete instrument configurations, with save/update, load, and delete controls
+- Live audio-device diagnostics: selected input, active channel count, sample rate, and device buffer size
+- Runtime counters for audio samples and MIDI events dropped by bounded real-time queues
 - Presets include input gain, pitch sensitivity/smoothing, Pitch Bend settings, melodic MIDI channel/output preference, and percussion enable/mapping
 - Automated pitch-detector, note-tracker, MIDI-queue, Pitch Bend, smoothing, drum-mapping, percussion, and preset-storage regression tests
+
+## Runtime diagnostics
+
+The main window reports the active audio input device, the number of enabled input channels, the current sample rate, and the device buffer size. It also displays cumulative counters for audio samples rejected when the audio FIFO or preallocated callback buffer cannot accept them, and MIDI events rejected when the bounded MIDI queue is full. These counters help distinguish a missing input device from signal-detection issues and expose overload instead of silently hiding it.
 
 ## Local presets
 

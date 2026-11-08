@@ -70,6 +70,16 @@ MainComponent::MainComponent()
     percussionLabel.setJustificationType(juce::Justification::centred);
     addAndMakeVisible(percussionLabel);
 
+    audioDiagnosticsLabel.setText("Audio input: checking device...", juce::dontSendNotification);
+    audioDiagnosticsLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+    audioDiagnosticsLabel.setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(audioDiagnosticsLabel);
+
+    performanceDiagnosticsLabel.setText("Diagnostics: no dropped audio or MIDI events", juce::dontSendNotification);
+    performanceDiagnosticsLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+    performanceDiagnosticsLabel.setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(performanceDiagnosticsLabel);
+
     drumMidiEnabled.setToggleState(savedDrumMidiEnabled, juce::dontSendNotification);
     drumMidiEnabled.onClick = [this] {
         settings->setValue("drumMidiEnabled", drumMidiEnabled.getToggleState());
@@ -642,6 +652,8 @@ void MainComponent::resized()
     pitchBendLabel.setBounds(area.removeFromTop(28));
     midiLabel.setBounds(area.removeFromTop(28));
     percussionLabel.setBounds(area.removeFromTop(26));
+    audioDiagnosticsLabel.setBounds(area.removeFromTop(24));
+    performanceDiagnosticsLabel.setBounds(area.removeFromTop(24));
     area.removeFromTop(10);
 
     presetsLabel.setBounds(area.removeFromTop(24));
@@ -695,6 +707,28 @@ void MainComponent::timerCallback()
     const auto pitch = engine.getLatestPitch();
     const auto percussion = engine.getLatestPercussion();
     releaseDueDrumNotes();
+
+    if (auto* audioDevice = deviceManager.getCurrentAudioDevice())
+    {
+        const auto inputChannels = audioDevice->getActiveInputChannels().countNumberOfSetBits();
+        audioDiagnosticsLabel.setText(
+            "Audio input: " + audioDevice->getName()
+            + "  |  " + juce::String(inputChannels) + " input channel(s)"
+            + "  |  " + juce::String(audioDevice->getCurrentSampleRate() / 1000.0, 1)
+            + " kHz / " + juce::String(audioDevice->getCurrentBufferSizeSamples()) + " samples",
+            juce::dontSendNotification);
+    }
+    else
+    {
+        audioDiagnosticsLabel.setText("Audio input: no device active — check Audio Settings",
+                                      juce::dontSendNotification);
+    }
+
+    performanceDiagnosticsLabel.setText(
+        "Dropped audio samples: " + juce::String(static_cast<juce::int64>(engine.getDroppedAudioSamples()))
+        + "  |  Dropped MIDI events: "
+        + juce::String(static_cast<juce::int64>(midiRouter.getDroppedEvents())),
+        juce::dontSendNotification);
     if (percussion.sequence != 0 && percussion.sequence != lastPercussionSequence)
     {
         lastPercussionSequence = percussion.sequence;

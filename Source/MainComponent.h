@@ -50,6 +50,7 @@ private:
     PitchSmoother pitchSmoother;
 
     juce::Label title, status, noteLabel, frequencyLabel, midiLabel, percussionLabel;
+    juce::Label audioDiagnosticsLabel, performanceDiagnosticsLabel;
     juce::Label gainLabel, bendRangeLabel, channelLabel, pitchBendLabel;
     juce::Label sensitivityLabel, smoothingLabel;
     juce::Label drumMappingLabel, kickLabel, snareLabel, hiHatLabel;

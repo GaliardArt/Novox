@@ -17,7 +17,7 @@ AudioDeviceManager
        |                         +---- VocalPercussionDetector (transient features)
        |                         +---- sequence-stamped PitchResult
        |
-       +---- MainComponent (GUI / 60 Hz refresh)
+       +---- MainComponent (GUI / 60 Hz refresh + diagnostics)
                   |
                   +---- NoteTracker (new frames only)
                   |       +---- onset/release debounce
@@ -57,7 +57,7 @@ AudioDeviceManager
 - `PitchBend`: pure conversion from semitone offset to the standard 14-bit pitch-wheel value.
 - `MidiRouter`: MIDI output selection, channel-aware bounded event queue, and dedicated MIDI dispatch thread.
 - `MidiEventQueue`: fixed-capacity, lock-free SPSC queue preserving Note On, Note Off, and Pitch Bend order and payload.
-- `MainComponent`: visual feedback, controls, preset UI, and local preference restoration/persistence through JUCE `ApplicationProperties`.
+- `MainComponent`: visual feedback, controls, preset UI, live audio-device diagnostics, dropped-sample/event counters, and local preference restoration/persistence through JUCE `ApplicationProperties`.
 - `PresetData`: complete, validated snapshot of the active instrument configuration.
 - `PresetManager`: versioned JSON preset files stored in the user's NOVOX application-data directory; supports listing, save/update, load, and delete.
 
@@ -68,6 +68,10 @@ The GUI can optionally convert recognized kick, snare, and hi-hat events into MI
 ## Vocal percussion detection
 
 The percussion detector processes the same worker-thread audio blocks as the pitch detector. It uses a 256-sample analysis frame, a low/high-band energy split, zero-crossing rate, onset ratio, and crest factor. A 75 ms refractory interval limits duplicate hits. The classifier is intentionally lightweight and does not use FFTs or allocate in the real-time path. Initial classification is heuristic and requires real microphone/performance validation.
+
+## Runtime diagnostics
+
+The GUI periodically reads the current `AudioIODevice` metadata and exposes the active input device name, enabled input-channel count, sample rate, and buffer size. It also displays the audio FIFO/callback drop counter from `VoiceEngine` and the bounded MIDI event queue overflow counter from `MidiRouter`. These counters are diagnostic telemetry only; they do not alter real-time processing or attempt recovery by blocking either worker.
 
 ## Presets
 
