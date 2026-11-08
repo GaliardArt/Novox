@@ -39,6 +39,10 @@ private:
     void saveCurrentPreset();
     void deleteSelectedPreset();
 
+    juce::LookAndFeel_V4 novoxLookAndFeel;
+    juce::TabbedComponent tabs { juce::TabbedButtonBar::TabsAtTop };
+    juce::Component playPage, midiPage, audioPage, presetsPage;
+
     juce::ApplicationProperties appProperties;
     juce::PropertiesFile* settings = nullptr;
     juce::String preferredMidiOutputName;

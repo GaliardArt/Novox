@@ -57,7 +57,7 @@ AudioDeviceManager
 - `PitchBend`: pure conversion from semitone offset to the standard 14-bit pitch-wheel value.
 - `MidiRouter`: MIDI output selection, channel-aware bounded event queue, and dedicated MIDI dispatch thread.
 - `MidiEventQueue`: fixed-capacity, lock-free SPSC queue preserving Note On, Note Off, and Pitch Bend order and payload.
-- `MainComponent`: visual feedback, controls, preset UI, live audio-device diagnostics, dropped-sample/event counters, and local preference restoration/persistence through JUCE `ApplicationProperties`.
+- `MainComponent`: tabbed JUCE interface (Play, MIDI, Audio, Presets), visual feedback, controls, live audio-device diagnostics, dropped-sample/event counters, and local preference restoration/persistence through JUCE `ApplicationProperties`.
 - `PresetData`: complete, validated snapshot of the active instrument configuration.
 - `PresetManager`: versioned JSON preset files stored in the user's NOVOX application-data directory; supports listing, save/update, load, and delete.
 
@@ -117,3 +117,14 @@ MIDI output restoration uses an exact device-name match. If the saved device is 
 ## Validation
 
 CTest includes deterministic pitch-detector, note-tracker, MIDI queue, Pitch Bend, pitch-smoothing, drum-mapping, percussion-detector, and preset-storage executables. These tests validate synthetic signal response and filter behavior; they do not certify real-world microphone latency, room-noise rejection, MIDI driver behavior, CPU load, musical performance, or local settings behavior across Windows profiles.
+
+
+## User interface (1.1.0)
+
+The main window uses native JUCE components arranged in four tabs:
+- **Play:** live detected note, frequency/confidence, Pitch Bend feedback, and vocal percussion activity.
+- **MIDI:** output selection, channel, Pitch Bend configuration, percussion enablement, and General MIDI drum-note mapping.
+- **Audio:** input gain, pitch sensitivity, pitch smoothing, active device metadata, and dropped-sample/event diagnostics.
+- **Presets:** local preset selection, save/update, load, and delete.
+
+The UI redesign changes presentation and control placement only. Audio capture, worker-thread analysis, note tracking, MIDI event generation, and preset persistence remain in their existing modules.

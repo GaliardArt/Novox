@@ -54,31 +54,31 @@ MainComponent::MainComponent()
     noteLabel.setFont(juce::FontOptions(72.0f, juce::Font::bold));
     noteLabel.setJustificationType(juce::Justification::centred);
     noteLabel.setColour(juce::Label::textColourId, juce::Colour(0xff78e0b5));
-    addAndMakeVisible(noteLabel);
+    playPage.addAndMakeVisible(noteLabel);
 
     frequencyLabel.setText("0.0 Hz  |  confidence 0%", juce::dontSendNotification);
     frequencyLabel.setJustificationType(juce::Justification::centred);
     frequencyLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-    addAndMakeVisible(frequencyLabel);
+    playPage.addAndMakeVisible(frequencyLabel);
 
     midiLabel.setText("MIDI: no output selected", juce::dontSendNotification);
     midiLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-    addAndMakeVisible(midiLabel);
+    midiPage.addAndMakeVisible(midiLabel);
 
     percussionLabel.setText("Percussion: waiting", juce::dontSendNotification);
     percussionLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     percussionLabel.setJustificationType(juce::Justification::centred);
-    addAndMakeVisible(percussionLabel);
+    playPage.addAndMakeVisible(percussionLabel);
 
     audioDiagnosticsLabel.setText("Audio input: checking device...", juce::dontSendNotification);
     audioDiagnosticsLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     audioDiagnosticsLabel.setJustificationType(juce::Justification::centred);
-    addAndMakeVisible(audioDiagnosticsLabel);
+    audioPage.addAndMakeVisible(audioDiagnosticsLabel);
 
     performanceDiagnosticsLabel.setText("Diagnostics: no dropped audio or MIDI events", juce::dontSendNotification);
     performanceDiagnosticsLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     performanceDiagnosticsLabel.setJustificationType(juce::Justification::centred);
-    addAndMakeVisible(performanceDiagnosticsLabel);
+    audioPage.addAndMakeVisible(performanceDiagnosticsLabel);
 
     drumMidiEnabled.setToggleState(savedDrumMidiEnabled, juce::dontSendNotification);
     drumMidiEnabled.onClick = [this] {
@@ -87,12 +87,12 @@ MainComponent::MainComponent()
             releaseAllDrumNotes();
         saveSettings();
     };
-    addAndMakeVisible(drumMidiEnabled);
+    midiPage.addAndMakeVisible(drumMidiEnabled);
 
     drumMappingLabel.setText("General MIDI drum mapping (channel 10)", juce::dontSendNotification);
     drumMappingLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     drumMappingLabel.setJustificationType(juce::Justification::centred);
-    addAndMakeVisible(drumMappingLabel);
+    midiPage.addAndMakeVisible(drumMappingLabel);
 
     const auto populateDrumNotes = [](juce::ComboBox& selector, int selectedNote) {
         for (int note = DrumMapping::minimumNote; note <= DrumMapping::maximumNote; ++note)
@@ -127,9 +127,9 @@ MainComponent::MainComponent()
         settings->setValue("drumHiHatNote", hiHatNoteSelector.getSelectedId() - 1);
         saveSettings();
     };
-    addAndMakeVisible(kickNoteSelector);
-    addAndMakeVisible(snareNoteSelector);
-    addAndMakeVisible(hiHatNoteSelector);
+    midiPage.addAndMakeVisible(kickNoteSelector);
+    midiPage.addAndMakeVisible(snareNoteSelector);
+    midiPage.addAndMakeVisible(hiHatNoteSelector);
 
     kickLabel.setText("Kick", juce::dontSendNotification);
     snareLabel.setText("Snare", juce::dontSendNotification);
@@ -141,7 +141,7 @@ MainComponent::MainComponent()
 
     gainLabel.setText("Input gain", juce::dontSendNotification);
     gainLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-    addAndMakeVisible(gainLabel);
+    audioPage.addAndMakeVisible(gainLabel);
     gainSlider.setRange(0.1, 4.0, 0.05);
     gainSlider.setValue(savedGain, juce::dontSendNotification);
     gainSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 24);
@@ -152,11 +152,11 @@ MainComponent::MainComponent()
         saveSettings();
     };
     engine.setInputGain(static_cast<float>(savedGain));
-    addAndMakeVisible(gainSlider);
+    audioPage.addAndMakeVisible(gainSlider);
 
     sensitivityLabel.setText("Pitch sensitivity", juce::dontSendNotification);
     sensitivityLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-    addAndMakeVisible(sensitivityLabel);
+    audioPage.addAndMakeVisible(sensitivityLabel);
     sensitivitySlider.setRange(0, 100, 1);
     sensitivitySlider.setValue(savedSensitivity, juce::dontSendNotification);
     sensitivitySlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 24);
@@ -168,11 +168,11 @@ MainComponent::MainComponent()
         saveSettings();
     };
     engine.setPitchSensitivity(static_cast<float>(savedSensitivity / 100.0));
-    addAndMakeVisible(sensitivitySlider);
+    audioPage.addAndMakeVisible(sensitivitySlider);
 
     smoothingLabel.setText("Pitch smoothing", juce::dontSendNotification);
     smoothingLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-    addAndMakeVisible(smoothingLabel);
+    audioPage.addAndMakeVisible(smoothingLabel);
     smoothingSlider.setRange(0, 100, 1);
     smoothingSlider.setValue(savedSmoothing, juce::dontSendNotification);
     smoothingSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 24);
@@ -183,11 +183,11 @@ MainComponent::MainComponent()
         settings->setValue("pitchSmoothing", smoothingSlider.getValue());
         saveSettings();
     };
-    addAndMakeVisible(smoothingSlider);
+    audioPage.addAndMakeVisible(smoothingSlider);
 
     bendRangeLabel.setText("Pitch Bend range", juce::dontSendNotification);
     bendRangeLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-    addAndMakeVisible(bendRangeLabel);
+    midiPage.addAndMakeVisible(bendRangeLabel);
     bendRangeSlider.setRange(1, 12, 1);
     bendRangeSlider.setValue(savedBendRange, juce::dontSendNotification);
     bendRangeSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 100, 24);
@@ -197,7 +197,7 @@ MainComponent::MainComponent()
         settings->setValue("pitchBendRange", static_cast<int>(bendRangeSlider.getValue()));
         saveSettings();
     };
-    addAndMakeVisible(bendRangeSlider);
+    midiPage.addAndMakeVisible(bendRangeSlider);
 
     pitchBendEnabled.setToggleState(savedBendEnabled, juce::dontSendNotification);
     pitchBendEnabled.onClick = [this] {
@@ -208,38 +208,38 @@ MainComponent::MainComponent()
         settings->setValue("pitchBendEnabled", pitchBendEnabled.getToggleState());
         saveSettings();
     };
-    addAndMakeVisible(pitchBendEnabled);
+    midiPage.addAndMakeVisible(pitchBendEnabled);
 
     pitchBendLabel.setText("Pitch Bend: center", juce::dontSendNotification);
     pitchBendLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     pitchBendLabel.setJustificationType(juce::Justification::centred);
-    addAndMakeVisible(pitchBendLabel);
+    playPage.addAndMakeVisible(pitchBendLabel);
 
     midiOutputSelector.onChange = [this] { selectMidiOutput(); };
-    addAndMakeVisible(midiOutputSelector);
+    midiPage.addAndMakeVisible(midiOutputSelector);
 
     channelLabel.setText("MIDI channel", juce::dontSendNotification);
     channelLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-    addAndMakeVisible(channelLabel);
+    midiPage.addAndMakeVisible(channelLabel);
     for (int channel = 1; channel <= 16; ++channel)
         channelSelector.addItem("Channel " + juce::String(channel), channel);
     channelSelector.setSelectedId(savedChannel, juce::dontSendNotification);
     channelSelector.onChange = [this] { selectMidiChannel(); };
-    addAndMakeVisible(channelSelector);
+    midiPage.addAndMakeVisible(channelSelector);
     midiRouter.setChannel(savedChannel);
 
     refreshButton.onClick = [this] { refreshMidiOutputs(); };
-    addAndMakeVisible(refreshButton);
+    midiPage.addAndMakeVisible(refreshButton);
 
     presetsLabel.setText("Local presets", juce::dontSendNotification);
     presetsLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     presetsLabel.setJustificationType(juce::Justification::centred);
-    addAndMakeVisible(presetsLabel);
+    presetsPage.addAndMakeVisible(presetsLabel);
 
     presetNameEditor.setText("My Preset", juce::dontSendNotification);
     presetNameEditor.setInputRestrictions(48);
     presetNameEditor.setTextToShowWhenEmpty("Preset name", juce::Colours::grey);
-    addAndMakeVisible(presetNameEditor);
+    presetsPage.addAndMakeVisible(presetNameEditor);
 
     presetSelector.onChange = [this] {
         const int selected = presetSelector.getSelectedId();
@@ -247,17 +247,43 @@ MainComponent::MainComponent()
             presetNameEditor.setText(presetSelector.getItemText(
                 presetSelector.indexOfItemId(selected)), juce::dontSendNotification);
     };
-    addAndMakeVisible(presetSelector);
+    presetsPage.addAndMakeVisible(presetSelector);
 
     savePresetButton.onClick = [this] { saveCurrentPreset(); };
     loadPresetButton.onClick = [this] { loadSelectedPreset(); };
     deletePresetButton.onClick = [this] { deleteSelectedPreset(); };
-    addAndMakeVisible(savePresetButton);
-    addAndMakeVisible(loadPresetButton);
-    addAndMakeVisible(deletePresetButton);
+    presetsPage.addAndMakeVisible(savePresetButton);
+    presetsPage.addAndMakeVisible(loadPresetButton);
+    presetsPage.addAndMakeVisible(deletePresetButton);
     refreshPresetList(settings->getValue("lastPresetName"));
 
     refreshMidiOutputs();
+
+    novoxLookAndFeel.setColour(juce::ResizableWindow::backgroundColourId, juce::Colour(0xff17191e));
+    novoxLookAndFeel.setColour(juce::Label::textColourId, juce::Colour(0xffe8e9ed));
+    novoxLookAndFeel.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff343841));
+    novoxLookAndFeel.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xffe47b91));
+    novoxLookAndFeel.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffe8e9ed));
+    novoxLookAndFeel.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+    novoxLookAndFeel.setColour(juce::ComboBox::backgroundColourId, juce::Colour(0xff292d35));
+    novoxLookAndFeel.setColour(juce::ComboBox::textColourId, juce::Colour(0xffe8e9ed));
+    novoxLookAndFeel.setColour(juce::ComboBox::outlineColourId, juce::Colour(0xff454b56));
+    novoxLookAndFeel.setColour(juce::ComboBox::arrowColourId, juce::Colour(0xffe47b91));
+    novoxLookAndFeel.setColour(juce::Slider::trackColourId, juce::Colour(0xffe47b91));
+    novoxLookAndFeel.setColour(juce::Slider::thumbColourId, juce::Colour(0xfff0a0ae));
+    novoxLookAndFeel.setColour(juce::Slider::textBoxTextColourId, juce::Colour(0xffe8e9ed));
+    novoxLookAndFeel.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xff292d35));
+    novoxLookAndFeel.setColour(juce::Slider::textBoxOutlineColourId, juce::Colour(0xff454b56));
+    setLookAndFeel(&novoxLookAndFeel);
+    tabs.setLookAndFeel(&novoxLookAndFeel);
+    tabs.setTabBarDepth(42);
+    tabs.setColour(juce::TabbedComponent::backgroundColourId, juce::Colour(0xff20232a));
+    tabs.setColour(juce::TabbedComponent::outlineColourId, juce::Colour(0xff343943));
+    tabs.addTab("PLAY", juce::Colour(0xffe47b91), &playPage, false);
+    tabs.addTab("MIDI", juce::Colour(0xffe47b91), &midiPage, false);
+    tabs.addTab("AUDIO", juce::Colour(0xffe47b91), &audioPage, false);
+    tabs.addTab("PRESETS", juce::Colour(0xffe47b91), &presetsPage, false);
+    addAndMakeVisible(tabs);
 
     const auto error = deviceManager.initialise(1, 0, nullptr, true);
     if (error.isNotEmpty())
@@ -265,13 +291,15 @@ MainComponent::MainComponent()
     else
         deviceManager.addAudioCallback(&engine);
 
-    setSize(960, 1280);
+    setSize(1080, 760);
     startTimerHz(60);
 }
 
 MainComponent::~MainComponent()
 {
     stopTimer();
+    tabs.setLookAndFeel(nullptr);
+    setLookAndFeel(nullptr);
     releaseAllDrumNotes();
     if (noteTracker.getActiveNote() >= 0)
     {
@@ -634,72 +662,83 @@ void MainComponent::deleteSelectedPreset()
     status.setText("Deleted preset: " + name, juce::dontSendNotification);
 }
 
+
 void MainComponent::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff15191f));
-    g.setColour(juce::Colour(0xff252d37));
-    g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(24.0f), 18.0f);
+    g.fillAll(juce::Colour(0xff17191e));
+    g.setColour(juce::Colour(0xff22262e));
+    g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(18.0f), 18.0f);
 }
 
 void MainComponent::resized()
 {
-    auto area = getLocalBounds().reduced(48);
-    title.setBounds(area.removeFromTop(44));
-    status.setBounds(area.removeFromTop(30));
-    area.removeFromTop(18);
-    noteLabel.setBounds(area.removeFromTop(116));
-    frequencyLabel.setBounds(area.removeFromTop(34));
-    pitchBendLabel.setBounds(area.removeFromTop(28));
-    midiLabel.setBounds(area.removeFromTop(28));
-    percussionLabel.setBounds(area.removeFromTop(26));
-    audioDiagnosticsLabel.setBounds(area.removeFromTop(24));
-    performanceDiagnosticsLabel.setBounds(area.removeFromTop(24));
-    area.removeFromTop(10);
-
-    presetsLabel.setBounds(area.removeFromTop(24));
-    presetSelector.setBounds(area.removeFromTop(32).withSizeKeepingCentre(420, 32));
-    presetNameEditor.setBounds(area.removeFromTop(32).withSizeKeepingCentre(420, 32));
-    area.removeFromTop(5);
-    auto presetButtons = area.removeFromTop(34).withSizeKeepingCentre(420, 34);
-    const int presetButtonWidth = 132;
-    savePresetButton.setBounds(presetButtons.removeFromLeft(presetButtonWidth));
-    presetButtons.removeFromLeft(12);
-    loadPresetButton.setBounds(presetButtons.removeFromLeft(presetButtonWidth));
-    presetButtons.removeFromLeft(12);
-    deletePresetButton.setBounds(presetButtons);
-
-    area.removeFromTop(12);
-
-    gainLabel.setBounds(area.removeFromTop(22).withSizeKeepingCentre(420, 22));
-    gainSlider.setBounds(area.removeFromTop(34).withSizeKeepingCentre(420, 34));
-    area.removeFromTop(5);
-    sensitivityLabel.setBounds(area.removeFromTop(22).withSizeKeepingCentre(420, 22));
-    sensitivitySlider.setBounds(area.removeFromTop(34).withSizeKeepingCentre(420, 34));
-    area.removeFromTop(5);
-    smoothingLabel.setBounds(area.removeFromTop(22).withSizeKeepingCentre(420, 22));
-    smoothingSlider.setBounds(area.removeFromTop(34).withSizeKeepingCentre(420, 34));
-    area.removeFromTop(6);
-    pitchBendEnabled.setBounds(area.removeFromTop(28).withSizeKeepingCentre(220, 28));
-    bendRangeLabel.setBounds(area.removeFromTop(22).withSizeKeepingCentre(420, 22));
-    bendRangeSlider.setBounds(area.removeFromTop(34).withSizeKeepingCentre(420, 34));
+    auto area = getLocalBounds().reduced(24);
+    auto header = area.removeFromTop(66);
+    title.setBounds(header.removeFromLeft(220).withSizeKeepingCentre(180, 42));
+    status.setBounds(header.reduced(8, 12));
     area.removeFromTop(8);
-    midiOutputSelector.setBounds(area.removeFromTop(34).withSizeKeepingCentre(420, 34));
-    area.removeFromTop(5);
-    channelLabel.setBounds(area.removeFromTop(22).withSizeKeepingCentre(420, 22));
-    channelSelector.setBounds(area.removeFromTop(34).withSizeKeepingCentre(240, 34));
-    area.removeFromTop(6);
-    refreshButton.setBounds(area.removeFromTop(36).withSizeKeepingCentre(180, 32));
-    area.removeFromTop(12);
-    drumMidiEnabled.setBounds(area.removeFromTop(28).withSizeKeepingCentre(300, 28));
-    drumMappingLabel.setBounds(area.removeFromTop(24));
-    auto mappingRow = area.removeFromTop(32).withSizeKeepingCentre(660, 32);
-    const int cellWidth = mappingRow.getWidth() / 3;
-    kickLabel.setBounds(mappingRow.removeFromLeft(cellWidth / 3));
-    kickNoteSelector.setBounds(mappingRow.removeFromLeft(cellWidth * 2 / 3));
-    snareLabel.setBounds(mappingRow.removeFromLeft(cellWidth / 3));
-    snareNoteSelector.setBounds(mappingRow.removeFromLeft(cellWidth * 2 / 3));
-    hiHatLabel.setBounds(mappingRow.removeFromLeft(cellWidth / 3));
-    hiHatNoteSelector.setBounds(mappingRow);
+    tabs.setBounds(area);
+    auto play = playPage.getLocalBounds().reduced(30);
+    noteLabel.setBounds(play.removeFromTop(210));
+    frequencyLabel.setBounds(play.removeFromTop(38));
+    pitchBendLabel.setBounds(play.removeFromTop(34));
+    play.removeFromTop(24);
+    percussionLabel.setBounds(play.removeFromTop(42));
+    auto midi = midiPage.getLocalBounds().reduced(34);
+    midiLabel.setBounds(midi.removeFromTop(34));
+    midi.removeFromTop(12);
+    auto outputRow = midi.removeFromTop(42);
+    midiOutputSelector.setBounds(outputRow.removeFromLeft(outputRow.getWidth() - 150));
+    outputRow.removeFromLeft(12);
+    refreshButton.setBounds(outputRow);
+    midi.removeFromTop(18);
+    channelLabel.setBounds(midi.removeFromTop(24));
+    channelSelector.setBounds(midi.removeFromTop(40).withWidth(260));
+    midi.removeFromTop(18);
+    pitchBendEnabled.setBounds(midi.removeFromTop(32));
+    bendRangeLabel.setBounds(midi.removeFromTop(24));
+    bendRangeSlider.setBounds(midi.removeFromTop(42));
+    midi.removeFromTop(18);
+    drumMidiEnabled.setBounds(midi.removeFromTop(32));
+    drumMappingLabel.setBounds(midi.removeFromTop(30));
+    midi.removeFromTop(8);
+    auto mapping = midi.removeFromTop(76);
+    const int cell = mapping.getWidth() / 3;
+    auto kick = mapping.removeFromLeft(cell).reduced(6, 0);
+    kickLabel.setBounds(kick.removeFromTop(24));
+    kickNoteSelector.setBounds(kick.removeFromTop(40));
+    auto snare = mapping.removeFromLeft(cell).reduced(6, 0);
+    snareLabel.setBounds(snare.removeFromTop(24));
+    snareNoteSelector.setBounds(snare.removeFromTop(40));
+    auto hat = mapping.reduced(6, 0);
+    hiHatLabel.setBounds(hat.removeFromTop(24));
+    hiHatNoteSelector.setBounds(hat.removeFromTop(40));
+    auto audio = audioPage.getLocalBounds().reduced(34);
+    gainLabel.setBounds(audio.removeFromTop(26));
+    gainSlider.setBounds(audio.removeFromTop(48));
+    audio.removeFromTop(16);
+    sensitivityLabel.setBounds(audio.removeFromTop(26));
+    sensitivitySlider.setBounds(audio.removeFromTop(48));
+    audio.removeFromTop(16);
+    smoothingLabel.setBounds(audio.removeFromTop(26));
+    smoothingSlider.setBounds(audio.removeFromTop(48));
+    audio.removeFromTop(24);
+    audioDiagnosticsLabel.setBounds(audio.removeFromTop(34));
+    performanceDiagnosticsLabel.setBounds(audio.removeFromTop(34));
+    auto presets = presetsPage.getLocalBounds().reduced(34);
+    presetsLabel.setBounds(presets.removeFromTop(32));
+    presets.removeFromTop(18);
+    presetSelector.setBounds(presets.removeFromTop(42).withWidth(520));
+    presets.removeFromTop(12);
+    presetNameEditor.setBounds(presets.removeFromTop(42).withWidth(520));
+    presets.removeFromTop(18);
+    auto buttons = presets.removeFromTop(42);
+    const int buttonWidth = juce::jmin(160, (buttons.getWidth() - 24) / 3);
+    savePresetButton.setBounds(buttons.removeFromLeft(buttonWidth));
+    buttons.removeFromLeft(12);
+    loadPresetButton.setBounds(buttons.removeFromLeft(buttonWidth));
+    buttons.removeFromLeft(12);
+    deletePresetButton.setBounds(buttons.removeFromLeft(buttonWidth));
 }
 
 void MainComponent::timerCallback()

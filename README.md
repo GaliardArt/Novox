@@ -1,5 +1,7 @@
 # NOVOX
 
+**Version 1.1.0 — Modern UI Redesign**
+
 NOVOX is an offline-first, standalone vocal instrument for turning voice into musical control data. It is written in C++ and uses JUCE for audio input, MIDI integration, and the desktop application.
 
 ## Stable release (1.0.0)
@@ -27,11 +29,11 @@ NOVOX is an offline-first, standalone vocal instrument for turning voice into mu
 
 ## Runtime diagnostics
 
-The main window reports the active audio input device, the number of enabled input channels, the current sample rate, and the device buffer size. It also displays cumulative counters for audio samples rejected when the audio FIFO or preallocated callback buffer cannot accept them, and MIDI events rejected when the bounded MIDI queue is full. These counters help distinguish a missing input device from signal-detection issues and expose overload instead of silently hiding it.
+The Audio tab reports the active audio input device, the number of enabled input channels, the current sample rate, and the device buffer size. It also displays cumulative counters for audio samples rejected when the audio FIFO or preallocated callback buffer cannot accept them, and MIDI events rejected when the bounded MIDI queue is full. These counters help distinguish a missing input device from signal-detection issues and expose overload instead of silently hiding it.
 
 ## Local presets
 
-Presets are stored as individual versioned `.novoxpreset` JSON files in the current user's NOVOX application-data directory. The UI can save or update a named preset, load it, and delete it. A preset captures all instrument controls: input gain, pitch sensitivity, pitch smoothing, Pitch Bend enable/range, melodic MIDI channel/output preference, percussion MIDI enable state, and kick/snare/hi-hat note assignments. Loading a preset updates the active controls and the current local application preferences. Presets remain local and work without an account or network connection. If a preset references an unavailable MIDI output, NOVOX keeps the saved device preference without silently selecting a different output.
+Presets are stored as individual versioned `.novoxpreset` JSON files in the current user's NOVOX application-data directory. The Presets tab can save or update a named preset, load it, and delete it. A preset captures all instrument controls: input gain, pitch sensitivity, pitch smoothing, Pitch Bend enable/range, melodic MIDI channel/output preference, percussion MIDI enable state, and kick/snare/hi-hat note assignments. Loading a preset updates the active controls and the current local application preferences. Presets remain local and work without an account or network connection. If a preset references an unavailable MIDI output, NOVOX keeps the saved device preference without silently selecting a different output.
 
 ## MIDI drum mapping
 
@@ -63,7 +65,7 @@ cpack --config build/CPackConfig.cmake -C Release
 
 CMake fetches JUCE 8.0.6 on the first configure. An internet connection is needed for that dependency download. The application is designed to run offline after dependencies are available.
 
-The packaging commands create a portable ZIP named `NOVOX-1.0.0-Windows-x64.zip` in the build directory and an install layout under `dist/`. An optional Inno Setup definition is provided at `installer/NOVOX.iss`; compile it from the repository root after creating `dist/` if Inno Setup 6 is installed. The portable ZIP is the canonical package and does not require the installer.
+The packaging commands create a portable ZIP named `NOVOX-1.1.0-Windows-x64.zip` in the build directory and an install layout under `dist/`. An optional Inno Setup definition is provided at `installer/NOVOX.iss`; compile it from the repository root after creating `dist/` if Inno Setup 6 is installed. The portable ZIP is the canonical package and does not require the installer.
 
 ## Regression coverage
 
@@ -119,3 +121,8 @@ git push origin v1.0.0
 The tag must point to the validated source commit and match `project(NOVOX VERSION ...)` in `CMakeLists.txt`. Pushing the tag starts the release workflow. The workflow does not merge branches or create/move tags. It publishes only after the clean Windows build and all CTest cases pass.
 
 The workflow publishes the portable ZIP as the canonical package and includes its SHA-256 checksum. The optional Inno Setup installer remains a separate maintainer-controlled step; no third-party installer or driver is bundled automatically.
+
+
+## Version 1.1.0 — Modern UI
+
+The interface is organized into four native JUCE tabs: Play, MIDI, Audio, and Presets. The redesign introduces a compact dark graphite theme with a restrained coral accent, a dedicated live pitch screen, separated MIDI routing and drum mapping controls, audio tuning and diagnostics, and a focused preset-management page. The audio engine, pitch detector, note tracker, MIDI routing, drum classifier, settings storage, and preset format remain unchanged.

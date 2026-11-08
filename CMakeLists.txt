@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(NOVOX VERSION 1.0.0 LANGUAGES CXX)
+project(NOVOX VERSION 1.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -97,6 +97,7 @@ install(FILES
     README.md
     docs/QUICKSTART.md
     docs/RELEASE_NOTES_1.0.0.md
+    docs/RELEASE_NOTES_1.1.0.md
     DESTINATION docs
 )
 
