@@ -75,3 +75,8 @@ NOVOX can use ASIO devices through JUCE when the Steinberg ASIO SDK is available
 - the `ASIO_SDK_DIR` environment variable pointing to the SDK root.
 
 CMake detects `common/iasiodrv.h` and enables the JUCE ASIO backend. If the SDK is not present, the normal Windows build continues with the available native audio backends; ASIO is simply omitted.
+
+
+## MIDI Note Cleanup
+
+On the Audio page, enable **MIDI Note Cleanup** to filter unstable pitch events before they become MIDI notes. The controls adjust the minimum stable duration, minimum YIN confidence, and the maximum short gap to bridge. The feature is disabled by default and can be used independently from Noise Reduction and Pitch Stability Guard.

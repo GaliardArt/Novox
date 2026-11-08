@@ -4,7 +4,7 @@
 
 namespace
 {
-    constexpr int presetSchemaVersion = 2;
+    constexpr int presetSchemaVersion = 3;
 
     void setError(juce::String* error, const juce::String& message)
     {
@@ -109,6 +109,10 @@ bool PresetManager::savePreset(const juce::String& name, PresetData data, juce::
     object->setProperty("pitchStabilityEnabled", data.pitchStabilityEnabled);
     object->setProperty("pitchDropToleranceCents", data.pitchDropToleranceCents);
     object->setProperty("pitchDropHoldMs", data.pitchDropHoldMs);
+    object->setProperty("midiNoteCleanupEnabled", data.midiNoteCleanupEnabled);
+    object->setProperty("midiNoteMinimumDurationMs", data.midiNoteMinimumDurationMs);
+    object->setProperty("midiNoteMinimumConfidence", data.midiNoteMinimumConfidence);
+    object->setProperty("midiNoteGapBridgeMs", data.midiNoteGapBridgeMs);
     object->setProperty("inputChannelMode", data.inputChannelMode);
     object->setProperty("pitchBendRange", data.pitchBendRange);
     object->setProperty("midiChannel", data.midiChannel);
@@ -140,7 +144,7 @@ bool PresetManager::loadPreset(const juce::String& name, PresetData& data, juce:
     const auto parsed = readJson(file);
     auto* object = parsed.getDynamicObject();
     const int schemaVersion = object != nullptr ? static_cast<int>(object->getProperty("schemaVersion")) : 0;
-    if (object == nullptr || (schemaVersion != 1 && schemaVersion != presetSchemaVersion))
+    if (object == nullptr || (schemaVersion < 1 || schemaVersion > presetSchemaVersion))
     {
         setError(error, "The preset file is invalid or uses an unsupported version.");
         return false;
@@ -184,6 +188,13 @@ bool PresetManager::loadPreset(const juce::String& name, PresetData& data, juce:
         loaded.pitchDropHoldMs = static_cast<double>(object->getProperty("pitchDropHoldMs"));
     else if (has("pitchDropHoldFrames"))
         loaded.pitchDropHoldMs = static_cast<double>(object->getProperty("pitchDropHoldFrames")) * 10.0;
+    if (schemaVersion >= 3)
+    {
+        if (has("midiNoteCleanupEnabled")) loaded.midiNoteCleanupEnabled = static_cast<bool>(object->getProperty("midiNoteCleanupEnabled"));
+        if (has("midiNoteMinimumDurationMs")) loaded.midiNoteMinimumDurationMs = static_cast<double>(object->getProperty("midiNoteMinimumDurationMs"));
+        if (has("midiNoteMinimumConfidence")) loaded.midiNoteMinimumConfidence = static_cast<double>(object->getProperty("midiNoteMinimumConfidence"));
+        if (has("midiNoteGapBridgeMs")) loaded.midiNoteGapBridgeMs = static_cast<double>(object->getProperty("midiNoteGapBridgeMs"));
+    }
     if (has("inputChannelMode")) loaded.inputChannelMode = static_cast<int>(object->getProperty("inputChannelMode"));
     loaded.pitchBendRange = static_cast<int>(object->getProperty("pitchBendRange"));
     loaded.midiChannel = static_cast<int>(object->getProperty("midiChannel"));

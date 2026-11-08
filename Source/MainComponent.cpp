@@ -64,6 +64,10 @@ MainComponent::MainComponent()
     const double savedPitchDropTolerance = juce::jlimit(10.0, 150.0, settings->getDoubleValue("pitchDropToleranceCents", 45.0));
     const double legacyPitchDropFrames = settings->getDoubleValue("pitchDropHoldFrames", 3.0);
     const double savedPitchDropHoldMs = juce::jlimit(10.0, 80.0, settings->getDoubleValue("pitchDropHoldMs", legacyPitchDropFrames * 10.0));
+    const bool savedMidiNoteCleanupEnabled = settings->getBoolValue("midiNoteCleanupEnabled", false);
+    const double savedMidiNoteMinimumDuration = juce::jlimit(20.0, 120.0, settings->getDoubleValue("midiNoteMinimumDurationMs", 60.0));
+    const double savedMidiNoteMinimumConfidence = juce::jlimit(0.0, 100.0, settings->getDoubleValue("midiNoteMinimumConfidence", 65.0));
+    const double savedMidiNoteGapBridge = juce::jlimit(0.0, 80.0, settings->getDoubleValue("midiNoteGapBridgeMs", 25.0));
     const int savedInputChannelMode=juce::jlimit(0,3,settings->getIntValue("inputChannelMode",0));
     const double savedNoiseFloorDb=juce::jlimit(-120.0,0.0,settings->getDoubleValue("noiseCalibrationFloorDb",-120.0));
     const int savedBendRange = juce::jlimit(1, 12, settings->getIntValue("pitchBendRange", 2));
@@ -231,6 +235,48 @@ MainComponent::MainComponent()
     pitchDropToleranceSlider.onValueChange=[this]{engine.setPitchStabilityGuard(pitchStabilityEnabled.getToggleState(),static_cast<float>(pitchDropToleranceSlider.getValue()),static_cast<float>(pitchDropHoldSlider.getValue()));settings->setValue("pitchDropToleranceCents",pitchDropToleranceSlider.getValue());saveSettings();repaint();};addAndMakeVisible(pitchDropToleranceSlider);
     pitchDropHoldSlider.setRange(10.0,80.0,5.0);pitchDropHoldSlider.setValue(savedPitchDropHoldMs,juce::dontSendNotification);pitchDropHoldSlider.setTextBoxStyle(juce::Slider::TextBoxRight,false,42,20);pitchDropHoldSlider.setTextValueSuffix(" ms");
     pitchDropHoldSlider.onValueChange=[this]{engine.setPitchStabilityGuard(pitchStabilityEnabled.getToggleState(),static_cast<float>(pitchDropToleranceSlider.getValue()),static_cast<float>(pitchDropHoldSlider.getValue()));settings->setValue("pitchDropHoldMs",pitchDropHoldSlider.getValue());saveSettings();repaint();};addAndMakeVisible(pitchDropHoldSlider);
+    midiNoteCleanupEnabled.setToggleState(savedMidiNoteCleanupEnabled, juce::dontSendNotification);
+    midiNoteCleanupEnabled.onClick = [this]
+    {
+        engine.setMidiNoteCleanup(midiNoteCleanupEnabled.getToggleState(),
+            static_cast<float>(midiNoteMinimumDurationSlider.getValue()),
+            static_cast<float>(midiNoteMinimumConfidenceSlider.getValue()),
+            static_cast<float>(midiNoteGapBridgeSlider.getValue()));
+        settings->setValue("midiNoteCleanupEnabled", midiNoteCleanupEnabled.getToggleState());
+        saveSettings(); repaint();
+    };
+    addAndMakeVisible(midiNoteCleanupEnabled);
+
+    const auto configureCleanupSlider = [this](juce::Slider& slider, double minimum, double maximum,
+                                                double interval, double value, const juce::String& suffix,
+                                                const juce::String& setting)
+    {
+        slider.setRange(minimum, maximum, interval);
+        slider.setValue(value, juce::dontSendNotification);
+        slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 52, 21);
+        slider.setTextValueSuffix(suffix);
+        slider.onValueChange = [this, setting]
+        {
+            engine.setMidiNoteCleanup(midiNoteCleanupEnabled.getToggleState(),
+                static_cast<float>(midiNoteMinimumDurationSlider.getValue()),
+                static_cast<float>(midiNoteMinimumConfidenceSlider.getValue()),
+                static_cast<float>(midiNoteGapBridgeSlider.getValue()));
+            if (setting == "midiNoteMinimumDurationMs") settings->setValue(setting, midiNoteMinimumDurationSlider.getValue());
+            else if (setting == "midiNoteMinimumConfidence") settings->setValue(setting, midiNoteMinimumConfidenceSlider.getValue());
+            else settings->setValue(setting, midiNoteGapBridgeSlider.getValue());
+            saveSettings(); repaint();
+        };
+        addAndMakeVisible(slider);
+    };
+    configureCleanupSlider(midiNoteMinimumDurationSlider, 20.0, 120.0, 5.0, savedMidiNoteMinimumDuration, " ms", "midiNoteMinimumDurationMs");
+    configureCleanupSlider(midiNoteMinimumConfidenceSlider, 0.0, 100.0, 5.0, savedMidiNoteMinimumConfidence, "%", "midiNoteMinimumConfidence");
+    configureCleanupSlider(midiNoteGapBridgeSlider, 0.0, 80.0, 5.0, savedMidiNoteGapBridge, " ms", "midiNoteGapBridgeMs");
+    midiCleanupDurationLabel.setText("Min. stability", juce::dontSendNotification); midiCleanupDurationLabel.setColour(juce::Label::textColourId, NovoxLookAndFeel::textSecondary); addAndMakeVisible(midiCleanupDurationLabel);
+    midiCleanupConfidenceLabel.setText("Confidence", juce::dontSendNotification); midiCleanupConfidenceLabel.setColour(juce::Label::textColourId, NovoxLookAndFeel::textSecondary); addAndMakeVisible(midiCleanupConfidenceLabel);
+    midiCleanupGapLabel.setText("Gap bridge", juce::dontSendNotification); midiCleanupGapLabel.setColour(juce::Label::textColourId, NovoxLookAndFeel::textSecondary); addAndMakeVisible(midiCleanupGapLabel);
+    engine.setMidiNoteCleanup(savedMidiNoteCleanupEnabled, static_cast<float>(savedMidiNoteMinimumDuration),
+        static_cast<float>(savedMidiNoteMinimumConfidence), static_cast<float>(savedMidiNoteGapBridge));
+
     engine.setPitchStabilityGuard(savedPitchStabilityEnabled, static_cast<float>(savedPitchDropTolerance), static_cast<float>(savedPitchDropHoldMs));
     inputChannelSelector.addItem("Auto (strongest)",1);inputChannelSelector.addItem("Left",2);inputChannelSelector.addItem("Right",3);inputChannelSelector.addItem("Stereo mix",4);inputChannelSelector.setSelectedId(savedInputChannelMode+1,juce::dontSendNotification);
     inputChannelSelector.onChange=[this]{int mode=juce::jlimit(0,3,inputChannelSelector.getSelectedId()-1);engine.setInputChannelMode(mode);settings->setValue("inputChannelMode",mode);saveSettings();repaint();};engine.setInputChannelMode(savedInputChannelMode);engine.setCalibratedNoiseFloorDb((float)savedNoiseFloorDb);addAndMakeVisible(inputChannelSelector);
@@ -308,7 +354,7 @@ void MainComponent::styleControls()
     styleButton(deletePresetButton);
     styleButton(calibrateNoiseButton);
     styleButton(audioSetupButton);
-    for (auto* slider : { &gainSlider, &sensitivitySlider, &smoothingSlider, &bendRangeSlider, &noteTransitionSlider, &noiseReductionSlider, &pitchDropToleranceSlider, &pitchDropHoldSlider })
+    for (auto* slider : { &gainSlider, &sensitivitySlider, &smoothingSlider, &bendRangeSlider, &noteTransitionSlider, &noiseReductionSlider, &pitchDropToleranceSlider, &pitchDropHoldSlider, &midiNoteMinimumDurationSlider, &midiNoteMinimumConfidenceSlider, &midiNoteGapBridgeSlider })
     {
         slider->setColour(juce::Slider::trackColourId, NovoxLookAndFeel::accent);
         slider->setColour(juce::Slider::thumbColourId, NovoxLookAndFeel::textPrimary);
@@ -549,6 +595,8 @@ void MainComponent::layoutPlayPage(juce::Rectangle<int>)
     autoTuneEnabled.setVisible(false);autoTuneKeySelector.setVisible(false);autoTuneScaleSelector.setVisible(false);
     noiseReductionEnabled.setVisible(false); noiseReductionSlider.setVisible(false);
     pitchStabilityEnabled.setVisible(false);pitchDropToleranceSlider.setVisible(false);pitchDropHoldSlider.setVisible(false);
+    midiNoteCleanupEnabled.setVisible(false); midiNoteMinimumDurationSlider.setVisible(false); midiNoteMinimumConfidenceSlider.setVisible(false); midiNoteGapBridgeSlider.setVisible(false);
+    midiCleanupDurationLabel.setVisible(false); midiCleanupConfidenceLabel.setVisible(false); midiCleanupGapLabel.setVisible(false);
     inputChannelSelector.setVisible(false);calibrateNoiseButton.setVisible(false);
     presetSelector.setVisible(false);
     presetNameEditor.setVisible(false);
@@ -581,6 +629,8 @@ void MainComponent::layoutAudioPage(juce::Rectangle<int> a)
     autoTuneEnabled.setVisible(true);autoTuneKeySelector.setVisible(true);autoTuneScaleSelector.setVisible(true);
     noiseReductionEnabled.setVisible(true);noiseReductionSlider.setVisible(true);inputChannelSelector.setVisible(true);calibrateNoiseButton.setVisible(true);
     pitchStabilityEnabled.setVisible(true);pitchDropToleranceSlider.setVisible(true);pitchDropHoldSlider.setVisible(true);
+    midiNoteCleanupEnabled.setVisible(true); midiNoteMinimumDurationSlider.setVisible(true); midiNoteMinimumConfidenceSlider.setVisible(true); midiNoteGapBridgeSlider.setVisible(true);
+    midiCleanupDurationLabel.setVisible(true); midiCleanupConfidenceLabel.setVisible(true); midiCleanupGapLabel.setVisible(true);
     inputChannelSelector.setBounds(a.getRight()-220,266,200,28);calibrateNoiseButton.setBounds(a.getX()+716,top+157,128,28);
     const int fiveGap=8,fiveCardW=(a.getWidth()-fiveGap*4)/5;
     gainSlider.setBounds(a.getX()+10,top+72,fiveCardW-20,30);
@@ -592,6 +642,10 @@ void MainComponent::layoutAudioPage(juce::Rectangle<int> a)
     pitchStabilityEnabled.setBounds(guardX,top+38,fiveCardW-16,24);pitchDropToleranceSlider.setBounds(guardX,top+68,fiveCardW-16,25);pitchDropHoldSlider.setBounds(guardX,top+99,fiveCardW-16,25);
     autoTuneEnabled.setBounds(a.getX()+14,top+157,112,28);autoTuneKeySelector.setBounds(a.getX()+150,top+157,100,28);autoTuneScaleSelector.setBounds(a.getX()+264,top+157,130,28);
     noiseReductionEnabled.setBounds(a.getX()+430,top+157,142,28);noiseReductionSlider.setBounds(a.getX()+574,top+157,132,28);
+    midiNoteCleanupEnabled.setBounds(a.getX()+14, top+207, 180, 28);
+    midiCleanupDurationLabel.setBounds(a.getX()+205, top+194, 170, 18); midiNoteMinimumDurationSlider.setBounds(a.getX()+205, top+212, 170, 26);
+    midiCleanupConfidenceLabel.setBounds(a.getX()+385, top+194, 170, 18); midiNoteMinimumConfidenceSlider.setBounds(a.getX()+385, top+212, 170, 26);
+    midiCleanupGapLabel.setBounds(a.getX()+565, top+194, 170, 18); midiNoteGapBridgeSlider.setBounds(a.getX()+565, top+212, 170, 26);
 }
 
 void MainComponent::layoutPresetsPage(juce::Rectangle<int> a)
@@ -674,6 +728,7 @@ PresetData MainComponent::capturePresetData() const
     data.noteTransitionDurationMs=noteTransitionSlider.getValue();data.autoTuneEnabled=autoTuneEnabled.getToggleState();data.autoTuneTonic=autoTuneKeySelector.getSelectedId()-1;data.autoTuneScale=autoTuneScaleSelector.getSelectedId()-1;
     data.noiseReductionEnabled = noiseReductionEnabled.getToggleState(); data.noiseReductionStrength = noiseReductionSlider.getValue();
     data.pitchStabilityEnabled=pitchStabilityEnabled.getToggleState();data.pitchDropToleranceCents=pitchDropToleranceSlider.getValue();data.pitchDropHoldMs=pitchDropHoldSlider.getValue();
+    data.midiNoteCleanupEnabled=midiNoteCleanupEnabled.getToggleState(); data.midiNoteMinimumDurationMs=midiNoteMinimumDurationSlider.getValue(); data.midiNoteMinimumConfidence=midiNoteMinimumConfidenceSlider.getValue(); data.midiNoteGapBridgeMs=midiNoteGapBridgeSlider.getValue();
     data.inputChannelMode=inputChannelSelector.getSelectedId()-1;
     data.pitchBendRange = static_cast<int>(bendRangeSlider.getValue());
     data.midiChannel = channelSelector.getSelectedId(); data.midiOutputName = preferredMidiOutputName.toStdString();
@@ -696,6 +751,12 @@ void MainComponent::applyPresetData(PresetData data, const juce::String& name)
     noiseReductionSlider.setValue(data.noiseReductionStrength, juce::dontSendNotification);
     pitchStabilityEnabled.setToggleState(data.pitchStabilityEnabled,juce::dontSendNotification);pitchDropToleranceSlider.setValue(data.pitchDropToleranceCents,juce::dontSendNotification);pitchDropHoldSlider.setValue(data.pitchDropHoldMs,juce::dontSendNotification);
     engine.setPitchStabilityGuard(data.pitchStabilityEnabled,static_cast<float>(data.pitchDropToleranceCents),static_cast<float>(data.pitchDropHoldMs));
+    midiNoteCleanupEnabled.setToggleState(data.midiNoteCleanupEnabled, juce::dontSendNotification);
+    midiNoteMinimumDurationSlider.setValue(data.midiNoteMinimumDurationMs, juce::dontSendNotification);
+    midiNoteMinimumConfidenceSlider.setValue(data.midiNoteMinimumConfidence, juce::dontSendNotification);
+    midiNoteGapBridgeSlider.setValue(data.midiNoteGapBridgeMs, juce::dontSendNotification);
+    engine.setMidiNoteCleanup(data.midiNoteCleanupEnabled, static_cast<float>(data.midiNoteMinimumDurationMs),
+        static_cast<float>(data.midiNoteMinimumConfidence), static_cast<float>(data.midiNoteGapBridgeMs));
     engine.setNoiseReductionEnabled(data.noiseReductionEnabled);
     engine.setNoiseReductionStrength(static_cast<float>(data.noiseReductionStrength / 100.0));
     inputChannelSelector.setSelectedId(data.inputChannelMode+1,juce::dontSendNotification);engine.setInputChannelMode(data.inputChannelMode);

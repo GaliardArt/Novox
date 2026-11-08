@@ -20,6 +20,10 @@ struct PresetData
     bool pitchStabilityEnabled = false;
     double pitchDropToleranceCents = 45.0;
     double pitchDropHoldMs = 30.0;
+    bool midiNoteCleanupEnabled = false;
+    double midiNoteMinimumDurationMs = 60.0;
+    double midiNoteMinimumConfidence = 65.0;
+    double midiNoteGapBridgeMs = 25.0;
     int inputChannelMode = 0;
     int pitchBendRange = 2;
     int midiChannel = 1;
@@ -40,6 +44,9 @@ struct PresetData
             ? std::clamp(pitchDropToleranceCents, 10.0, 150.0) : 45.0;
         pitchDropHoldMs = std::isfinite(pitchDropHoldMs)
             ? std::clamp(pitchDropHoldMs, 10.0, 80.0) : 30.0;
+        midiNoteMinimumDurationMs = std::isfinite(midiNoteMinimumDurationMs) ? std::clamp(midiNoteMinimumDurationMs, 20.0, 120.0) : 60.0;
+        midiNoteMinimumConfidence = std::isfinite(midiNoteMinimumConfidence) ? std::clamp(midiNoteMinimumConfidence, 0.0, 100.0) : 65.0;
+        midiNoteGapBridgeMs = std::isfinite(midiNoteGapBridgeMs) ? std::clamp(midiNoteGapBridgeMs, 0.0, 80.0) : 25.0;
         inputChannelMode = std::clamp(inputChannelMode, 0, 3);
         pitchBendRange = std::clamp(pitchBendRange, 1, 12);
         midiChannel = std::clamp(midiChannel, 1, 16);

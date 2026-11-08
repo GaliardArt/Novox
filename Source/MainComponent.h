@@ -54,7 +54,9 @@ private:
     juce::ToggleButton noteTransitionEnabled { "Note transition smoothing" };
     juce::ToggleButton autoTuneEnabled { "Auto-Tune" };
     juce::ToggleButton noiseReductionEnabled { "Noise reduction (gate)" };
-    juce::ToggleButton pitchStabilityEnabled { "Pitch Stability Guard" };
+    juce::ToggleButton pitchStabilityEnabled { "Pitch Stability Guard" }, midiNoteCleanupEnabled { "MIDI Note Cleanup" };
+    juce::Slider midiNoteMinimumDurationSlider, midiNoteMinimumConfidenceSlider, midiNoteGapBridgeSlider;
+    juce::Label midiCleanupDurationLabel, midiCleanupConfidenceLabel, midiCleanupGapLabel;
     juce::ComboBox autoTuneKeySelector, autoTuneScaleSelector, inputChannelSelector;
     juce::TextButton calibrateNoiseButton { "Calibrate 2s" };
     juce::Slider bendRangeSlider, gainSlider, sensitivitySlider, smoothingSlider, noteTransitionSlider, noiseReductionSlider, pitchDropToleranceSlider, pitchDropHoldSlider;

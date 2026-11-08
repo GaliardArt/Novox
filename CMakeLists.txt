@@ -19,7 +19,7 @@ target_sources(NOVOX PRIVATE
     Source/NovoxLookAndFeel.h Source/NovoxLookAndFeel.cpp
     Source/PitchDetector.h Source/PitchDetector.cpp Source/NoiseReducer.h
     Source/VoiceEngine.h Source/VoiceEngine.cpp Source/InputChannelSelector.h
-    Source/MidiRouter.h Source/MidiRouter.cpp Source/MidiEventQueue.h
+    Source/MidiRouter.h Source/MidiRouter.cpp Source/MidiEventQueue.h Source/MidiNoteCleanup.h
     Source/NoteTracker.h Source/NoteTracker.cpp Source/PitchBend.h Source/PitchSmoother.h Source/PitchStabilityGuard.h
     Source/PresetData.h Source/PresetManager.h Source/PresetManager.cpp
 )
@@ -67,6 +67,9 @@ if(BUILD_TESTING)
     add_executable(NOVOXPitchTests Tests/PitchDetectorTests.cpp Source/PitchDetector.cpp)
     target_include_directories(NOVOXPitchTests PRIVATE Source)
     add_test(NAME NOVOX.PitchDetector COMMAND NOVOXPitchTests)
+    add_executable(NOVOXMidiNoteCleanupTests Tests/MidiNoteCleanupTests.cpp)
+    target_include_directories(NOVOXMidiNoteCleanupTests PRIVATE Source)
+    add_test(NAME NOVOX.MidiNoteCleanup COMMAND NOVOXMidiNoteCleanupTests)
     add_executable(NOVOXTrackingTests Tests/NoteTrackerTests.cpp Source/NoteTracker.cpp)
     target_include_directories(NOVOXTrackingTests PRIVATE Source)
     add_test(NAME NOVOX.NoteTracker COMMAND NOVOXTrackingTests)
@@ -94,11 +97,11 @@ if(BUILD_TESTING)
     target_include_directories(NOVOXPitchStabilityTests PRIVATE Source)
     add_test(NAME NOVOX.PitchStabilityGuard COMMAND NOVOXPitchStabilityTests)
     if(MSVC)
-        foreach(testTarget NOVOXPitchTests NOVOXTrackingTests NOVOXMidiQueueTests NOVOXPitchBendTests NOVOXPitchSmootherTests NOVOXPresetManagerTests NOVOXNoiseReducerTests NOVOXInputChannelTests NOVOXPitchStabilityTests)
+        foreach(testTarget NOVOXPitchTests NOVOXTrackingTests NOVOXMidiNoteCleanupTests NOVOXMidiQueueTests NOVOXPitchBendTests NOVOXPitchSmootherTests NOVOXPresetManagerTests NOVOXNoiseReducerTests NOVOXInputChannelTests NOVOXPitchStabilityTests)
             target_compile_options(${testTarget} PRIVATE /W4 /permissive-)
         endforeach()
     else()
-        foreach(testTarget NOVOXPitchTests NOVOXTrackingTests NOVOXMidiQueueTests NOVOXPitchBendTests NOVOXPitchSmootherTests NOVOXPresetManagerTests NOVOXNoiseReducerTests NOVOXInputChannelTests)
+        foreach(testTarget NOVOXPitchTests NOVOXTrackingTests NOVOXMidiNoteCleanupTests NOVOXMidiQueueTests NOVOXPitchBendTests NOVOXPitchSmootherTests NOVOXPresetManagerTests NOVOXNoiseReducerTests NOVOXInputChannelTests)
             target_compile_options(${testTarget} PRIVATE -Wall -Wextra -Wpedantic)
         endforeach()
     endif()

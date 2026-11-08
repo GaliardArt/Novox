@@ -31,6 +31,14 @@ void VoiceEngine::setPitchStabilityGuard(bool enabled, float toleranceCents, flo
     pitchDropHoldMs.store(juce::jlimit(10.0f, 80.0f, holdMs), std::memory_order_relaxed);
 }
 
+void VoiceEngine::setMidiNoteCleanup(bool enabled, float minimumDurationMs, float minimumConfidencePercent, float gapBridgeMs) noexcept
+{
+    midiNoteCleanupEnabled.store(enabled, std::memory_order_relaxed);
+    midiNoteMinimumDurationMs.store(juce::jlimit(20.0f, 120.0f, minimumDurationMs), std::memory_order_relaxed);
+    midiNoteMinimumConfidence.store(juce::jlimit(0.0f, 100.0f, minimumConfidencePercent), std::memory_order_relaxed);
+    midiNoteGapBridgeMs.store(juce::jlimit(0.0f, 80.0f, gapBridgeMs), std::memory_order_relaxed);
+}
+
 void VoiceEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
 {
     signalThreadShouldExit();
@@ -46,6 +54,7 @@ void VoiceEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     noteTracker.reset();
     pitchSmoother.reset();
     pitchStabilityGuard.reset();
+    midiNoteCleanup.reset();
     lastPitchBendValue = PitchBend::center;
     latestActiveNote.store(-1, std::memory_order_relaxed);
     publishPitch(PitchResult {});
@@ -176,7 +185,14 @@ void VoiceEngine::run()
             pitchDropToleranceCents.load(std::memory_order_relaxed),
             pitchDropHoldMs.load(std::memory_order_relaxed));
 
-        const auto pitch = pitchStabilityGuard.process(rawPitch, elapsedSeconds);
+        const auto guardedPitch = pitchStabilityGuard.process(rawPitch, elapsedSeconds);
+        const auto cleanupEnabled = midiNoteCleanupEnabled.load(std::memory_order_relaxed);
+        midiNoteCleanup.configure(cleanupEnabled,
+            midiNoteMinimumDurationMs.load(std::memory_order_relaxed),
+            midiNoteMinimumConfidence.load(std::memory_order_relaxed),
+            midiNoteGapBridgeMs.load(std::memory_order_relaxed));
+        noteTracker.setOnsetConfirmationMs(cleanupEnabled ? 0.0f : 30.0f);
+        const auto pitch = midiNoteCleanup.process(guardedPitch, elapsedSeconds);
         const auto noteUpdate = noteTracker.process(pitch, elapsedSeconds);
 
         if (noteUpdate.noteOff >= 0)
@@ -242,6 +258,7 @@ void VoiceEngine::resetTrackingAndMidi() noexcept
     noteTracker.reset();
     pitchSmoother.reset();
     pitchStabilityGuard.reset();
+    midiNoteCleanup.reset();
     lastPitchBendValue = PitchBend::center;
     latestActiveNote.store(-1, std::memory_order_relaxed);
 }

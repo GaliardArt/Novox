@@ -14,6 +14,10 @@ class NoteTracker
 public:
     NoteUpdate process(const PitchResult& pitch, float elapsedSeconds = 0.01f) noexcept;
     void reset() noexcept;
+    void setOnsetConfirmationMs(float durationMs) noexcept
+    {
+        onsetConfirmationSeconds = std::clamp(durationMs, 0.0f, 120.0f) * 0.001f;
+    }
 
     void setTransitionSmoothing(bool enabled, float confirmationMs) noexcept
     {
@@ -49,7 +53,7 @@ private:
     int scaleTonic = 0;
     MusicalScale musicalScale = MusicalScale::major;
 
-    static constexpr float onsetConfirmationSeconds = 0.030f;
+    float onsetConfirmationSeconds = 0.030f;
     static constexpr float releaseConfirmationSeconds = 0.040f;
     static constexpr float noteChangeHysteresisSemitones = 0.58f;
 };

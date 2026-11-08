@@ -146,3 +146,15 @@ These tests cover deterministic processing behavior. Real microphones, room acou
 <sub>Native Windows application · C++20 · JUCE</sub>
 
 </div>
+
+
+## MIDI Note Cleanup
+
+The optional **MIDI Note Cleanup** stage filters unstable pitch events before they reach note tracking. It can reject low-confidence detections, require a minimum stable duration before accepting a new pitch, and bridge very short unvoiced gaps. It is independent from the optional noise gate and Pitch Stability Guard, and is disabled by default.
+
+Default cleanup settings:
+- Minimum note stability: 60 ms
+- Minimum YIN confidence: 65%
+- Short-gap bridging: 25 ms
+
+The cleanup settings are stored locally and included in named presets.

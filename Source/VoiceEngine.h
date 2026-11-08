@@ -7,6 +7,7 @@
 #include "NoteTracker.h"
 #include "PitchSmoother.h"
 #include "PitchStabilityGuard.h"
+#include "MidiNoteCleanup.h"
 #include <array>
 
 class VoiceEngine final : public juce::AudioIODeviceCallback,
@@ -45,6 +46,7 @@ public:
     void setTransitionSmoothing(bool enabled, float confirmationMs) noexcept;
     void setAutoTune(bool enabled, int tonic, int scale) noexcept;
     void setPitchStabilityGuard(bool enabled, float toleranceCents, float holdMs) noexcept;
+    void setMidiNoteCleanup(bool enabled, float minimumDurationMs, float minimumConfidencePercent, float gapBridgeMs) noexcept;
     void setPitchBendEnabled(bool enabled) noexcept { pitchBendEnabled.store(enabled, std::memory_order_relaxed); }
     void setPitchBendRange(int semitones) noexcept { pitchBendRange.store(juce::jlimit(1, 12, semitones), std::memory_order_relaxed); }
     void setPitchSmoothing(float amount) noexcept { pitchSmoothing.store(juce::jlimit(0.0f, 100.0f, amount), std::memory_order_relaxed); }
@@ -62,6 +64,7 @@ private:
     NoteTracker noteTracker;
     PitchSmoother pitchSmoother;
     PitchStabilityGuard pitchStabilityGuard;
+    MidiNoteCleanup midiNoteCleanup;
     MidiRouter* midiRouter = nullptr;
     juce::AbstractFifo sampleFifo { fifoCapacity };
     std::array<float, fifoCapacity> sampleBuffer {};
@@ -94,4 +97,6 @@ private:
     std::atomic<bool> pitchBendEnabled { true };
     std::atomic<int> pitchBendRange { 2 };
     std::atomic<float> pitchSmoothing { 35.0f };
+    std::atomic<bool> midiNoteCleanupEnabled { false };
+    std::atomic<float> midiNoteMinimumDurationMs { 60.0f }, midiNoteMinimumConfidence { 65.0f }, midiNoteGapBridgeMs { 25.0f };
 };

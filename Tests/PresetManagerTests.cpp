@@ -42,6 +42,10 @@ int main()
     original.pitchStabilityEnabled = true;
     original.pitchDropToleranceCents = 62.0;
     original.pitchDropHoldMs = 50.0;
+    original.midiNoteCleanupEnabled = true;
+    original.midiNoteMinimumDurationMs = 75.0;
+    original.midiNoteMinimumConfidence = 72.0;
+    original.midiNoteGapBridgeMs = 30.0;
 
     juce::String error;
     expect(manager.savePreset("Studio Voice", original, &error), "save preset");
@@ -64,6 +68,10 @@ int main()
     expect(loaded.pitchStabilityEnabled == original.pitchStabilityEnabled, "pitch stability toggle round trip");
     expect(std::abs(loaded.pitchDropToleranceCents - original.pitchDropToleranceCents) < 0.0001, "pitch drop tolerance round trip");
     expect(std::abs(loaded.pitchDropHoldMs - original.pitchDropHoldMs) < 0.0001, "pitch drop hold duration round trip");
+    expect(loaded.midiNoteCleanupEnabled == original.midiNoteCleanupEnabled, "MIDI cleanup toggle round trip");
+    expect(std::abs(loaded.midiNoteMinimumDurationMs - original.midiNoteMinimumDurationMs) < 0.0001, "MIDI cleanup minimum duration round trip");
+    expect(std::abs(loaded.midiNoteMinimumConfidence - original.midiNoteMinimumConfidence) < 0.0001, "MIDI cleanup confidence round trip");
+    expect(std::abs(loaded.midiNoteGapBridgeMs - original.midiNoteGapBridgeMs) < 0.0001, "MIDI cleanup gap bridge round trip");
 
 
     const auto legacyPreset = testDirectory.getChildFile("Legacy Voice.novoxpreset");
@@ -100,7 +108,7 @@ int main()
     expect(clamped.pitchSmoothing == 100.0, "smoothing clamped");
     expect(clamped.pitchBendRange == 12, "bend range clamped");
     expect(clamped.midiChannel == 1, "MIDI channel clamped");
-    clamped.noiseReductionStrength=150.0;clamped.inputChannelMode=99;clamped.pitchDropToleranceCents=999.0;clamped.pitchDropHoldMs=99.0;clamped.sanitise();expect(clamped.noiseReductionStrength==100.0,"noise reduction strength clamped");expect(clamped.inputChannelMode==3,"input channel mode clamped");expect(clamped.pitchDropToleranceCents==150.0,"pitch drop tolerance clamped");expect(clamped.pitchDropHoldMs==80.0,"pitch drop hold duration clamped");
+    clamped.noiseReductionStrength=150.0;clamped.inputChannelMode=99;clamped.pitchDropToleranceCents=999.0;clamped.pitchDropHoldMs=99.0;clamped.sanitise();expect(clamped.noiseReductionStrength==100.0,"noise reduction strength clamped");expect(clamped.inputChannelMode==3,"input channel mode clamped");expect(clamped.pitchDropToleranceCents==150.0,"pitch drop tolerance clamped");expect(clamped.pitchDropHoldMs==80.0,"pitch drop hold duration clamped");expect(clamped.midiNoteMinimumDurationMs==120.0,"MIDI cleanup duration clamped");expect(clamped.midiNoteMinimumConfidence==0.0,"MIDI cleanup confidence clamped");expect(clamped.midiNoteGapBridgeMs==80.0,"MIDI cleanup gap clamped");
 
     expect(manager.deletePreset("Studio Voice", &error), "delete preset");
     expect(manager.listPresets().empty(), "list empty after deletion");
