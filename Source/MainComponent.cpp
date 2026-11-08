@@ -226,10 +226,6 @@ MainComponent::MainComponent()
     tabs.setColour(juce::TabbedButtonBar::tabTextColourId, NovoxLookAndFeel::textSecondary);
     tabs.setColour(juce::TabbedButtonBar::frontTextColourId, NovoxLookAndFeel::textPrimary);
     tabs.setColour(juce::TabbedButtonBar::tabOutlineColourId, NovoxLookAndFeel::border);
-    tabs.addTab("PLAY", NovoxLookAndFeel::accent, &playPage, false);
-    tabs.addTab("MIDI", juce::Colour(0xffe47b91), &midiPage, false);
-    tabs.addTab("AUDIO", juce::Colour(0xffe47b91), &audioPage, false);
-    tabs.addTab("PRESETS", juce::Colour(0xffe47b91), &presetsPage, false);
     auto webOptions = juce::WebBrowserComponent::Options{}
         .withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
         .withWinWebView2Options(juce::WebBrowserComponent::Options::WinWebView2{}
@@ -393,7 +389,18 @@ MainComponent::MainComponent()
         .withResourceProvider([](const juce::String& path) { return provideNovoxWebResource(path); });
     webView = std::make_unique<juce::WebBrowserComponent>(webOptions);
     webPage.addAndMakeVisible(*webView);
-    tabs.addTab("WEB UI", juce::Colour(0xff63c7c0), &webPage, false);
+
+    // Make the redesigned WebView2 workspace the default application surface.
+    // Keep the native JUCE pages available as fallback during the remaining migration.
+    tabs.addTab("WORKSPACE", juce::Colour(0xff63c7c0), &webPage, false);
+    tabs.addTab("NATIVE PLAY", NovoxLookAndFeel::accent, &playPage, false);
+    tabs.addTab("NATIVE MIDI", juce::Colour(0xffe47b91), &midiPage, false);
+    tabs.addTab("NATIVE AUDIO", juce::Colour(0xffe47b91), &audioPage, false);
+    tabs.addTab("NATIVE PRESETS", juce::Colour(0xffe47b91), &presetsPage, false);
+    tabs.setCurrentTabIndex(0, juce::dontSendNotification);
+
+    title.setVisible(false);
+    status.setVisible(false);
     addAndMakeVisible(tabs);
     webView->goToURL(juce::WebBrowserComponent::getResourceProviderRoot() + "index.html");
 
@@ -703,13 +710,10 @@ void MainComponent::paint(juce::Graphics& g)
 
 void MainComponent::resized()
 {
-    auto area = getLocalBounds().reduced(24);
-    auto header = area.removeFromTop(66);
-    title.setBounds(header.removeFromLeft(220).withSizeKeepingCentre(180, 42));
-    status.setBounds(header.reduced(8, 12));
-    area.removeFromTop(8);
-    tabs.setBounds(area);
-    webView->setBounds(webPage.getLocalBounds().reduced(12));
+    // The WebView2 workspace has its own header and status layout; give it the
+    // full window area rather than stacking the legacy native header above it.
+    tabs.setBounds(getLocalBounds().reduced(12));
+    webView->setBounds(webPage.getLocalBounds());
     auto play = playPage.getLocalBounds().reduced(30);
     noteLabel.setBounds(play.removeFromTop(210));
     frequencyLabel.setBounds(play.removeFromTop(38));

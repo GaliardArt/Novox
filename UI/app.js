@@ -138,6 +138,12 @@
     setText("input-level", number((Number(status.inputRms) || 0) * 100, 1) + "%");
     setText("input-device-short", audioAvailable ? inputName : "No audio input available");
     setText("listening-label", voiced ? "VOICE DETECTED" : "LISTENING");
+    const detectedPitch = String(status.note || "").replace(/[0-9-]/g, "").replace("♯", "#").replace("♭", "b");
+    document.querySelectorAll(".wheel-note").forEach(node => node.classList.toggle("active", voiced && node.dataset.pitch === detectedPitch));
+    $("footer-audio-led")?.classList.toggle("ready", audioAvailable);
+    if ($("footer-audio-state")) $("footer-audio-state").textContent = audioAvailable ? "ACTIVE" : "WAITING";
+    $("footer-midi-led")?.classList.toggle("ready", connected);
+    if ($("footer-midi-state")) $("footer-midi-state").textContent = connected ? "CONNECTED" : "DISCONNECTED";
 
     $("engine-dot").classList.add("ready");
     setText("engine-state", "Native engine online");

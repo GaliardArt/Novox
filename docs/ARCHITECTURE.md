@@ -131,3 +131,8 @@ The WebView2 layer presents four workspace pages: Play, MIDI, Audio, and Presets
 ## MIDI controls through the WebView2 bridge
 
 The web MIDI page can request the available output names and issue bounded configuration commands for output selection, channel (1–16), Pitch Bend enablement, and Pitch Bend range (1–12 semitones). Native handlers validate each request and delegate to the existing JUCE controls, MIDI router, and local settings persistence. MIDI device access, note events, Pitch Bend generation, and dispatch remain native C++ responsibilities.
+
+
+## Web workspace visual system
+
+The frontend uses a top-aligned workspace tab bar and nested graphite surfaces with a restrained accent system: cyan for complementary indicators, coral for detected pitch, and green for connection status. The Play page includes a 12-note pitch-class visualization that highlights the detected note. Reference-only percussion triggers and formant controls are excluded because NOVOX is a melodic voice-to-MIDI instrument. All presentation remains in local HTML/CSS/JavaScript; audio and MIDI processing stay native.

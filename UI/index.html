@@ -9,38 +9,31 @@
 </head>
 <body>
   <div class="app-shell">
-    <aside class="sidebar">
-      <a class="brand" href="#" aria-label="NOVOX home">
-        <span class="brand-mark">N</span>
-        <span class="brand-copy"><strong>NOVOX</strong><small>Your voice. Your instrument.</small></span>
-      </a>
-
-      <div class="nav-caption">WORKSPACE</div>
-      <nav class="main-nav" aria-label="Main navigation">
-        <button class="nav-item active" data-view="play" type="button"><span class="nav-icon">◉</span><span>Play</span><kbd>01</kbd></button>
-        <button class="nav-item" data-view="midi" type="button"><span class="nav-icon">⌁</span><span>MIDI</span><kbd>02</kbd></button>
-        <button class="nav-item" data-view="audio" type="button"><span class="nav-icon">∿</span><span>Audio</span><kbd>03</kbd></button>
-        <button class="nav-item" data-view="presets" type="button"><span class="nav-icon">▤</span><span>Presets</span><kbd>04</kbd></button>
-      </nav>
-
-      <div class="sidebar-bottom">
-        <div class="engine-card">
-          <div class="engine-heading"><span class="status-dot" id="engine-dot"></span><span>ENGINE</span><span class="engine-version">C++</span></div>
-          <strong id="engine-state">Connecting</strong>
-          <small>Local processing · Offline</small>
-        </div>
-        <div class="sidebar-foot"><span class="tiny-mark">N</span><span>NOVOX DESKTOP</span><span class="version">1.1</span></div>
-      </div>
-    </aside>
-
     <main class="main-content">
+      <div class="app-topbar">
+        <a class="brand" href="#" aria-label="NOVOX home">
+          <span class="brand-mark">N</span>
+          <span class="brand-copy"><strong>NOVOX</strong><small>Your voice. Your instrument.</small></span>
+        </a>
+        <nav class="main-nav" aria-label="Workspace navigation">
+          <button class="nav-item active" data-view="play" type="button"><span class="nav-icon">◉</span><span>Play</span></button>
+          <button class="nav-item" data-view="midi" type="button"><span class="nav-icon">⌁</span><span>MIDI</span></button>
+          <button class="nav-item" data-view="audio" type="button"><span class="nav-icon">∿</span><span>Audio</span></button>
+          <button class="nav-item" data-view="presets" type="button"><span class="nav-icon">▤</span><span>Presets</span></button>
+        </nav>
+        <div class="engine-status">
+          <span class="status-dot" id="engine-dot"></span>
+          <span class="engine-copy"><strong id="engine-state">Connecting</strong><small>LOCAL ENGINE · C++</small></span>
+          <span class="live-pulse" id="header-live-pulse"></span>
+        </div>
+      </div>
       <header class="page-header">
         <div>
           <div class="breadcrumb">NOVOX <span>/</span> <strong id="breadcrumb-current">PLAY</strong></div>
           <h1 id="page-title">Performance</h1>
           <p id="page-subtitle">Your voice, translated into musical expression.</p>
         </div>
-        <div class="header-status"><span class="live-pulse" id="header-live-pulse"></span><span id="connection-label">Connecting to engine</span></div>
+        <div class="header-status"><span class="status-caption">CONNECTION</span><span id="connection-label">Connecting to engine</span></div>
       </header>
 
       <section class="view active" id="view-play" data-page="play">
@@ -50,7 +43,15 @@
             <div class="stage-top"><span class="overline">DETECTED NOTE</span><span class="listening-pill"><i></i> <span id="listening-label">LISTENING</span></span></div>
             <div class="pitch-main">
               <div class="pitch-copy"><div class="note" id="note">--</div><div class="frequency" id="frequency">Waiting for signal</div></div>
-              <div class="orbital-visual" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="orbit orbit-c"></div><div class="waveform"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+              <div class="pitch-wheel" aria-label="12-tone pitch visualization">
+                <span class="wheel-note" data-pitch="C">C</span><span class="wheel-note" data-pitch="C#">C♯</span>
+                <span class="wheel-note" data-pitch="D">D</span><span class="wheel-note" data-pitch="D#">D♯</span>
+                <span class="wheel-note" data-pitch="E">E</span><span class="wheel-note" data-pitch="F">F</span>
+                <span class="wheel-note" data-pitch="F#">F♯</span><span class="wheel-note" data-pitch="G">G</span>
+                <span class="wheel-note" data-pitch="G#">G♯</span><span class="wheel-note" data-pitch="A">A</span>
+                <span class="wheel-note" data-pitch="A#">A♯</span><span class="wheel-note" data-pitch="B">B</span>
+                <div class="wheel-core"><span class="wheel-core-mark">N</span><small>PITCH</small></div>
+              </div>
             </div>
             <div class="stage-bottom"><span>VOICE INPUT</span><span id="input-device-short">Waiting for audio device</span></div>
           </article>
@@ -135,7 +136,12 @@
         <div class="privacy-note"><span class="privacy-icon">⌑</span><div><strong>Private by design</strong><p>Your presets stay on your computer. NOVOX does not need an account or cloud connection.</p></div></div>
       </section>
 
-      <footer class="app-footer"><span>© NOVOX · YOUR VOICE. YOUR INSTRUMENT.</span><span><i></i> LOCAL ENGINE <b>·</b> OFFLINE FIRST</span></footer>
+      <footer class="app-footer">
+        <span class="footer-brand">NOVOX <b>·</b> YOUR VOICE. YOUR INSTRUMENT.</span>
+        <span class="footer-status"><i class="footer-led" id="footer-audio-led"></i> AUDIO <strong id="footer-audio-state">WAITING</strong></span>
+        <span class="footer-status"><i class="footer-led" id="footer-midi-led"></i> MIDI OUT <strong id="footer-midi-state">DISCONNECTED</strong></span>
+        <span class="footer-offline">OFFLINE FIRST</span>
+      </footer>
     </main>
   </div>
   <script src="app.js"></script>

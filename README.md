@@ -134,3 +134,8 @@ The first WebView2 visual pass introduced dedicated workspace navigation for Pla
 ## Web MIDI controls
 
 The WebView2 MIDI workspace now reads the available MIDI destinations and can refresh the device list, select or disconnect an output, change the MIDI channel, and enable/disable Pitch Bend or adjust its semitone range. These actions call validated native JUCE handlers; the C++ MIDI router remains responsible for device access and MIDI dispatch. Settings continue to use the existing local persistence path.
+
+
+## Web UI visual redesign
+
+The WebView2 workspace now follows the shared NOVOX design guide: a compact top tab bar, nested graphite surfaces (`#1C1C1E`, `#2C2C2E`, `#3A3A3C`), rounded panel hierarchy, restrained LED indicators, cyan complementary accents, coral pitch accents, and a 12-note pitch visualization. The layout is adapted for the melodic voice-to-MIDI workflow; drum triggers and formant controls from the generic reference are intentionally excluded. The frontend remains local and offline-capable.
