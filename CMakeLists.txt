@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(NOVOX VERSION 0.7.0 LANGUAGES CXX)
+project(NOVOX VERSION 0.8.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -20,6 +20,7 @@ target_sources(NOVOX PRIVATE
     Source/MidiRouter.h Source/MidiRouter.cpp Source/MidiEventQueue.h
     Source/NoteTracker.h Source/NoteTracker.cpp Source/PitchBend.h Source/PitchSmoother.h
     Source/VocalPercussionDetector.h Source/VocalPercussionDetector.cpp Source/DrumMapping.h
+    Source/PresetData.h Source/PresetManager.h Source/PresetManager.cpp
 )
 target_compile_definitions(NOVOX PRIVATE
     JUCE_WEB_BROWSER=0
@@ -61,6 +62,11 @@ if(BUILD_TESTING)
     target_include_directories(NOVOXVocalPercussionTests PRIVATE Source)
     add_test(NAME NOVOX.VocalPercussionDetector COMMAND NOVOXVocalPercussionTests)
 
+    add_executable(NOVOXPresetManagerTests Tests/PresetManagerTests.cpp Source/PresetManager.cpp)
+    target_include_directories(NOVOXPresetManagerTests PRIVATE Source)
+    target_link_libraries(NOVOXPresetManagerTests PRIVATE juce::juce_core)
+    add_test(NAME NOVOX.PresetManager COMMAND NOVOXPresetManagerTests)
+
     if(MSVC)
         target_compile_options(NOVOXPitchTests PRIVATE /W4 /permissive-)
         target_compile_options(NOVOXTrackingTests PRIVATE /W4 /permissive-)
@@ -69,6 +75,7 @@ if(BUILD_TESTING)
         target_compile_options(NOVOXPitchSmootherTests PRIVATE /W4 /permissive-)
         target_compile_options(NOVOXVocalPercussionTests PRIVATE /W4 /permissive-)
         target_compile_options(NOVOXDrumMappingTests PRIVATE /W4 /permissive-)
+        target_compile_options(NOVOXPresetManagerTests PRIVATE /W4 /permissive-)
     else()
         target_compile_options(NOVOXPitchTests PRIVATE -Wall -Wextra -Wpedantic)
         target_compile_options(NOVOXTrackingTests PRIVATE -Wall -Wextra -Wpedantic)
@@ -77,5 +84,6 @@ if(BUILD_TESTING)
         target_compile_options(NOVOXPitchSmootherTests PRIVATE -Wall -Wextra -Wpedantic)
         target_compile_options(NOVOXVocalPercussionTests PRIVATE -Wall -Wextra -Wpedantic)
         target_compile_options(NOVOXDrumMappingTests PRIVATE -Wall -Wextra -Wpedantic)
+        target_compile_options(NOVOXPresetManagerTests PRIVATE -Wall -Wextra -Wpedantic)
     endif()
 endif()

@@ -40,6 +40,10 @@ AudioDeviceManager
                               +---- local PropertiesFile
                                     (gain, sensitivity, smoothing,
                                      bend settings, MIDI channel/output, drum mapping)
+                  |
+                  +---- PresetManager
+                              |
+                              +---- versioned local .novoxpreset JSON files
 ```
 
 ## Core modules
@@ -53,7 +57,9 @@ AudioDeviceManager
 - `PitchBend`: pure conversion from semitone offset to the standard 14-bit pitch-wheel value.
 - `MidiRouter`: MIDI output selection, channel-aware bounded event queue, and dedicated MIDI dispatch thread.
 - `MidiEventQueue`: fixed-capacity, lock-free SPSC queue preserving Note On, Note Off, and Pitch Bend order and payload.
-- `MainComponent`: visual feedback, controls, and local preference restoration/persistence through JUCE `ApplicationProperties`.
+- `MainComponent`: visual feedback, controls, preset UI, and local preference restoration/persistence through JUCE `ApplicationProperties`.
+- `PresetData`: complete, validated snapshot of the active instrument configuration.
+- `PresetManager`: versioned JSON preset files stored in the user's NOVOX application-data directory; supports listing, save/update, load, and delete.
 
 ## MIDI drum mapping
 
@@ -62,6 +68,10 @@ The GUI can optionally convert recognized kick, snare, and hi-hat events into MI
 ## Vocal percussion detection
 
 The percussion detector processes the same worker-thread audio blocks as the pitch detector. It uses a 256-sample analysis frame, a low/high-band energy split, zero-crossing rate, onset ratio, and crest factor. A 75 ms refractory interval limits duplicate hits. The classifier is intentionally lightweight and does not use FFTs or allocate in the real-time path. Initial classification is heuristic and requires real microphone/performance validation.
+
+## Presets
+
+Each preset is a versioned JSON file with schema version 1 and a `.novoxpreset` extension. The snapshot includes gain, sensitivity, smoothing, Pitch Bend enable/range, melodic MIDI channel and preferred output name, percussion enable state, and all three General MIDI drum-note assignments. Values are clamped to supported ranges when saved and loaded. Preset names are trimmed, length-limited, and stripped of filesystem-reserved characters. Loading a preset applies its values to the UI, audio engine, MIDI router, and local preferences. An unavailable saved MIDI device remains unselected; the application never substitutes another device automatically.
 
 ## Local preferences
 
@@ -102,4 +112,4 @@ MIDI output restoration uses an exact device-name match. If the saved device is 
 
 ## Validation
 
-CTest includes deterministic pitch-detector, note-tracker, MIDI queue, Pitch Bend, pitch-smoothing, drum-mapping, and percussion-detector executables. These tests validate synthetic signal response and filter behavior; they do not certify real-world microphone latency, room-noise rejection, MIDI driver behavior, CPU load, musical performance, or local settings behavior across Windows profiles.
+CTest includes deterministic pitch-detector, note-tracker, MIDI queue, Pitch Bend, pitch-smoothing, drum-mapping, percussion-detector, and preset-storage executables. These tests validate synthetic signal response and filter behavior; they do not certify real-world microphone latency, room-noise rejection, MIDI driver behavior, CPU load, musical performance, or local settings behavior across Windows profiles.

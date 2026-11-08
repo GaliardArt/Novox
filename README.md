@@ -2,7 +2,7 @@
 
 NOVOX is an offline-first, standalone vocal instrument for turning voice into musical control data. It is written in C++ and uses JUCE for audio input, MIDI integration, and the desktop application.
 
-## Current milestone (0.7.0 — MIDI drum mapping)
+## Current milestone (0.8.0 — local presets)
 
 - JUCE standalone desktop application and microphone capture
 - YIN-style fundamental-frequency estimation with confidence and RMS level
@@ -19,7 +19,13 @@ NOVOX is an offline-first, standalone vocal instrument for turning voice into mu
 - Saved MIDI output is automatically restored when that device is available; unavailable devices remain safely unselected
 - Real-time vocal percussion classification for kick, snare, and hi-hat with confidence feedback
 - Optional MIDI drum triggering on General MIDI channel 10, with configurable kick/snare/hi-hat note assignments and velocity derived from detector confidence
-- Automated pitch-detector, note-tracker, MIDI-queue, Pitch Bend, smoothing, drum-mapping, and percussion regression tests
+- Named local presets for complete instrument configurations, with save/update, load, and delete controls
+- Presets include input gain, pitch sensitivity/smoothing, Pitch Bend settings, melodic MIDI channel/output preference, and percussion enable/mapping
+- Automated pitch-detector, note-tracker, MIDI-queue, Pitch Bend, smoothing, drum-mapping, percussion, and preset-storage regression tests
+
+## Local presets
+
+Presets are stored as individual versioned `.novoxpreset` JSON files in the current user's NOVOX application-data directory. The UI can save or update a named preset, load it, and delete it. A preset captures all instrument controls: input gain, pitch sensitivity, pitch smoothing, Pitch Bend enable/range, melodic MIDI channel/output preference, percussion MIDI enable state, and kick/snare/hi-hat note assignments. Loading a preset updates the active controls and the current local application preferences. Presets remain local and work without an account or network connection. If a preset references an unavailable MIDI output, NOVOX keeps the saved device preference without silently selecting a different output.
 
 ## MIDI drum mapping
 
@@ -53,7 +59,7 @@ CMake fetches JUCE 8.0.6 on the first configure. An internet connection is neede
 - `NOVOXPitchBendTests`: center, positive/negative direction, clamping, configurable range, invalid input, and fractional semitone offsets.
 - `NOVOXPitchSmootherTests`: transparent mode, convergence, micro-variation rejection, reset, invalid values, and parameter clamping.
 - `NOVOXDrumMappingTests`: GM channel, default note assignments, range clamping, and note labels.
-- `NOVOXDrumMappingTests`: GM channel, default note assignments, range clamping, and note labels.
+- `NOVOXPresetManagerTests`: preset-name sanitising, full settings round trip, value clamping, listing, and deletion.
 - `NOVOXVocalPercussionTests`: synthetic kick/snare/hi-hat transients, silence, sustained-tone rejection, and invalid input.
 
 The tests are deterministic. They do not replace microphone, room-noise, end-to-end latency, MIDI-driver, or musical-performance testing. Local preference read/write behavior still needs an end-to-end Windows application check.

@@ -1,6 +1,7 @@
 #include "MainComponent.h"
 #include "PitchBend.h"
 #include <cmath>
+#include <utility>
 
 namespace
 {
@@ -219,6 +220,33 @@ MainComponent::MainComponent()
 
     refreshButton.onClick = [this] { refreshMidiOutputs(); };
     addAndMakeVisible(refreshButton);
+
+    presetsLabel.setText("Local presets", juce::dontSendNotification);
+    presetsLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+    presetsLabel.setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(presetsLabel);
+
+    presetNameEditor.setText("My Preset", juce::dontSendNotification);
+    presetNameEditor.setInputRestrictions(48);
+    presetNameEditor.setTextToShowWhenEmpty("Preset name", juce::Colours::grey);
+    addAndMakeVisible(presetNameEditor);
+
+    presetSelector.onChange = [this] {
+        const int selected = presetSelector.getSelectedId();
+        if (selected > 0)
+            presetNameEditor.setText(presetSelector.getItemText(
+                presetSelector.indexOfItemId(selected)), juce::dontSendNotification);
+    };
+    addAndMakeVisible(presetSelector);
+
+    savePresetButton.onClick = [this] { saveCurrentPreset(); };
+    loadPresetButton.onClick = [this] { loadSelectedPreset(); };
+    deletePresetButton.onClick = [this] { deleteSelectedPreset(); };
+    addAndMakeVisible(savePresetButton);
+    addAndMakeVisible(loadPresetButton);
+    addAndMakeVisible(deletePresetButton);
+    refreshPresetList(settings->getValue("lastPresetName"));
+
     refreshMidiOutputs();
 
     const auto error = deviceManager.initialise(1, 0, nullptr, true);
@@ -227,7 +255,7 @@ MainComponent::MainComponent()
     else
         deviceManager.addAudioCallback(&engine);
 
-    setSize(960, 1120);
+    setSize(960, 1280);
     startTimerHz(60);
 }
 
@@ -460,6 +488,142 @@ void MainComponent::releaseAllDrumNotes()
     }
 }
 
+PresetData MainComponent::capturePresetData() const
+{
+    PresetData data;
+    data.inputGain = gainSlider.getValue();
+    data.pitchSensitivity = sensitivitySlider.getValue();
+    data.pitchSmoothing = smoothingSlider.getValue();
+    data.pitchBendEnabled = pitchBendEnabled.getToggleState();
+    data.pitchBendRange = static_cast<int>(bendRangeSlider.getValue());
+    data.midiChannel = channelSelector.getSelectedId();
+    data.midiOutputName = preferredMidiOutputName.toStdString();
+    data.drumMidiEnabled = drumMidiEnabled.getToggleState();
+    data.drumKickNote = kickNoteSelector.getSelectedId() - 1;
+    data.drumSnareNote = snareNoteSelector.getSelectedId() - 1;
+    data.drumHiHatNote = hiHatNoteSelector.getSelectedId() - 1;
+    data.sanitise();
+    return data;
+}
+
+void MainComponent::applyPresetData(PresetData data, const juce::String& presetName)
+{
+    data.sanitise();
+    releaseAllDrumNotes();
+    if (noteTracker.getActiveNote() >= 0)
+    {
+        resetPitchBend();
+        midiRouter.noteOff(noteTracker.getActiveNote());
+    }
+    noteTracker.reset();
+    pitchSmoother.reset();
+    lastPitchBendValue = PitchBend::center;
+
+    gainSlider.setValue(data.inputGain, juce::dontSendNotification);
+    sensitivitySlider.setValue(data.pitchSensitivity, juce::dontSendNotification);
+    smoothingSlider.setValue(data.pitchSmoothing, juce::dontSendNotification);
+    pitchBendEnabled.setToggleState(data.pitchBendEnabled, juce::dontSendNotification);
+    bendRangeSlider.setValue(data.pitchBendRange, juce::dontSendNotification);
+    channelSelector.setSelectedId(data.midiChannel, juce::dontSendNotification);
+    drumMidiEnabled.setToggleState(data.drumMidiEnabled, juce::dontSendNotification);
+    kickNoteSelector.setSelectedId(data.drumKickNote + 1, juce::dontSendNotification);
+    snareNoteSelector.setSelectedId(data.drumSnareNote + 1, juce::dontSendNotification);
+    hiHatNoteSelector.setSelectedId(data.drumHiHatNote + 1, juce::dontSendNotification);
+
+    engine.setInputGain(static_cast<float>(data.inputGain));
+    engine.setPitchSensitivity(static_cast<float>(data.pitchSensitivity / 100.0));
+    midiRouter.setChannel(data.midiChannel);
+    preferredMidiOutputName = juce::String(data.midiOutputName);
+
+    settings->setValue("inputGain", data.inputGain);
+    settings->setValue("pitchSensitivity", data.pitchSensitivity);
+    settings->setValue("pitchSmoothing", data.pitchSmoothing);
+    settings->setValue("pitchBendEnabled", data.pitchBendEnabled);
+    settings->setValue("pitchBendRange", data.pitchBendRange);
+    settings->setValue("midiChannel", data.midiChannel);
+    settings->setValue("drumMidiEnabled", data.drumMidiEnabled);
+    settings->setValue("drumKickNote", data.drumKickNote);
+    settings->setValue("drumSnareNote", data.drumSnareNote);
+    settings->setValue("drumHiHatNote", data.drumHiHatNote);
+    settings->setValue("midiOutputName", preferredMidiOutputName);
+    settings->setValue("lastPresetName", presetName);
+    refreshMidiOutputs();
+    saveSettings();
+    status.setText("Loaded preset: " + presetName, juce::dontSendNotification);
+}
+
+void MainComponent::refreshPresetList(const juce::String& selectedName)
+{
+    const auto names = presetManager.listPresets();
+    presetSelector.clear(juce::dontSendNotification);
+    int selectedId = 0;
+    for (size_t i = 0; i < names.size(); ++i)
+    {
+        const int id = static_cast<int>(i) + 1;
+        presetSelector.addItem(names[i], id);
+        if (names[i].compareIgnoreCase(selectedName) == 0)
+            selectedId = id;
+    }
+    presetSelector.setSelectedId(selectedId, juce::dontSendNotification);
+    if (selectedId > 0)
+        presetNameEditor.setText(selectedName, juce::dontSendNotification);
+}
+
+void MainComponent::saveCurrentPreset()
+{
+    const auto name = PresetManager::sanitiseName(presetNameEditor.getText());
+    juce::String error;
+    if (!presetManager.savePreset(name, capturePresetData(), &error))
+    {
+        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+                                               "NOVOX preset", error);
+        return;
+    }
+
+    settings->setValue("lastPresetName", name);
+    saveSettings();
+    refreshPresetList(name);
+    status.setText("Saved preset: " + name, juce::dontSendNotification);
+}
+
+void MainComponent::loadSelectedPreset()
+{
+    const auto name = presetSelector.getText();
+    if (name.isEmpty())
+        return;
+
+    PresetData data;
+    juce::String error;
+    if (!presetManager.loadPreset(name, data, &error))
+    {
+        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+                                               "NOVOX preset", error);
+        refreshPresetList();
+        return;
+    }
+    applyPresetData(std::move(data), name);
+}
+
+void MainComponent::deleteSelectedPreset()
+{
+    const auto name = presetSelector.getText();
+    if (name.isEmpty())
+        return;
+
+    juce::String error;
+    if (!presetManager.deletePreset(name, &error))
+    {
+        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+                                               "NOVOX preset", error);
+        return;
+    }
+
+    settings->setValue("lastPresetName", "");
+    saveSettings();
+    refreshPresetList();
+    status.setText("Deleted preset: " + name, juce::dontSendNotification);
+}
+
 void MainComponent::paint(juce::Graphics& g)
 {
     g.fillAll(juce::Colour(0xff15191f));
@@ -478,6 +642,20 @@ void MainComponent::resized()
     pitchBendLabel.setBounds(area.removeFromTop(28));
     midiLabel.setBounds(area.removeFromTop(28));
     percussionLabel.setBounds(area.removeFromTop(26));
+    area.removeFromTop(10);
+
+    presetsLabel.setBounds(area.removeFromTop(24));
+    presetSelector.setBounds(area.removeFromTop(32).withSizeKeepingCentre(420, 32));
+    presetNameEditor.setBounds(area.removeFromTop(32).withSizeKeepingCentre(420, 32));
+    area.removeFromTop(5);
+    auto presetButtons = area.removeFromTop(34).withSizeKeepingCentre(420, 34);
+    const int presetButtonWidth = 132;
+    savePresetButton.setBounds(presetButtons.removeFromLeft(presetButtonWidth));
+    presetButtons.removeFromLeft(12);
+    loadPresetButton.setBounds(presetButtons.removeFromLeft(presetButtonWidth));
+    presetButtons.removeFromLeft(12);
+    deletePresetButton.setBounds(presetButtons);
+
     area.removeFromTop(12);
 
     gainLabel.setBounds(area.removeFromTop(22).withSizeKeepingCentre(420, 22));

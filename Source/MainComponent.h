@@ -6,6 +6,7 @@
 #include "PitchSmoother.h"
 #include "VocalPercussionDetector.h"
 #include "DrumMapping.h"
+#include "PresetManager.h"
 #include <array>
 #include <cstdint>
 
@@ -31,10 +32,17 @@ private:
     void dispatchPercussion(const VocalPercussionResult& percussion);
     void releaseDueDrumNotes();
     void releaseAllDrumNotes();
+    PresetData capturePresetData() const;
+    void applyPresetData(PresetData data, const juce::String& presetName);
+    void refreshPresetList(const juce::String& selectedName = {});
+    void loadSelectedPreset();
+    void saveCurrentPreset();
+    void deleteSelectedPreset();
 
     juce::ApplicationProperties appProperties;
     juce::PropertiesFile* settings = nullptr;
     juce::String preferredMidiOutputName;
+    PresetManager presetManager;
 
     VoiceEngine engine;
     MidiRouter midiRouter;
@@ -45,6 +53,12 @@ private:
     juce::Label gainLabel, bendRangeLabel, channelLabel, pitchBendLabel;
     juce::Label sensitivityLabel, smoothingLabel;
     juce::Label drumMappingLabel, kickLabel, snareLabel, hiHatLabel;
+    juce::Label presetsLabel;
+    juce::TextEditor presetNameEditor;
+    juce::ComboBox presetSelector;
+    juce::TextButton savePresetButton { "Save / Update" };
+    juce::TextButton loadPresetButton { "Load" };
+    juce::TextButton deletePresetButton { "Delete" };
     juce::Slider gainSlider, bendRangeSlider, sensitivitySlider, smoothingSlider;
     juce::ComboBox midiOutputSelector, channelSelector;
     juce::ComboBox kickNoteSelector, snareNoteSelector, hiHatNoteSelector;
