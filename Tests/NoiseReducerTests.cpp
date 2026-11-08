@@ -43,6 +43,9 @@ int main()
     std::copy(std::begin(afterDisable), std::end(afterDisable), std::begin(original));
     reducer.process(afterDisable, 64);
     expect(std::equal(std::begin(afterDisable), std::end(afterDisable), std::begin(original)), "disabling the gate restores transparent signal");
+    NoiseReducer calibrated;calibrated.prepare(1000,512);calibrated.beginCalibration();float room[512];for(int b=0;b<4;++b){for(int i=0;i<512;++i)room[i]=.002f*std::sin((float)(b*512+i)*.13f);calibrated.process(room,512);}
+    expect(calibrated.getCalibrationState()==2,"room noise calibration completes");expect(calibrated.getCalibratedNoiseFloorDb()<-50&&calibrated.getCalibratedNoiseFloorDb()>-65,"calibration estimates noise floor in dBFS");
+    calibrated.setStrength(.5f);calibrated.setEnabled(true);float quiet[4096];for(int i=0;i<4096;++i)quiet[i]=.002f*std::sin((float)i*.13f);calibrated.process(quiet,4096);expect(rms(quiet+2048,2048)<.001f,"calibrated gate attenuates measured room noise");
     if (failures != 0) std::cerr << failures << " noise reducer test(s) failed.\n";
     return failures == 0 ? 0 : 1;
 }

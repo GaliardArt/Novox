@@ -18,7 +18,7 @@ target_sources(NOVOX PRIVATE
     Source/Main.cpp Source/MainComponent.h Source/MainComponent.cpp
     Source/NovoxLookAndFeel.h Source/NovoxLookAndFeel.cpp
     Source/PitchDetector.h Source/PitchDetector.cpp Source/NoiseReducer.h
-    Source/VoiceEngine.h Source/VoiceEngine.cpp
+    Source/VoiceEngine.h Source/VoiceEngine.cpp Source/InputChannelSelector.h
     Source/MidiRouter.h Source/MidiRouter.cpp Source/MidiEventQueue.h
     Source/NoteTracker.h Source/NoteTracker.cpp Source/PitchBend.h Source/PitchSmoother.h
     Source/PresetData.h Source/PresetManager.h Source/PresetManager.cpp
@@ -65,12 +65,15 @@ if(BUILD_TESTING)
     target_include_directories(NOVOXNoiseReducerTests PRIVATE Source)
     target_link_libraries(NOVOXNoiseReducerTests PRIVATE juce::juce_dsp)
     add_test(NAME NOVOX.NoiseReducer COMMAND NOVOXNoiseReducerTests)
+    add_executable(NOVOXInputChannelTests Tests/InputChannelSelectorTests.cpp)
+    target_include_directories(NOVOXInputChannelTests PRIVATE Source)
+    add_test(NAME NOVOX.InputChannelSelector COMMAND NOVOXInputChannelTests)
     if(MSVC)
-        foreach(testTarget NOVOXPitchTests NOVOXTrackingTests NOVOXMidiQueueTests NOVOXPitchBendTests NOVOXPitchSmootherTests NOVOXPresetManagerTests NOVOXNoiseReducerTests)
+        foreach(testTarget NOVOXPitchTests NOVOXTrackingTests NOVOXMidiQueueTests NOVOXPitchBendTests NOVOXPitchSmootherTests NOVOXPresetManagerTests NOVOXNoiseReducerTests NOVOXInputChannelTests)
             target_compile_options(${testTarget} PRIVATE /W4 /permissive-)
         endforeach()
     else()
-        foreach(testTarget NOVOXPitchTests NOVOXTrackingTests NOVOXMidiQueueTests NOVOXPitchBendTests NOVOXPitchSmootherTests NOVOXPresetManagerTests NOVOXNoiseReducerTests)
+        foreach(testTarget NOVOXPitchTests NOVOXTrackingTests NOVOXMidiQueueTests NOVOXPitchBendTests NOVOXPitchSmootherTests NOVOXPresetManagerTests NOVOXNoiseReducerTests NOVOXInputChannelTests)
             target_compile_options(${testTarget} PRIVATE -Wall -Wextra -Wpedantic)
         endforeach()
     endif()

@@ -59,7 +59,8 @@ private:
     juce::ToggleButton noteTransitionEnabled { "Note transition smoothing" };
     juce::ToggleButton autoTuneEnabled { "Auto-Tune" };
     juce::ToggleButton noiseReductionEnabled { "Noise reduction (gate)" };
-    juce::ComboBox autoTuneKeySelector, autoTuneScaleSelector;
+    juce::ComboBox autoTuneKeySelector, autoTuneScaleSelector, inputChannelSelector;
+    juce::TextButton calibrateNoiseButton { "Calibrate 2s" };
     juce::Slider bendRangeSlider, gainSlider, sensitivitySlider, smoothingSlider, noteTransitionSlider, noiseReductionSlider;
     juce::TextEditor presetNameEditor;
     juce::TextButton savePresetButton { "Save / Update" },
@@ -75,6 +76,7 @@ private:
     int audioChannels = 0, bufferSize = 0;
     double sampleRate = 0.0;
     uint64_t lastPitchSequence = 0;
+    int lastNoiseCalibrationState = 0;
     int lastPitchBendValue = 8192;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

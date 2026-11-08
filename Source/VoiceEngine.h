@@ -2,6 +2,7 @@
 #include <JuceHeader.h>
 #include "PitchDetector.h"
 #include "NoiseReducer.h"
+#include "InputChannelSelector.h"
 #include <array>
 
 class VoiceEngine final : public juce::AudioIODeviceCallback,
@@ -23,6 +24,12 @@ public:
     void setPitchSensitivity(float sensitivity) noexcept { detector.setSensitivity(sensitivity); }
     void setNoiseReductionEnabled(bool enabled) noexcept { noiseReducer.setEnabled(enabled); }
     void setNoiseReductionStrength(float strength) noexcept { noiseReducer.setStrength(strength); }
+    void beginNoiseCalibration() noexcept { noiseReducer.beginCalibration(); }
+    int getNoiseCalibrationState() const noexcept { return noiseReducer.getCalibrationState(); }
+    float getCalibratedNoiseFloorDb() const noexcept { return noiseReducer.getCalibratedNoiseFloorDb(); }
+    void setCalibratedNoiseFloorDb(float v) noexcept { noiseReducer.setCalibratedNoiseFloorDb(v); }
+    void setInputChannelMode(int v) noexcept { inputChannelMode.store(juce::jlimit(0,3,v),std::memory_order_relaxed); }
+    int getActiveInputChannel() const noexcept { return activeInputChannel.load(std::memory_order_relaxed); }
     uint64_t getDroppedAudioSamples() const noexcept { return droppedAudioSamples.load(); }
 
 private:
@@ -46,5 +53,6 @@ private:
     std::atomic<bool> latestVoiced { false };
     std::atomic<uint64_t> latestSequence { 0 };
     std::atomic<float> inputGain { 1.0f };
+    std::atomic<int> inputChannelMode { 0 }, activeInputChannel { -1 };
     std::atomic<uint64_t> droppedAudioSamples { 0 };
 };

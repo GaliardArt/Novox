@@ -1,0 +1,4 @@
+#include "InputChannelSelector.h"
+#include <iostream>
+int main(){int e=0;float l[4]{.05f,-.05f,.05f,-.05f},r[4]{.3f,-.3f,.3f,-.3f};const float*s[]{l,r};auto t=[&](bool v,const char*m){if(!v){++e;std::cerr<<m<<'\n';}};
+t(chooseInputChannel(InputChannelMode::automatic,s,2,4)==1,"auto strongest");t(chooseInputChannel(InputChannelMode::left,s,2,4)==0,"left");t(chooseInputChannel(InputChannelMode::right,s,2,4)==1,"right");t(chooseInputChannel(InputChannelMode::stereoMix,s,2,4)==-1,"mix");const float*m[]{l};t(chooseInputChannel(InputChannelMode::right,m,1,4)==0,"mono fallback");t(chooseInputChannel(InputChannelMode::automatic,nullptr,0,4)==-1,"null safe");return e?1:0;}

@@ -24,7 +24,9 @@ NOVOX turns a monophonic vocal line into MIDI notes and optional Pitch Bend. It 
 - **Input gain** adjusts the signal level entering analysis.
 - **Pitch sensitivity** trades quiet-voice tracking against rejection of background noise.
 - **Pitch smoothing** affects the continuous MIDI Pitch Bend response; it does not smooth the raw pitch display or note-onset decisions.
+- **Input channel** selects automatic strongest-channel detection, Left, Right, or Stereo mix. Automatic mode helps avoid phase cancellation when stereo channels contain different signals.
 - **Noise reduction (gate)** optionally attenuates low-level background sound between vocal phrases. Increase its strength only until room noise is reduced; too much can cut quiet syllables or note tails. It is disabled by default and is not a neural background-noise remover.
+- **Calibrate 2s** measures the room/microphone noise floor. Keep the microphone silent during the two-second measurement. The gate then references that measured floor; strength controls the suppression margin. Recalibrate after changing microphone gain or moving to another acoustic environment.
 - **Enable Pitch Bend** turns continuous pitch-wheel output on or off.
 - **Pitch Bend range** must match the receiving instrument's pitch-bend range for bends to sound in tune. The range is configurable from ±1 to ±12 semitones.
 - **MIDI channel** selects the channel for melodic notes and Pitch Bend.

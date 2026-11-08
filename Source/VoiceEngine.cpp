@@ -47,25 +47,8 @@ void VoiceEngine::audioDeviceIOCallbackWithContext(const float* const* input,
         return;
     }
 
-    auto* mono = monoScratch.getWritePointer(0);
-    const float gain = inputGain.load(std::memory_order_relaxed);
-    for (int i = 0; i < numSamples; ++i)
-    {
-        float sample = 0.0f;
-        int channelsRead = 0;
-        if (input != nullptr)
-        {
-            for (int channel = 0; channel < numInputs; ++channel)
-            {
-                if (input[channel] != nullptr)
-                {
-                    sample += input[channel][i];
-                    ++channelsRead;
-                }
-            }
-        }
-        mono[i] = channelsRead > 0 ? (sample / static_cast<float>(channelsRead)) * gain : 0.0f;
-    }
+    auto* mono=monoScratch.getWritePointer(0);const float gain=inputGain.load(std::memory_order_relaxed);const auto mode=static_cast<InputChannelMode>(inputChannelMode.load(std::memory_order_relaxed));const int selected=chooseInputChannel(mode,input,numInputs,numSamples);activeInputChannel.store(selected,std::memory_order_relaxed);
+    for(int i=0;i<numSamples;++i){float sample=0;if(mode==InputChannelMode::stereoMix||selected<0){int count=0;if(input)for(int c=0;c<numInputs;++c)if(input[c]){sample+=input[c][i];++count;}if(count>0)sample/=(float)count;}else if(input&&selected<numInputs&&input[selected])sample=input[selected][i];mono[i]=sample*gain;}
 
     int start1 = 0, size1 = 0, start2 = 0, size2 = 0;
     sampleFifo.prepareToWrite(numSamples, start1, size1, start2, size2);

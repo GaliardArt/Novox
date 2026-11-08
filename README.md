@@ -48,6 +48,8 @@ The processing pipeline is separated from the interface, keeping audio capture a
 
 ### 🎚️ Audio refinement
 - Optional noise gate for attenuating low-level background sound.
+- Two-second room-noise calibration that adapts the gate threshold to the measured noise floor.
+- Automatic strongest-channel selection, with explicit Left, Right, and Stereo mix modes.
 - Adjustable noise-gate strength and transparent bypass.
 - Pitch smoothing for more controlled MIDI Pitch Bend movement.
 - A micro-variation deadband to reduce unwanted pitch-wheel jitter while preserving expressive movement.
@@ -79,7 +81,7 @@ The application is built around a native JUCE interface and a C++ audio engine. 
 |---|---|
 | **Play** | Follow detected notes, frequency, pitch confidence, and instrument activity. |
 | **MIDI** | Choose the MIDI destination, channel, and Pitch Bend behavior. |
-| **Audio** | Configure input gain and sensitivity, manage optional noise reduction, and inspect device diagnostics. |
+| **Audio** | Configure input gain and sensitivity, select the input channel, calibrate optional noise reduction, and inspect device diagnostics. |
 | **Presets** | Save, update, load, and delete local instrument configurations. |
 
 ## Under the hood
