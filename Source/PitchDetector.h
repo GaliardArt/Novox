@@ -10,6 +10,7 @@ struct PitchResult
     float rms = 0.0f;
     bool voiced = false;
     uint64_t sequence = 0;
+    int analysisWindowSamples = 0;
 };
 
 class PitchDetector
@@ -24,8 +25,8 @@ public:
     }
 
 private:
-    static constexpr int inputWindowSize = 2048;
-    static constexpr int analysisWindowSize = inputWindowSize / 2;
+    static constexpr int maxAnalysisWindowSize = 2048;
+    static constexpr int shortAnalysisWindowSize = 1024;
     static constexpr int maxLagCapacity = 384;
     static constexpr int filterHistorySize = 31;
 
@@ -43,11 +44,13 @@ private:
     };
 
     double currentSampleRate = 44100.0;
-    std::array<float, analysisWindowSize> decimatedRing {};
-    std::array<float, analysisWindowSize> analysisFrame {};
+    std::array<float, maxAnalysisWindowSize> decimatedRing {};
+    std::array<float, maxAnalysisWindowSize> analysisFrame {};
     std::array<float, filterHistorySize> filterHistory {};
     std::array<float, maxLagCapacity + 1> difference {};
     std::array<float, maxLagCapacity + 1> cumulativeMeanDifference {};
+    int currentAnalysisWindowSize = maxAnalysisWindowSize;
+    float lastDetectedFrequency = 0.0f;
     int decimatedWritePosition = 0;
     int decimatedSamplesReceived = 0;
     int decimationPhase = 0;

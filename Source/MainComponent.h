@@ -72,6 +72,9 @@ private:
     juce::String midiStatus = "No MIDI output selected";
     juce::String operationStatus = "Ready";
     float currentFrequency = 0.0f, currentConfidence = 0.0f, currentRms = 0.0f;
+    float currentInputRms = 0.0f, currentInputPeak = 0.0f;
+    bool currentInputClipping = false;
+    int currentAnalysisWindowSamples = 0;
     bool audioAvailable = false;
     int audioChannels = 0, bufferSize = 0;
     double sampleRate = 0.0;

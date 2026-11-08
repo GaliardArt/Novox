@@ -1,5 +1,6 @@
 #include "VoiceEngine.h"
 #include <algorithm>
+#include <cmath>
 
 VoiceEngine::VoiceEngine() : juce::Thread("NOVOX Pitch Worker") {}
 
@@ -48,7 +49,9 @@ void VoiceEngine::audioDeviceIOCallbackWithContext(const float* const* input,
     }
 
     auto* mono=monoScratch.getWritePointer(0);const float gain=inputGain.load(std::memory_order_relaxed);const auto mode=static_cast<InputChannelMode>(inputChannelMode.load(std::memory_order_relaxed));const int selected=chooseInputChannel(mode,input,numInputs,numSamples);activeInputChannel.store(selected,std::memory_order_relaxed);
-    for(int i=0;i<numSamples;++i){float sample=0;if(mode==InputChannelMode::stereoMix||selected<0){int count=0;if(input)for(int c=0;c<numInputs;++c)if(input[c]){sample+=input[c][i];++count;}if(count>0)sample/=(float)count;}else if(input&&selected<numInputs&&input[selected])sample=input[selected][i];mono[i]=sample*gain;}
+    double energy=0.0;float peak=0.0f;
+    for(int i=0;i<numSamples;++i){float sample=0;if(mode==InputChannelMode::stereoMix||selected<0){int count=0;if(input)for(int c=0;c<numInputs;++c)if(input[c]){sample+=input[c][i];++count;}if(count>0)sample/=(float)count;}else if(input&&selected<numInputs&&input[selected])sample=input[selected][i];sample*=gain;mono[i]=sample;energy+=static_cast<double>(sample)*sample;peak=juce::jmax(peak,std::abs(sample));}
+    latestInputRms.store(static_cast<float>(std::sqrt(energy/static_cast<double>(numSamples))),std::memory_order_relaxed);latestInputPeak.store(peak,std::memory_order_relaxed);latestInputClipping.store(peak>=0.98f,std::memory_order_relaxed);
 
     int start1 = 0, size1 = 0, start2 = 0, size2 = 0;
     sampleFifo.prepareToWrite(numSamples, start1, size1, start2, size2);
@@ -92,6 +95,7 @@ void VoiceEngine::publishPitch(const PitchResult& result) noexcept
     latestFrequency.store(result.frequencyHz, std::memory_order_relaxed);
     latestConfidence.store(result.confidence, std::memory_order_relaxed);
     latestRms.store(result.rms, std::memory_order_relaxed);
+    latestAnalysisWindowSamples.store(result.analysisWindowSamples, std::memory_order_relaxed);
     latestVoiced.store(result.voiced, std::memory_order_relaxed);
     latestSequence.fetch_add(1, std::memory_order_release);
 }
@@ -107,6 +111,7 @@ PitchResult VoiceEngine::getLatestPitch() const noexcept
         result.frequencyHz = latestFrequency.load(std::memory_order_relaxed);
         result.confidence = latestConfidence.load(std::memory_order_relaxed);
         result.rms = latestRms.load(std::memory_order_relaxed);
+        result.analysisWindowSamples = latestAnalysisWindowSamples.load(std::memory_order_relaxed);
         result.voiced = latestVoiced.load(std::memory_order_relaxed);
         const auto after = latestSequence.load(std::memory_order_acquire);
         if (before == after)

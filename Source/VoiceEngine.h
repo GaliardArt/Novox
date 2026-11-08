@@ -31,6 +31,9 @@ public:
     void setInputChannelMode(int v) noexcept { inputChannelMode.store(juce::jlimit(0,3,v),std::memory_order_relaxed); }
     int getActiveInputChannel() const noexcept { return activeInputChannel.load(std::memory_order_relaxed); }
     uint64_t getDroppedAudioSamples() const noexcept { return droppedAudioSamples.load(); }
+    float getInputRms() const noexcept { return latestInputRms.load(std::memory_order_relaxed); }
+    float getInputPeak() const noexcept { return latestInputPeak.load(std::memory_order_relaxed); }
+    bool isInputClipping() const noexcept { return latestInputClipping.load(std::memory_order_relaxed); }
 
 private:
     static constexpr int fifoCapacity = 8192;
@@ -55,4 +58,7 @@ private:
     std::atomic<float> inputGain { 1.0f };
     std::atomic<int> inputChannelMode { 0 }, activeInputChannel { -1 };
     std::atomic<uint64_t> droppedAudioSamples { 0 };
+    std::atomic<float> latestInputRms { 0.0f }, latestInputPeak { 0.0f };
+    std::atomic<int> latestAnalysisWindowSamples { 0 };
+    std::atomic<bool> latestInputClipping { false };
 };

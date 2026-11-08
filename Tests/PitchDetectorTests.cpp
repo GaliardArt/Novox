@@ -171,6 +171,14 @@ namespace
               "confidence " + std::to_string(result.confidence));
     }
 
+    void testAdaptiveAnalysisWindow()
+    {
+        const auto bass = analyseSignal(makeSine(110.0, 48000.0, 0.45), 48000.0);
+        const auto high = analyseSignal(makeSine(440.0, 48000.0, 0.45), 48000.0);
+        check(bass.voiced && bass.analysisWindowSamples == 2048, "Bass notes use the longer analysis window", "window " + std::to_string(bass.analysisWindowSamples));
+        check(high.voiced && high.analysisWindowSamples == 1024, "Higher notes use the shorter low-latency window", "window " + std::to_string(high.analysisWindowSamples));
+    }
+
     void testInvalidInput()
     {
         PitchDetector detector;
@@ -193,6 +201,7 @@ int main()
     testAntiAliasing();
     testOctaveErrorCorrection();
     testNoiseRejection();
+    testAdaptiveAnalysisWindow();
     testInvalidInput();
 
     std::cout << "\nChecks: " << checks << ", failures: " << failures << '\n';

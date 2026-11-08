@@ -5,6 +5,8 @@
 void PitchDetector::prepare(double sampleRate, int)
 {
     currentSampleRate = sampleRate > 0.0 ? sampleRate * 0.5 : 22050.0;
+    currentAnalysisWindowSize = maxAnalysisWindowSize;
+    lastDetectedFrequency = 0.0f;
     decimatedRing.fill(0.0f);
     analysisFrame.fill(0.0f);
     filterHistory.fill(0.0f);
@@ -39,12 +41,15 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
         if (decimationPhase == 0)
         {
             decimatedRing[static_cast<size_t>(decimatedWritePosition)] = static_cast<float>(filtered);
-            decimatedWritePosition = (decimatedWritePosition + 1) % analysisWindowSize;
-            decimatedSamplesReceived = std::min(analysisWindowSize, decimatedSamplesReceived + 1);
+            decimatedWritePosition = (decimatedWritePosition + 1) % maxAnalysisWindowSize;
+            decimatedSamplesReceived = std::min(maxAnalysisWindowSize, decimatedSamplesReceived + 1);
         }
         decimationPhase ^= 1;
     }
 
+    currentAnalysisWindowSize = (lastDetectedFrequency > 180.0f) ? shortAnalysisWindowSize : maxAnalysisWindowSize;
+    const int analysisWindowSize = currentAnalysisWindowSize;
+    result.analysisWindowSamples = analysisWindowSize;
     if (decimatedSamplesReceived < analysisWindowSize)
         return result;
 
@@ -56,7 +61,7 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
     double energy = 0.0;
     for (int i = 0; i < analysisWindowSize; ++i)
     {
-        const int sourceIndex = (decimatedWritePosition + i) % analysisWindowSize;
+        const int sourceIndex = (decimatedWritePosition + maxAnalysisWindowSize - analysisWindowSize + i) % maxAnalysisWindowSize;
         const float value = decimatedRing[static_cast<size_t>(sourceIndex)];
         analysisFrame[static_cast<size_t>(i)] = value;
         energy += static_cast<double>(value) * value;
@@ -180,6 +185,8 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
                  && result.frequencyHz <= maxFrequency;
     if (!result.voiced)
         result.frequencyHz = 0.0f;
+    else
+        lastDetectedFrequency = result.frequencyHz;
 
     return result;
 }

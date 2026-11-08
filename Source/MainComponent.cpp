@@ -462,10 +462,11 @@ void MainComponent::paint(juce::Graphics& g)
         drawText(g,"Key: "+autoTuneKeySelector.getText()+"   Scale: "+autoTuneScaleSelector.getText(),{x+150.0f,tuneY+17.0f,260.0f,20.0f},9.0f,NovoxLookAndFeel::textPrimary,true);
         const float diagY=tuneY+56.0f,diagH=ch-(diagY-y);drawCard(g,{x,diagY,cw,diagH});
         drawText(g, "RUNTIME HEALTH", { x + 18.0f, diagY + 15.0f, cw - 36.0f, 15.0f }, 8.0f, NovoxLookAndFeel::textSecondary, true);
-        const float dcol=cw/4;drawText(g,"DROPPED AUDIO",{x+18,diagY+42,dcol-24,15},7.5f,NovoxLookAndFeel::textSecondary);drawText(g,juce::String((juce::int64)engine.getDroppedAudioSamples()),{x+18,diagY+61,dcol-24,25},17,NovoxLookAndFeel::textPrimary,true);
-        drawText(g,"DROPPED MIDI",{x+dcol,diagY+42,dcol-18,15},7.5f,NovoxLookAndFeel::textSecondary);drawText(g,juce::String((juce::int64)midiRouter.getDroppedEvents()),{x+dcol,diagY+61,dcol-18,25},17,NovoxLookAndFeel::textPrimary,true);
-        drawText(g,"INPUT RMS",{x+dcol*2,diagY+42,dcol-18,15},7.5f,NovoxLookAndFeel::textSecondary);drawText(g,juce::String(currentRms,3),{x+dcol*2,diagY+61,dcol-18,25},17,NovoxLookAndFeel::textPrimary,true);
-        int cs=engine.getNoiseCalibrationState();float nf=engine.getCalibratedNoiseFloorDb();juce::String nt=cs==1?"Measuring...":(nf>-119?juce::String(nf,1)+" dBFS":"Not set");drawText(g,"ROOM NOISE FLOOR",{x+dcol*3,diagY+42,dcol-12,15},7.5f,NovoxLookAndFeel::textSecondary);drawText(g,nt,{x+dcol*3,diagY+61,dcol-12,25},13,cs==2?NovoxLookAndFeel::success:NovoxLookAndFeel::textPrimary,true);
+        const float dcol=cw/4;drawText(g,"INPUT LEVEL",{x+18,diagY+42,dcol-20,15},7.2f,NovoxLookAndFeel::textSecondary);drawText(g,juce::String(currentInputRms>0.0f?20.0f*std::log10(currentInputRms):-120.0f,1)+" dBFS",{x+18,diagY+61,dcol-20,25},14,NovoxLookAndFeel::textPrimary,true);
+        drawText(g,"PEAK / CLIP",{x+dcol,diagY+42,dcol-16,15},7.2f,NovoxLookAndFeel::textSecondary);drawText(g,juce::String(currentInputPeak,3)+(currentInputClipping?"  CLIP":""),{x+dcol,diagY+61,dcol-16,25},13,currentInputClipping?NovoxLookAndFeel::accent:NovoxLookAndFeel::textPrimary,true);
+        drawText(g,"YIN CONFIDENCE",{x+dcol*2,diagY+42,dcol-16,15},7.2f,NovoxLookAndFeel::textSecondary);drawText(g,juce::String(currentConfidence*100.0f,0)+"%",{x+dcol*2,diagY+61,dcol-16,25},16,NovoxLookAndFeel::textPrimary,true);
+        drawText(g,"ANALYSIS WINDOW",{x+dcol*3,diagY+42,dcol-12,15},7.2f,NovoxLookAndFeel::textSecondary);drawText(g,juce::String(currentAnalysisWindowSamples)+" samples",{x+dcol*3,diagY+61,dcol-12,25},12,NovoxLookAndFeel::textPrimary,true);
+        int cs=engine.getNoiseCalibrationState();float nf=engine.getCalibratedNoiseFloorDb();juce::String nt=cs==1?"Calibrating...":(nf>-119?juce::String(nf,1)+" dBFS":"Not calibrated");drawText(g,"ROOM NOISE FLOOR  ·  DROPPED AUDIO / MIDI",{x+18,diagY+101,cw-36,15},7.2f,NovoxLookAndFeel::textSecondary);drawText(g,nt+"     "+juce::String((juce::int64)engine.getDroppedAudioSamples())+" / "+juce::String((juce::int64)midiRouter.getDroppedEvents()),{x+18,diagY+117,cw-36,15},9,cs==2?NovoxLookAndFeel::success:NovoxLookAndFeel::textPrimary,true);
     }
     else
     {
@@ -767,7 +768,11 @@ void MainComponent::timerCallback()
     const auto pitch = engine.getLatestPitch();
     currentFrequency = pitch.voiced ? pitch.frequencyHz : 0.0f;
     currentConfidence = pitch.voiced ? pitch.confidence : 0.0f;
-    currentRms = pitch.voiced ? pitch.rms : 0.0f;
+    currentRms = pitch.rms;
+    currentInputRms = engine.getInputRms();
+    currentInputPeak = engine.getInputPeak();
+    currentInputClipping = engine.isInputClipping();
+    currentAnalysisWindowSamples = pitch.analysisWindowSamples;
     if (auto* device = deviceManager.getCurrentAudioDevice())
     {
         audioAvailable = true; audioDeviceName = device->getName();

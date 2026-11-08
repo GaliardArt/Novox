@@ -50,6 +50,8 @@ The processing pipeline is separated from the interface, keeping audio capture a
 - Optional noise gate for attenuating low-level background sound.
 - Two-second room-noise calibration that adapts the gate threshold to the measured noise floor.
 - Automatic strongest-channel selection, with explicit Left, Right, and Stereo mix modes.
+- Adaptive YIN analysis windows: longer observations for lower notes and shorter windows for faster response on higher notes.
+- Live input diagnostics for pre-gate RMS level, peak/clipping, YIN confidence, and active analysis-window size.
 - Adjustable noise-gate strength and transparent bypass.
 - Pitch smoothing for more controlled MIDI Pitch Bend movement.
 - A micro-variation deadband to reduce unwanted pitch-wheel jitter while preserving expressive movement.
