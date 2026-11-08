@@ -5,6 +5,7 @@
 #include "NoteTracker.h"
 #include "PitchSmoother.h"
 #include "PresetManager.h"
+#include "NovoxLookAndFeel.h"
 #include <cstdint>
 
 class MainComponent final : public juce::Component,
@@ -33,7 +34,7 @@ private:
     void saveCurrentPreset();
     void deleteSelectedPreset();
 
-    juce::LookAndFeel_V4 novoxLookAndFeel;
+    NovoxLookAndFeel novoxLookAndFeel;
     juce::TabbedComponent tabs { juce::TabbedButtonBar::TabsAtTop };
     juce::Component playPage, midiPage, audioPage, presetsPage;
 

@@ -43,22 +43,22 @@ MainComponent::MainComponent()
 
     title.setText("NOVOX", juce::dontSendNotification);
     title.setFont(juce::FontOptions(26.0f, juce::Font::bold));
-    title.setColour(juce::Label::textColourId, juce::Colours::white);
+    title.setColour(juce::Label::textColourId, NovoxLookAndFeel::textPrimary);
     addAndMakeVisible(title);
 
     status.setText("Sing a sustained note to detect pitch.", juce::dontSendNotification);
-    status.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+    status.setColour(juce::Label::textColourId, NovoxLookAndFeel::textSecondary);
     addAndMakeVisible(status);
 
     noteLabel.setText("--", juce::dontSendNotification);
     noteLabel.setFont(juce::FontOptions(72.0f, juce::Font::bold));
     noteLabel.setJustificationType(juce::Justification::centred);
-    noteLabel.setColour(juce::Label::textColourId, juce::Colour(0xff78e0b5));
+    noteLabel.setColour(juce::Label::textColourId, NovoxLookAndFeel::success);
     playPage.addAndMakeVisible(noteLabel);
 
     frequencyLabel.setText("0.0 Hz  |  confidence 0%", juce::dontSendNotification);
     frequencyLabel.setJustificationType(juce::Justification::centred);
-    frequencyLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+    frequencyLabel.setColour(juce::Label::textColourId, NovoxLookAndFeel::textSecondary);
     playPage.addAndMakeVisible(frequencyLabel);
 
     midiLabel.setText("MIDI: no output selected", juce::dontSendNotification);
@@ -195,27 +195,17 @@ MainComponent::MainComponent()
 
     refreshMidiOutputs();
 
-    novoxLookAndFeel.setColour(juce::ResizableWindow::backgroundColourId, juce::Colour(0xff17191e));
-    novoxLookAndFeel.setColour(juce::Label::textColourId, juce::Colour(0xffe8e9ed));
-    novoxLookAndFeel.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff343841));
-    novoxLookAndFeel.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xffe47b91));
-    novoxLookAndFeel.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffe8e9ed));
-    novoxLookAndFeel.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
-    novoxLookAndFeel.setColour(juce::ComboBox::backgroundColourId, juce::Colour(0xff292d35));
-    novoxLookAndFeel.setColour(juce::ComboBox::textColourId, juce::Colour(0xffe8e9ed));
-    novoxLookAndFeel.setColour(juce::ComboBox::outlineColourId, juce::Colour(0xff454b56));
-    novoxLookAndFeel.setColour(juce::ComboBox::arrowColourId, juce::Colour(0xffe47b91));
-    novoxLookAndFeel.setColour(juce::Slider::trackColourId, juce::Colour(0xffe47b91));
-    novoxLookAndFeel.setColour(juce::Slider::thumbColourId, juce::Colour(0xfff0a0ae));
-    novoxLookAndFeel.setColour(juce::Slider::textBoxTextColourId, juce::Colour(0xffe8e9ed));
-    novoxLookAndFeel.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xff292d35));
-    novoxLookAndFeel.setColour(juce::Slider::textBoxOutlineColourId, juce::Colour(0xff454b56));
+    novoxLookAndFeel.applyTo(*this);
+
     setLookAndFeel(&novoxLookAndFeel);
     tabs.setLookAndFeel(&novoxLookAndFeel);
     tabs.setTabBarDepth(42);
-    tabs.setColour(juce::TabbedComponent::backgroundColourId, juce::Colour(0xff20232a));
-    tabs.setColour(juce::TabbedComponent::outlineColourId, juce::Colour(0xff343943));
-    tabs.addTab("PLAY", juce::Colour(0xffe47b91), &playPage, false);
+    tabs.setColour(juce::TabbedComponent::backgroundColourId, NovoxLookAndFeel::panel);
+    tabs.setColour(juce::TabbedComponent::outlineColourId, NovoxLookAndFeel::border);
+    tabs.setColour(juce::TabbedButtonBar::tabTextColourId, NovoxLookAndFeel::textSecondary);
+    tabs.setColour(juce::TabbedButtonBar::frontTextColourId, NovoxLookAndFeel::textPrimary);
+    tabs.setColour(juce::TabbedButtonBar::tabOutlineColourId, NovoxLookAndFeel::border);
+    tabs.addTab("PLAY", NovoxLookAndFeel::accent, &playPage, false);
     tabs.addTab("MIDI", juce::Colour(0xffe47b91), &midiPage, false);
     tabs.addTab("AUDIO", juce::Colour(0xffe47b91), &audioPage, false);
     tabs.addTab("PRESETS", juce::Colour(0xffe47b91), &presetsPage, false);
@@ -520,9 +510,9 @@ void MainComponent::deleteSelectedPreset()
 
 void MainComponent::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff17191e));
-    g.setColour(juce::Colour(0xff22262e));
-    g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(18.0f), 18.0f);
+    g.fillAll(NovoxLookAndFeel::background);
+    g.setColour(NovoxLookAndFeel::panel);
+    g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(18.0f), 16.0f);
 }
 
 void MainComponent::resized()

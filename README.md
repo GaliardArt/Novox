@@ -1,6 +1,6 @@
 # NOVOX
 
-**Version 1.1.0 — Modern UI Redesign**
+**Version 1.1.0 — Design System 1.0 in development**
 
 NOVOX is an offline-first, standalone vocal instrument for turning voice into musical control data. It is written in C++ and uses JUCE for audio input, MIDI integration, and the desktop application.
 
@@ -114,3 +114,8 @@ The workflow publishes the portable ZIP as the canonical package and includes it
 ## Version 1.1.0 — Modern UI
 
 The interface is organized into four native JUCE tabs: Play, MIDI, Audio, and Presets. The redesign introduces a compact dark graphite theme with a restrained coral accent, a dedicated live pitch screen, separated MIDI routing controls, audio tuning and diagnostics, and a focused preset-management page. The audio engine, pitch detector, note tracker, MIDI routing, settings storage, and preset format remain unchanged.
+
+
+## UI Design System 1.0
+
+The shared native JUCE visual foundation uses a graphite palette, coral primary accent, teal secondary accent, consistent control styling, rounded surfaces, and clearer focus and interaction states. This layer is intentionally separate from the audio and MIDI processing pipeline; the Play, MIDI, Audio, and Presets workflows remain functionally unchanged while later interface iterations can refine each page independently.

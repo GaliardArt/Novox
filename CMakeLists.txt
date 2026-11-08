@@ -15,6 +15,7 @@ juce_add_gui_app(NOVOX PRODUCT_NAME "NOVOX" COMPANY_NAME "NOVOX Project")
 juce_generate_juce_header(NOVOX)
 target_sources(NOVOX PRIVATE
     Source/Main.cpp Source/MainComponent.h Source/MainComponent.cpp
+    Source/NovoxLookAndFeel.h Source/NovoxLookAndFeel.cpp
     Source/PitchDetector.h Source/PitchDetector.cpp
     Source/VoiceEngine.h Source/VoiceEngine.cpp
     Source/MidiRouter.h Source/MidiRouter.cpp Source/MidiEventQueue.h
