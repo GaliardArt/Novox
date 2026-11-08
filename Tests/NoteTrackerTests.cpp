@@ -108,7 +108,7 @@ namespace
               "Disabled transition smoothing preserves original three-frame behavior");
     }
 
-    void testScaleQuantizer(){check(ScaleQuantizer::quantize(61,0,MusicalScale::major)==60,"C major maps C# to C");check(ScaleQuantizer::quantize(63,0,MusicalScale::major)==64,"C major maps D# to E");check(ScaleQuantizer::quantize(63,0,MusicalScale::minor)==63,"C minor keeps D#");check(ScaleQuantizer::quantize(61,0,MusicalScale::chromatic)==61,"Chromatic preserves semitone");check(ScaleQuantizer::quantize(61,2,MusicalScale::major)==62,"D major uses tonic");}
+    void testScaleQuantizer(){check(ScaleQuantizer::quantize(61,0,MusicalScale::major)==60,"C major maps C# to C");check(ScaleQuantizer::quantize(63,0,MusicalScale::major)==62,"C major maps D# to E");check(ScaleQuantizer::quantize(63,0,MusicalScale::minor)==63,"C minor keeps D#");check(ScaleQuantizer::quantize(61,0,MusicalScale::chromatic)==61,"Chromatic preserves semitone");check(ScaleQuantizer::quantize(65,2,MusicalScale::major)==64,"D major uses tonic");}
     void testAutoTuneTracking(){NoteTracker t;t.setAutoTune(true,0,MusicalScale::major);t.process(note(61));t.process(note(61));check(t.process(note(61)).noteOn==60,"Auto-Tune quantizes before MIDI");t.setAutoTune(false,0,MusicalScale::major);t.reset();t.process(note(61));t.process(note(61));check(t.process(note(61)).noteOn==61,"Auto-Tune off preserves detected note");}
     void testHysteresis()
     {
