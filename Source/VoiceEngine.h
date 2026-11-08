@@ -65,6 +65,7 @@ private:
     PitchDetector detector;
     NoiseReducer noiseReducer;
     InputEqualizer inputEqualizer;
+    InputChannelSelector inputChannelSelector;
     NoteTracker noteTracker;
     PitchSmoother pitchSmoother;
     PitchStabilityGuard pitchStabilityGuard;

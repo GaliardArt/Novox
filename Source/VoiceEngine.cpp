@@ -52,6 +52,7 @@ void VoiceEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     workerBlockSize = juce::jlimit(128, maxWorkerBlockSize, deviceBlockSize);
     sampleFifo.reset();
     droppedAudioSamples.store(0);
+    inputChannelSelector.reset();
     noteTracker.reset();
     pitchSmoother.reset();
     pitchStabilityGuard.reset();
@@ -89,7 +90,8 @@ void VoiceEngine::audioDeviceIOCallbackWithContext(const float* const* input,
     auto* mono = monoScratch.getWritePointer(0);
     const float gain = inputGain.load(std::memory_order_relaxed);
     const auto mode = static_cast<InputChannelMode>(inputChannelMode.load(std::memory_order_relaxed));
-    const int selected = chooseInputChannel(mode, input, numInputs, numSamples);
+    const float callbackDuration = static_cast<float>(static_cast<double>(numSamples) / currentSampleRate);
+    const int selected = inputChannelSelector.process(mode, input, numInputs, numSamples, callbackDuration);
     activeInputChannel.store(selected, std::memory_order_relaxed);
 
     double energy = 0.0;

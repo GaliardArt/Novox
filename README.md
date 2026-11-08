@@ -52,7 +52,7 @@ The processing pipeline is separated from the interface, keeping audio capture a
 - Optional three-band input EQ before pitch detection: low shelf at 120 Hz, mid bell at 1 kHz, and high shelf at 5 kHz, each adjustable by ±12 dB with independent bypass.
 - Optional noise gate for attenuating low-level background sound.
 - Two-second room-noise calibration that adapts the gate threshold to the measured noise floor.
-- Automatic strongest-channel selection, with explicit Left, Right, and Stereo mix modes.
+- Automatic strongest-channel selection uses a 1.5× energy advantage and an 80 ms confirmation window to prevent rapid left/right switching; explicit Left, Right, and Stereo mix modes remain immediate.
 - Adaptive YIN analysis windows: longer observations for lower notes and shorter windows for faster response on higher notes.
 - Live input diagnostics for pre-gate RMS level, peak/clipping, YIN confidence, and active analysis-window size.
 - Adjustable noise-gate strength and transparent bypass.
