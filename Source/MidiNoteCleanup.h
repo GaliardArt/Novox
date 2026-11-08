@@ -45,7 +45,20 @@ public:
         }
 
         gapSeconds = 0.0f;
-        const int note = static_cast<int>(std::lround(69.0 + 12.0 * std::log2(input.frequencyHz / 440.0)));
+        const float midiValue = static_cast<float>(69.0 + 12.0 * std::log2(input.frequencyHz / 440.0));
+        const int note = static_cast<int>(std::lround(midiValue));
+
+        // Keep small vibrato and boundary jitter attached to the confirmed
+        // MIDI note while preserving measured pitch for pitch-bend output.
+        if (confirmedNote >= 0
+            && std::abs(midiValue - static_cast<float>(confirmedNote)) < noteChangeHysteresisSemitones)
+        {
+            candidateNote = -1;
+            candidateSeconds = 0.0f;
+            lastConfirmedPitch = input;
+            return input;
+        }
+
         if (note == confirmedNote)
         {
             candidateNote = -1;
@@ -93,4 +106,5 @@ private:
     float candidateSeconds = 0.0f;
     float gapSeconds = 0.0f;
     PitchResult lastConfirmedPitch {};
+    static constexpr float noteChangeHysteresisSemitones = 0.58f;
 };

@@ -49,6 +49,26 @@ int main()
     check(!cleanup.process(PitchResult{}, 0.01f).voiced, "long gap is not bridged");
 
     cleanup.reset();
+    cleanup.configure(true, 60.0f, 65.0f, 25.0f);
+    for (int i = 0; i < 6; ++i)
+        cleanup.process(pitch(69.0f), 0.01f);
+    bool vibratoStayedVoiced = true;
+    for (int i = 0; i < 20; ++i)
+    {
+        const float midi = (i % 2 == 0) ? 69.45f : 69.55f;
+        const auto result = cleanup.process(pitch(midi), 0.01f);
+        vibratoStayedVoiced = vibratoStayedVoiced && result.voiced;
+    }
+    check(vibratoStayedVoiced,
+          "semitone-boundary vibrato remains attached to the confirmed note");
+
+    for (int i = 0; i < 5; ++i)
+        check(std::abs(cleanup.process(pitch(70.0f), 0.01f).frequencyHz - pitch(69.55f).frequencyHz) < 0.02f,
+              "real transition waits for the configured stability window");
+    check(std::abs(cleanup.process(pitch(70.0f), 0.01f).frequencyHz - pitch(70.0f).frequencyHz) < 0.02f,
+          "sustained semitone transition is accepted after the stability window");
+
+    cleanup.reset();
     check(!cleanup.process(pitch(69.0f, 0.40f), 0.02f).voiced, "low-confidence pitch is rejected");
     check(!cleanup.process(pitch(69.0f, 0.40f), 0.02f).voiced, "low-confidence noise does not form a note");
 
