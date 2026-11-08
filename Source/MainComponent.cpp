@@ -73,6 +73,11 @@ MainComponent::~MainComponent()
 
 void MainComponent::refreshMidiOutputs()
 {
+    const int activeNote = noteTracker.getActiveNote();
+    if (activeNote >= 0)
+        midiRouter.noteOff(activeNote);
+    noteTracker.reset();
+
     midiOutputSelector.clear(juce::dontSendNotification);
     const auto names = midiRouter.getOutputNames();
     midiOutputSelector.addItem("No MIDI output", 1);
