@@ -82,7 +82,7 @@ public:
         }
 
         candidateSeconds += std::clamp(elapsedSeconds, 0.0f, 0.25f);
-        if (candidateSeconds >= switchConfirmationSeconds)
+        if (candidateSeconds + 1.0e-6f >= switchConfirmationSeconds)
         {
             selectedChannel = strongest;
             clearCandidate();
