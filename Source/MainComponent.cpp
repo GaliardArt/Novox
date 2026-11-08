@@ -59,6 +59,11 @@ MainComponent::MainComponent()
     midiLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible(midiLabel);
 
+    percussionLabel.setText("Percussion: waiting", juce::dontSendNotification);
+    percussionLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+    percussionLabel.setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(percussionLabel);
+
     gainLabel.setText("Input gain", juce::dontSendNotification);
     gainLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible(gainLabel);
@@ -339,6 +344,7 @@ void MainComponent::resized()
     frequencyLabel.setBounds(area.removeFromTop(34));
     pitchBendLabel.setBounds(area.removeFromTop(28));
     midiLabel.setBounds(area.removeFromTop(28));
+    percussionLabel.setBounds(area.removeFromTop(26));
     area.removeFromTop(12);
 
     gainLabel.setBounds(area.removeFromTop(22).withSizeKeepingCentre(420, 22));
@@ -365,6 +371,22 @@ void MainComponent::resized()
 void MainComponent::timerCallback()
 {
     const auto pitch = engine.getLatestPitch();
+    const auto percussion = engine.getLatestPercussion();
+    if (percussion.sequence != 0 && percussion.sequence != lastPercussionSequence)
+    {
+        lastPercussionSequence = percussion.sequence;
+        const char* hitName = "Unknown";
+        switch (percussion.type)
+        {
+            case VocalPercussionType::kick: hitName = "Kick"; break;
+            case VocalPercussionType::snare: hitName = "Snare"; break;
+            case VocalPercussionType::hiHat: hitName = "Hi-hat"; break;
+            case VocalPercussionType::none: break;
+        }
+        percussionLabel.setText("Percussion: " + juce::String(hitName)
+            + "  |  confidence " + juce::String(percussion.confidence * 100.0f, 0) + "%",
+            juce::dontSendNotification);
+    }
     noteLabel.setText(pitch.voiced ? noteNameFromMidi(noteTracker.getActiveNote()) : "--",
                       juce::dontSendNotification);
     frequencyLabel.setText(juce::String(pitch.frequencyHz, 1) + " Hz  |  confidence "

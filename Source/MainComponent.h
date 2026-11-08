@@ -4,6 +4,7 @@
 #include "MidiRouter.h"
 #include "NoteTracker.h"
 #include "PitchSmoother.h"
+#include "VocalPercussionDetector.h"
 
 class MainComponent final : public juce::Component,
                             private juce::Timer
@@ -34,7 +35,7 @@ private:
     NoteTracker noteTracker;
     PitchSmoother pitchSmoother;
 
-    juce::Label title, status, noteLabel, frequencyLabel, midiLabel;
+    juce::Label title, status, noteLabel, frequencyLabel, midiLabel, percussionLabel;
     juce::Label gainLabel, bendRangeLabel, channelLabel, pitchBendLabel;
     juce::Label sensitivityLabel, smoothingLabel;
     juce::Slider gainSlider, bendRangeSlider, sensitivitySlider, smoothingSlider;
@@ -45,6 +46,7 @@ private:
 
     uint64_t lastPitchSequence = 0;
     int lastPitchBendValue = 8192;
+    uint64_t lastPercussionSequence = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

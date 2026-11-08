@@ -13,7 +13,7 @@ AudioDeviceManager
        |                         v
        |                VoiceEngine worker thread
        |                         |
-       |                         +---- PitchDetector (YIN + sensitivity gate)
+       |                         +---- PitchDetector (YIN + sensitivity gate)\n       |                         +---- VocalPercussionDetector (transient features)
        |                         +---- sequence-stamped PitchResult
        |
        +---- MainComponent (GUI / 60 Hz refresh)
@@ -43,7 +43,7 @@ AudioDeviceManager
 ## Core modules
 
 - `VoiceEngine`: audio capture handoff, preallocated SPSC FIFO, worker lifecycle, and coherent latest-pitch publication.
-- `PitchDetector`: YIN-style monophonic fundamental estimation with adjustable RMS and confidence thresholds.
+- `PitchDetector`: YIN-style monophonic fundamental estimation with adjustable RMS and confidence thresholds.\n- `VocalPercussionDetector`: bounded, allocation-free transient analysis for kick-, snare-, and hi-hat-like vocal sounds; runs on the audio worker and publishes visual feedback to the GUI.
 - `NoteTracker`: note onset/offset confirmation and pitch-boundary hysteresis.
 - `PitchSmoother`: optional one-pole smoothing and deadband applied to MIDI bend offsets; raw pitch display and note detection remain unfiltered.
 - `PitchBend`: pure conversion from semitone offset to the standard 14-bit pitch-wheel value.
@@ -51,7 +51,7 @@ AudioDeviceManager
 - `MidiEventQueue`: fixed-capacity, lock-free SPSC queue preserving Note On, Note Off, and Pitch Bend order and payload.
 - `MainComponent`: visual feedback, controls, and local preference restoration/persistence through JUCE `ApplicationProperties`.
 
-## Local preferences
+## Vocal percussion detection\n\nThe percussion detector processes the same worker-thread audio blocks as the pitch detector. It uses a 256-sample analysis frame, a low/high-band energy split, zero-crossing rate, onset ratio, and crest factor. A 75 ms refractory interval limits duplicate hits. The classifier is intentionally lightweight and does not use FFTs or allocate in the real-time path. Initial classification is heuristic and requires real microphone/performance validation. This milestone provides visual event feedback only; MIDI drum mapping is a later step.\n\n## Local preferences
 
 JUCE `ApplicationProperties` owns a per-user `PropertiesFile` in the NOVOX application settings directory. The application stores input gain, pitch sensitivity, pitch smoothing, Pitch Bend enable state, Pitch Bend range, MIDI channel, and the preferred MIDI output name. Numeric values are clamped to supported UI ranges when loaded. Values are saved after user changes and again during shutdown.
 
