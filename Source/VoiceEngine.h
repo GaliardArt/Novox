@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "PitchDetector.h"
+#include "NoiseReducer.h"
 #include <array>
 
 class VoiceEngine final : public juce::AudioIODeviceCallback,
@@ -20,6 +21,8 @@ public:
     PitchResult getLatestPitch() const noexcept;
     void setInputGain(float gain) noexcept { inputGain.store(juce::jlimit(0.1f, 8.0f, gain)); }
     void setPitchSensitivity(float sensitivity) noexcept { detector.setSensitivity(sensitivity); }
+    void setNoiseReductionEnabled(bool enabled) noexcept { noiseReducer.setEnabled(enabled); }
+    void setNoiseReductionStrength(float strength) noexcept { noiseReducer.setStrength(strength); }
     uint64_t getDroppedAudioSamples() const noexcept { return droppedAudioSamples.load(); }
 
 private:
@@ -30,6 +33,7 @@ private:
     void publishPitch(const PitchResult& result) noexcept;
 
     PitchDetector detector;
+    NoiseReducer noiseReducer;
     juce::AbstractFifo sampleFifo { fifoCapacity };
     std::array<float, fifoCapacity> sampleBuffer {};
     juce::AudioBuffer<float> monoScratch;

@@ -58,8 +58,9 @@ private:
     juce::ToggleButton pitchBendEnabled { "Pitch Bend" };
     juce::ToggleButton noteTransitionEnabled { "Note transition smoothing" };
     juce::ToggleButton autoTuneEnabled { "Auto-Tune" };
+    juce::ToggleButton noiseReductionEnabled { "Noise reduction (gate)" };
     juce::ComboBox autoTuneKeySelector, autoTuneScaleSelector;
-    juce::Slider bendRangeSlider, gainSlider, sensitivitySlider, smoothingSlider, noteTransitionSlider;
+    juce::Slider bendRangeSlider, gainSlider, sensitivitySlider, smoothingSlider, noteTransitionSlider, noiseReductionSlider;
     juce::TextEditor presetNameEditor;
     juce::TextButton savePresetButton { "Save / Update" },
                      loadPresetButton { "Load preset" },

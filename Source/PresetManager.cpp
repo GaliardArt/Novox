@@ -104,6 +104,8 @@ bool PresetManager::savePreset(const juce::String& name, PresetData data, juce::
     object->setProperty("noteTransitionSmoothingEnabled", data.noteTransitionSmoothingEnabled);
     object->setProperty("noteTransitionStability", data.noteTransitionStability);
     object->setProperty("autoTuneEnabled",data.autoTuneEnabled); object->setProperty("autoTuneTonic",data.autoTuneTonic); object->setProperty("autoTuneScale",data.autoTuneScale);
+    object->setProperty("noiseReductionEnabled", data.noiseReductionEnabled);
+    object->setProperty("noiseReductionStrength", data.noiseReductionStrength);
     object->setProperty("pitchBendRange", data.pitchBendRange);
     object->setProperty("midiChannel", data.midiChannel);
     object->setProperty("midiOutputName", juce::String(data.midiOutputName));
@@ -167,6 +169,8 @@ bool PresetManager::loadPreset(const juce::String& name, PresetData& data, juce:
     if(has("autoTuneEnabled"))loaded.autoTuneEnabled=static_cast<bool>(object->getProperty("autoTuneEnabled"));
     if(has("autoTuneTonic"))loaded.autoTuneTonic=static_cast<int>(object->getProperty("autoTuneTonic"));
     if(has("autoTuneScale"))loaded.autoTuneScale=static_cast<int>(object->getProperty("autoTuneScale"));
+    if (has("noiseReductionEnabled")) loaded.noiseReductionEnabled = static_cast<bool>(object->getProperty("noiseReductionEnabled"));
+    if (has("noiseReductionStrength")) loaded.noiseReductionStrength = static_cast<double>(object->getProperty("noiseReductionStrength"));
     loaded.pitchBendRange = static_cast<int>(object->getProperty("pitchBendRange"));
     loaded.midiChannel = static_cast<int>(object->getProperty("midiChannel"));
     loaded.midiOutputName = object->getProperty("midiOutputName").toString().toStdString();

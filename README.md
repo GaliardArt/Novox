@@ -13,6 +13,7 @@ The redesigned Play, MIDI, Audio and Presets workspaces are implemented directly
 - JUCE standalone desktop application and microphone capture
 - YIN-style fundamental-frequency estimation with confidence and RMS level
 - Adjustable pitch sensitivity to trade quiet-voice tracking against noise rejection
+- Optional JUCE noise gate on the pitch-analysis worker, with adjustable threshold strength and transparent bypass
 - Pitch analysis moved off the audio callback to a dedicated worker thread
 - Preallocated SPSC audio FIFO and sequence-stamped pitch snapshots
 - Note onset/release confirmation and semitone hysteresis
@@ -27,7 +28,7 @@ The redesigned Play, MIDI, Audio and Presets workspaces are implemented directly
 - Named local presets for complete instrument configurations, with save/update, load, and delete controls
 - Live audio-device diagnostics: selected input, active channel count, sample rate, and device buffer size
 - Runtime counters for audio samples and MIDI events dropped by bounded real-time queues
-- Presets include input gain, pitch sensitivity/smoothing, Pitch Bend settings, and melodic MIDI channel/output preference
+- Presets include input gain, pitch sensitivity/smoothing, optional noise-gate state/strength, Pitch Bend settings, and melodic MIDI channel/output preference
 - Automated pitch-detector, note-tracker, MIDI-queue, Pitch Bend, smoothing, and preset-storage regression tests
 
 ## Runtime diagnostics
@@ -82,6 +83,7 @@ GitHub Actions configures and compiles the Windows x64 Release build and runs CT
 
 - The audio callback performs bounded channel mixing and FIFO writes only; pitch detection runs on a worker thread.
 - Pitch sensitivity is published atomically to the pitch worker. Higher values lower the RMS and confidence gates, allowing quieter signals through at the cost of admitting more noise.
+- Optional noise reduction uses JUCE's lightweight noise gate on the worker thread before YIN analysis. It attenuates low-level input below a configurable threshold; it is not neural denoising and cannot remove steady background noise while a voice is active. It is disabled by default.
 - Pitch smoothing is applied only to the MIDI bend control, not the raw detector display or note-onset logic.
 - The smoothing control uses a one-pole response plus a small deadband. It suppresses small frame-to-frame fluctuations while larger pitch movement remains responsive; it is not intended to remove expressive vibrato completely.
 - Audio FIFO overflow and callback blocks larger than the prepared scratch buffer are counted and dropped without blocking the callback.

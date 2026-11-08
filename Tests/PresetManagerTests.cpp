@@ -37,6 +37,8 @@ int main()
     original.pitchBendRange = 7;
     original.midiChannel = 11;
     original.midiOutputName = "Virtual MIDI Device";
+    original.noiseReductionEnabled = true;
+    original.noiseReductionStrength = 67.0;
 
     juce::String error;
     expect(manager.savePreset("Studio Voice", original, &error), "save preset");
@@ -53,6 +55,8 @@ int main()
     expect(loaded.pitchBendRange == original.pitchBendRange, "Pitch Bend range round trip");
     expect(loaded.midiChannel == original.midiChannel, "MIDI channel round trip");
     expect(loaded.midiOutputName == original.midiOutputName, "MIDI output round trip");
+    expect(loaded.noiseReductionEnabled == original.noiseReductionEnabled, "noise reduction toggle round trip");
+    expect(std::abs(loaded.noiseReductionStrength - original.noiseReductionStrength) < 0.0001, "noise reduction strength round trip");
 
     PresetData clamped;
     clamped.inputGain = 99.0;
@@ -66,6 +70,9 @@ int main()
     expect(clamped.pitchSmoothing == 100.0, "smoothing clamped");
     expect(clamped.pitchBendRange == 12, "bend range clamped");
     expect(clamped.midiChannel == 1, "MIDI channel clamped");
+    clamped.noiseReductionStrength = 150.0;
+    clamped.sanitise();
+    expect(clamped.noiseReductionStrength == 100.0, "noise reduction strength clamped");
 
     expect(manager.deletePreset("Studio Voice", &error), "delete preset");
     expect(manager.listPresets().empty(), "list empty after deletion");

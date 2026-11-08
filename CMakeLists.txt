@@ -17,7 +17,7 @@ juce_generate_juce_header(NOVOX)
 target_sources(NOVOX PRIVATE
     Source/Main.cpp Source/MainComponent.h Source/MainComponent.cpp
     Source/NovoxLookAndFeel.h Source/NovoxLookAndFeel.cpp
-    Source/PitchDetector.h Source/PitchDetector.cpp
+    Source/PitchDetector.h Source/PitchDetector.cpp Source/NoiseReducer.h
     Source/VoiceEngine.h Source/VoiceEngine.cpp
     Source/MidiRouter.h Source/MidiRouter.cpp Source/MidiEventQueue.h
     Source/NoteTracker.h Source/NoteTracker.cpp Source/PitchBend.h Source/PitchSmoother.h
@@ -30,7 +30,7 @@ target_compile_definitions(NOVOX PRIVATE
     JUCE_APPLICATION_VERSION_STRING="${PROJECT_VERSION}"
 )
 target_link_libraries(NOVOX PRIVATE
-    juce::juce_audio_utils juce::juce_audio_devices juce::juce_audio_basics
+    juce::juce_audio_utils juce::juce_audio_devices juce::juce_audio_basics juce::juce_dsp
     juce::juce_recommended_config_flags juce::juce_recommended_warning_flags
 )
 if(WIN32)
@@ -61,12 +61,16 @@ if(BUILD_TESTING)
     target_include_directories(NOVOXPresetManagerTests PRIVATE Source)
     target_link_libraries(NOVOXPresetManagerTests PRIVATE juce::juce_core)
     add_test(NAME NOVOX.PresetManager COMMAND NOVOXPresetManagerTests)
+    add_executable(NOVOXNoiseReducerTests Tests/NoiseReducerTests.cpp)
+    target_include_directories(NOVOXNoiseReducerTests PRIVATE Source)
+    target_link_libraries(NOVOXNoiseReducerTests PRIVATE juce::juce_dsp)
+    add_test(NAME NOVOX.NoiseReducer COMMAND NOVOXNoiseReducerTests)
     if(MSVC)
-        foreach(testTarget NOVOXPitchTests NOVOXTrackingTests NOVOXMidiQueueTests NOVOXPitchBendTests NOVOXPitchSmootherTests NOVOXPresetManagerTests)
+        foreach(testTarget NOVOXPitchTests NOVOXTrackingTests NOVOXMidiQueueTests NOVOXPitchBendTests NOVOXPitchSmootherTests NOVOXPresetManagerTests NOVOXNoiseReducerTests)
             target_compile_options(${testTarget} PRIVATE /W4 /permissive-)
         endforeach()
     else()
-        foreach(testTarget NOVOXPitchTests NOVOXTrackingTests NOVOXMidiQueueTests NOVOXPitchBendTests NOVOXPitchSmootherTests NOVOXPresetManagerTests)
+        foreach(testTarget NOVOXPitchTests NOVOXTrackingTests NOVOXMidiQueueTests NOVOXPitchBendTests NOVOXPitchSmootherTests NOVOXPresetManagerTests NOVOXNoiseReducerTests)
             target_compile_options(${testTarget} PRIVATE -Wall -Wextra -Wpedantic)
         endforeach()
     endif()

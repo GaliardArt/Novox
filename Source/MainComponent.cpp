@@ -58,6 +58,8 @@ MainComponent::MainComponent()
     const bool savedAutoTuneEnabled=settings->getBoolValue("autoTuneEnabled",false);
     const int savedAutoTuneTonic=juce::jlimit(0,11,settings->getIntValue("autoTuneTonic",0));
     const int savedAutoTuneScale=juce::jlimit(0,2,settings->getIntValue("autoTuneScale",1));
+    const bool savedNoiseReductionEnabled = settings->getBoolValue("noiseReductionEnabled", false);
+    const double savedNoiseReductionStrength = juce::jlimit(0.0, 100.0, settings->getDoubleValue("noiseReductionStrength", 35.0));
     const int savedBendRange = juce::jlimit(1, 12, settings->getIntValue("pitchBendRange", 2));
     const int savedChannel = juce::jlimit(1, 16, settings->getIntValue("midiChannel", 1));
     const bool savedBendEnabled = settings->getBoolValue("pitchBendEnabled", true);
@@ -196,6 +198,27 @@ MainComponent::MainComponent()
     autoTuneScaleSelector.addItem("Chromatic",1);autoTuneScaleSelector.addItem("Major",2);autoTuneScaleSelector.addItem("Minor",3);autoTuneScaleSelector.setSelectedId(savedAutoTuneScale+1,juce::dontSendNotification);
     autoTuneScaleSelector.onChange=[this]{noteTracker.setAutoTune(autoTuneEnabled.getToggleState(),autoTuneKeySelector.getSelectedId()-1,static_cast<MusicalScale>(juce::jlimit(0,2,autoTuneScaleSelector.getSelectedId()-1)));settings->setValue("autoTuneScale",autoTuneScaleSelector.getSelectedId()-1);saveSettings();repaint();};addAndMakeVisible(autoTuneScaleSelector);
     noteTracker.setAutoTune(savedAutoTuneEnabled,savedAutoTuneTonic,static_cast<MusicalScale>(savedAutoTuneScale));
+    noiseReductionEnabled.setToggleState(savedNoiseReductionEnabled, juce::dontSendNotification);
+    noiseReductionEnabled.onClick = [this]
+    {
+        engine.setNoiseReductionEnabled(noiseReductionEnabled.getToggleState());
+        settings->setValue("noiseReductionEnabled", noiseReductionEnabled.getToggleState());
+        saveSettings(); repaint();
+    };
+    addAndMakeVisible(noiseReductionEnabled);
+    noiseReductionSlider.setRange(0.0, 100.0, 1.0);
+    noiseReductionSlider.setValue(savedNoiseReductionStrength, juce::dontSendNotification);
+    noiseReductionSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 54, 23);
+    noiseReductionSlider.setTextValueSuffix("%");
+    noiseReductionSlider.onValueChange = [this]
+    {
+        engine.setNoiseReductionStrength(static_cast<float>(noiseReductionSlider.getValue() / 100.0));
+        settings->setValue("noiseReductionStrength", noiseReductionSlider.getValue());
+        saveSettings(); repaint();
+    };
+    engine.setNoiseReductionStrength(static_cast<float>(savedNoiseReductionStrength / 100.0));
+    engine.setNoiseReductionEnabled(savedNoiseReductionEnabled);
+    addAndMakeVisible(noiseReductionSlider);
 
     presetNameEditor.setText("My Preset", juce::dontSendNotification);
     presetNameEditor.setInputRestrictions(48);
@@ -265,7 +288,7 @@ void MainComponent::styleControls()
     styleButton(savePresetButton, true);
     styleButton(loadPresetButton);
     styleButton(deletePresetButton);
-    for (auto* slider : { &gainSlider, &sensitivitySlider, &smoothingSlider, &bendRangeSlider, &noteTransitionSlider })
+    for (auto* slider : { &gainSlider, &sensitivitySlider, &smoothingSlider, &bendRangeSlider, &noteTransitionSlider, &noiseReductionSlider })
     {
         slider->setColour(juce::Slider::trackColourId, NovoxLookAndFeel::accent);
         slider->setColour(juce::Slider::thumbColourId, NovoxLookAndFeel::textPrimary);
@@ -275,6 +298,7 @@ void MainComponent::styleControls()
     }
     pitchBendEnabled.setColour(juce::ToggleButton::textColourId, NovoxLookAndFeel::textPrimary);
     autoTuneEnabled.setColour(juce::ToggleButton::textColourId,NovoxLookAndFeel::textPrimary);
+    noiseReductionEnabled.setColour(juce::ToggleButton::textColourId, NovoxLookAndFeel::textPrimary);
     noteTransitionEnabled.setColour(juce::ToggleButton::textColourId, NovoxLookAndFeel::textPrimary);
     presetNameEditor.setColour(juce::TextEditor::backgroundColourId, NovoxLookAndFeel::panel);
     presetNameEditor.setColour(juce::TextEditor::textColourId, NovoxLookAndFeel::textPrimary);
@@ -432,9 +456,9 @@ void MainComponent::paint(juce::Graphics& g)
             drawText(g, values[i], { x + i * (cardW + gap) + 12.0f, paramY + 39.0f, cardW - 24.0f, 25.0f }, 16.0f, colours[i], true);
         }
         const float tuneY=paramY+paramH+12.0f;drawCard(g,{x,tuneY,cw,46.0f});
-        drawText(g,"PITCH CORRECTION",{x+14.0f,tuneY+5.0f,120.0f,13.0f},7.5f,NovoxLookAndFeel::textSecondary,true);
+        drawText(g,"PITCH CORRECTION  /  NOISE CONTROL",{x+14.0f,tuneY+5.0f,260.0f,13.0f},7.5f,NovoxLookAndFeel::textSecondary,true);
         drawText(g,autoTuneEnabled.getToggleState()?"ON":"OFF",{x+14.0f,tuneY+20.0f,40.0f,18.0f},10.0f,autoTuneEnabled.getToggleState()?NovoxLookAndFeel::success:NovoxLookAndFeel::textSecondary,true);
-        drawText(g,"Key: "+autoTuneKeySelector.getText()+"   Scale: "+autoTuneScaleSelector.getText(),{x+150.0f,tuneY+17.0f,cw-170.0f,20.0f},9.0f,NovoxLookAndFeel::textPrimary,true);
+        drawText(g,"Key: "+autoTuneKeySelector.getText()+"   Scale: "+autoTuneScaleSelector.getText(),{x+150.0f,tuneY+17.0f,260.0f,20.0f},9.0f,NovoxLookAndFeel::textPrimary,true);
         const float diagY=tuneY+56.0f,diagH=ch-(diagY-y),colW=cw/3.0f;drawCard(g,{x,diagY,cw,diagH});
         drawText(g, "RUNTIME HEALTH", { x + 18.0f, diagY + 15.0f, cw - 36.0f, 15.0f }, 8.0f, NovoxLookAndFeel::textSecondary, true);
         drawText(g, "DROPPED AUDIO SAMPLES", { x + 18.0f, diagY + 42.0f, colW - 24.0f, 15.0f }, 8.0f, NovoxLookAndFeel::textSecondary);
@@ -507,6 +531,7 @@ void MainComponent::layoutPlayPage(juce::Rectangle<int>)
     noteTransitionEnabled.setVisible(false);
     noteTransitionSlider.setVisible(false);
     autoTuneEnabled.setVisible(false);autoTuneKeySelector.setVisible(false);autoTuneScaleSelector.setVisible(false);
+    noiseReductionEnabled.setVisible(false); noiseReductionSlider.setVisible(false);
     presetSelector.setVisible(false);
     presetNameEditor.setVisible(false);
     savePresetButton.setVisible(false);
@@ -534,6 +559,7 @@ void MainComponent::layoutAudioPage(juce::Rectangle<int> a)
     gainSlider.setVisible(true); sensitivitySlider.setVisible(true); smoothingSlider.setVisible(true);
     noteTransitionEnabled.setVisible(true); noteTransitionSlider.setVisible(true);
     autoTuneEnabled.setVisible(true);autoTuneKeySelector.setVisible(true);autoTuneScaleSelector.setVisible(true);
+    noiseReductionEnabled.setVisible(true); noiseReductionSlider.setVisible(true);
     const int fourGap = 10, fourCardW = (a.getWidth() - fourGap * 3) / 4;
     gainSlider.setBounds(a.getX() + 12, top + 72, fourCardW - 24, 30);
     sensitivitySlider.setBounds(a.getX() + fourCardW + fourGap + 12, top + 72, fourCardW - 24, 30);
@@ -541,6 +567,7 @@ void MainComponent::layoutAudioPage(juce::Rectangle<int> a)
     noteTransitionEnabled.setBounds(a.getX() + 3 * (fourCardW + fourGap) + 12, top + 69, fourCardW - 24, 26);
     noteTransitionSlider.setBounds(a.getX()+3*(fourCardW+fourGap)+12,top+101,fourCardW-24,27);
     autoTuneEnabled.setBounds(a.getX()+14,top+157,112,28);autoTuneKeySelector.setBounds(a.getX()+150,top+157,100,28);autoTuneScaleSelector.setBounds(a.getX()+264,top+157,130,28);
+    noiseReductionEnabled.setBounds(a.getX()+430,top+157,142,28); noiseReductionSlider.setBounds(a.getX()+574,top+157,a.getWidth()-600,28);
 }
 
 void MainComponent::layoutPresetsPage(juce::Rectangle<int> a)
@@ -639,6 +666,7 @@ PresetData MainComponent::capturePresetData() const
     data.pitchSmoothing = smoothingSlider.getValue(); data.pitchBendEnabled = pitchBendEnabled.getToggleState();
     data.noteTransitionSmoothingEnabled = noteTransitionEnabled.getToggleState();
     data.noteTransitionStability=noteTransitionSlider.getValue();data.autoTuneEnabled=autoTuneEnabled.getToggleState();data.autoTuneTonic=autoTuneKeySelector.getSelectedId()-1;data.autoTuneScale=autoTuneScaleSelector.getSelectedId()-1;
+    data.noiseReductionEnabled = noiseReductionEnabled.getToggleState(); data.noiseReductionStrength = noiseReductionSlider.getValue();
     data.pitchBendRange = static_cast<int>(bendRangeSlider.getValue());
     data.midiChannel = channelSelector.getSelectedId(); data.midiOutputName = preferredMidiOutputName.toStdString();
     data.sanitise(); return data;
@@ -657,6 +685,10 @@ void MainComponent::applyPresetData(PresetData data, const juce::String& name)
     noteTracker.setTransitionSmoothing(data.noteTransitionSmoothingEnabled,static_cast<int>(data.noteTransitionStability));
     autoTuneEnabled.setToggleState(data.autoTuneEnabled,juce::dontSendNotification);autoTuneKeySelector.setSelectedId(data.autoTuneTonic+1,juce::dontSendNotification);autoTuneScaleSelector.setSelectedId(data.autoTuneScale+1,juce::dontSendNotification);
     noteTracker.setAutoTune(data.autoTuneEnabled,data.autoTuneTonic,static_cast<MusicalScale>(data.autoTuneScale));
+    noiseReductionEnabled.setToggleState(data.noiseReductionEnabled, juce::dontSendNotification);
+    noiseReductionSlider.setValue(data.noiseReductionStrength, juce::dontSendNotification);
+    engine.setNoiseReductionEnabled(data.noiseReductionEnabled);
+    engine.setNoiseReductionStrength(static_cast<float>(data.noiseReductionStrength / 100.0));
     pitchBendEnabled.setToggleState(data.pitchBendEnabled, juce::dontSendNotification);
     bendRangeSlider.setValue(data.pitchBendRange, juce::dontSendNotification);
     channelSelector.setSelectedId(data.midiChannel, juce::dontSendNotification);
@@ -667,6 +699,7 @@ void MainComponent::applyPresetData(PresetData data, const juce::String& name)
     settings->setValue("pitchSmoothing", data.pitchSmoothing); settings->setValue("pitchBendEnabled", data.pitchBendEnabled);
     settings->setValue("noteTransitionSmoothingEnabled", data.noteTransitionSmoothingEnabled);
     settings->setValue("noteTransitionStability",data.noteTransitionStability);settings->setValue("autoTuneEnabled",data.autoTuneEnabled);settings->setValue("autoTuneTonic",data.autoTuneTonic);settings->setValue("autoTuneScale",data.autoTuneScale);
+    settings->setValue("noiseReductionEnabled", data.noiseReductionEnabled); settings->setValue("noiseReductionStrength", data.noiseReductionStrength);
     settings->setValue("pitchBendRange", data.pitchBendRange); settings->setValue("midiChannel", data.midiChannel);
     settings->setValue("midiOutputName", preferredMidiOutputName); settings->setValue("lastPresetName", name);
     refreshMidiOutputs(); saveSettings(); operationStatus = "Loaded preset: " + name; repaint();

@@ -16,6 +16,7 @@ void VoiceEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     const auto sampleRate = device != nullptr ? device->getCurrentSampleRate() : 44100.0;
     const auto deviceBlockSize = device != nullptr ? device->getCurrentBufferSizeSamples() : 512;
     detector.prepare(sampleRate, deviceBlockSize);
+    noiseReducer.prepare(sampleRate, juce::jlimit(128, maxWorkerBlockSize, deviceBlockSize));
     monoScratch.setSize(1, juce::jmax(maxWorkerBlockSize, deviceBlockSize));
     workerBlockSize = juce::jlimit(128, maxWorkerBlockSize, deviceBlockSize);
     sampleFifo.reset();
@@ -96,6 +97,7 @@ void VoiceEngine::run()
 
         if (readable > 0)
         {
+            noiseReducer.process(workerScratch.data(), readable);
             publishPitch(detector.process(workerScratch.data(), readable));
         }
     }
