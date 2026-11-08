@@ -102,6 +102,9 @@ int main()
     clamped.pitchSmoothing = 150.0;
     clamped.pitchBendRange = 99;
     clamped.midiChannel = 0;
+    clamped.midiNoteMinimumDurationMs = 999.0;
+    clamped.midiNoteMinimumConfidence = -10.0;
+    clamped.midiNoteGapBridgeMs = 999.0;
     clamped.sanitise();
     expect(clamped.inputGain == 4.0, "input gain clamped");
     expect(clamped.pitchSensitivity == 0.0, "sensitivity clamped");
