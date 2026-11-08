@@ -2,7 +2,7 @@
 
 NOVOX is an offline-first, standalone vocal instrument for turning voice into musical control data. It is written in C++ and uses JUCE for audio input, MIDI integration, and the desktop application.
 
-## Current milestone (0.2.3 — implementation in validation)
+## Current milestone (0.3.0 — implementation in validation)
 
 - JUCE standalone desktop application and microphone capture
 - YIN-style fundamental-frequency estimation with confidence and RMS level
@@ -10,9 +10,11 @@ NOVOX is an offline-first, standalone vocal instrument for turning voice into mu
 - Preallocated SPSC audio FIFO and sequence-stamped pitch snapshots
 - Note onset/release confirmation and semitone hysteresis
 - Dedicated MIDI dispatch thread fed by a bounded SPSC event queue
-- Ordered asynchronous MIDI Note On/Off delivery, isolated from the GUI timer
-- Audio FIFO overflow and oversized callback blocks counted as dropped samples
-- Automated pitch-detector, note-tracker, and MIDI-queue regression tests
+- Ordered asynchronous MIDI Note On/Off and 14-bit Pitch Bend delivery
+- Configurable Pitch Bend enable/disable and range from ±1 to ±12 semitones
+- Configurable MIDI output channel (1–16), captured per queued event
+- Pitch Bend returns to center when a note is released or MIDI channel/output changes
+- Automated pitch-detector, note-tracker, MIDI-queue, and Pitch Bend regression tests
 
 ## Build on Windows
 
@@ -30,7 +32,8 @@ CMake fetches JUCE 8.0.6 on the first configure. An internet connection is neede
 
 - `NOVOXPitchTests`: known frequencies, 44.1/48 kHz sample rates, silence/low-level rejection, harmonic-rich input, broadband noise, and invalid input.
 - `NOVOXTrackingTests`: onset debounce, transient rejection, release debounce, note transitions, and semitone hysteresis.
-- `NOVOXMidiQueueTests`: empty queue, FIFO order and payload, bounded-capacity overflow, recovery, and ring-buffer wraparound.
+- `NOVOXMidiQueueTests`: empty queue, FIFO order and payload for note and bend events, bounded-capacity overflow, recovery, and ring-buffer wraparound.
+- `NOVOXPitchBendTests`: center, positive/negative direction, clamping, configurable range, invalid input, and fractional semitone offsets.
 
 The tests are deterministic. They do not replace microphone, room-noise, end-to-end latency, MIDI-driver, or musical-performance testing.
 
@@ -43,5 +46,8 @@ GitHub Actions configures and compiles the Windows x64 Release build and runs CT
 - The audio callback performs bounded channel mixing and FIFO writes only; pitch detection runs on a worker thread.
 - Audio FIFO overflow and callback blocks larger than the prepared scratch buffer are counted and dropped without blocking the callback.
 - The MIDI queue is bounded and lock-free for one GUI producer and one MIDI dispatch consumer. The worker preserves event order and sends messages independently of the GUI timer.
+- Each queued MIDI event captures its channel at enqueue time, so changing channels cannot redirect already queued note-offs.
+- Pitch Bend is calculated from the fractional semitone offset relative to the tracked note and encoded using the standard 14-bit MIDI wheel value. The configured range is applied symmetrically, with asymmetric integer scaling around MIDI center 8192.
+- Pitch Bend updates are sent only for new analysis frames and changes of at least two wheel units, limiting redundant queue traffic.
 - Closing or changing MIDI output drains pending events and stops the dispatch worker before releasing the device handle.
-- MIDI event generation still originates from the GUI timer. Moving pitch tracking to the analysis worker and sample-timestamped scheduling remain future improvements.
+- MIDI event generation still originates from the GUI timer. This milestone does not claim sample-accurate timing.

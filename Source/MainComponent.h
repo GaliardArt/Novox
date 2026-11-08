@@ -18,18 +18,25 @@ private:
     void timerCallback() override;
     void refreshMidiOutputs();
     void selectMidiOutput();
+    void selectMidiChannel();
     void updateNoteTracking(const PitchResult& pitch);
+    void sendPitchBend(const PitchResult& pitch);
+    void resetPitchBend();
 
     VoiceEngine engine;
     MidiRouter midiRouter;
     NoteTracker noteTracker;
+
     juce::Label title, status, noteLabel, frequencyLabel, midiLabel;
-    juce::Slider gainSlider;
-    juce::ComboBox midiOutputSelector;
+    juce::Label gainLabel, bendRangeLabel, channelLabel, pitchBendLabel;
+    juce::Slider gainSlider, bendRangeSlider;
+    juce::ComboBox midiOutputSelector, channelSelector;
     juce::TextButton refreshButton { "Refresh MIDI" };
+    juce::ToggleButton pitchBendEnabled { "Enable Pitch Bend" };
     juce::AudioDeviceManager deviceManager;
 
     uint64_t lastPitchSequence = 0;
+    int lastPitchBendValue = 8192;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
