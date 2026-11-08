@@ -128,4 +128,9 @@ The Windows desktop target embeds JUCE WebBrowserComponent using the Microsoft E
 
 ## Web UI — first visual pass
 
-The WebView2 presentation now has a dedicated workspace navigation for Play, MIDI, Audio, and Presets. The native C++ bridge provides read-only live snapshots for pitch, MIDI routing, audio-device metadata, detection parameters, and runtime queue diagnostics. The web pages are presentation-only in this milestone: configuration and preset mutations remain in the existing native tabs until their bridge actions are implemented and tested. All frontend assets are local and work without a remote server or CDN.
+The first WebView2 visual pass introduced dedicated workspace navigation for Play, MIDI, Audio, and Presets, with read-only status snapshots. Subsequent MIDI bridge work now makes output selection, channel, and Pitch Bend controls interactive on the web MIDI page. The other web pages remain presentation-only while their native actions are integrated. All frontend assets are local and work without a remote server or CDN.
+
+
+## Web MIDI controls
+
+The WebView2 MIDI workspace now reads the available MIDI destinations and can refresh the device list, select or disconnect an output, change the MIDI channel, and enable/disable Pitch Bend or adjust its semitone range. These actions call validated native JUCE handlers; the C++ MIDI router remains responsible for device access and MIDI dispatch. Settings continue to use the existing local persistence path.

@@ -80,13 +80,36 @@
 
       <section class="view" id="view-midi" data-page="midi">
         <div class="section-kicker">ROUTING & EXPRESSION</div>
-        <div class="section-heading page-section-heading"><div><h2>MIDI configuration</h2><p>Current routing state from the native MIDI engine.</p></div><span class="subtle-tag">READ ONLY</span></div>
+        <div class="section-heading page-section-heading"><div><h2>MIDI configuration</h2><p>Current routing state from the native MIDI engine.</p></div><span class="subtle-tag">NATIVE CONTROLS</span></div>
         <div class="settings-grid">
-          <article class="detail-card wide"><div class="detail-icon coral">⌁</div><div class="detail-label">OUTPUT DEVICE</div><strong id="midi-output-name">No output selected</strong><p id="midi-output-description">Select a MIDI destination from the existing MIDI settings tab.</p><span class="detail-state" id="midi-output-state">DISCONNECTED</span></article>
-          <article class="detail-card"><div class="detail-icon teal">#</div><div class="detail-label">MIDI CHANNEL</div><strong class="large-number" id="midi-channel-detail">01</strong><p>Channel range: 1–16</p></article>
-          <article class="detail-card"><div class="detail-icon coral">↕</div><div class="detail-label">PITCH BEND</div><strong id="bend-state">Enabled</strong><p>Range <b id="bend-range-detail">±2 semitones</b></p></article>
+          <article class="detail-card wide">
+            <div class="device-top"><div><div class="detail-icon coral">⌁</div><div class="detail-label">OUTPUT DEVICE</div><strong id="midi-output-name">No output selected</strong></div><span class="detail-state" id="midi-output-state">DISCONNECTED</span></div>
+            <p id="midi-output-description">Choose where NOVOX sends MIDI notes and Pitch Bend.</p>
+            <div class="control-row"><select class="web-select" id="midi-output-select" aria-label="MIDI output"><option value="">No MIDI output</option></select><button class="web-button secondary" id="refresh-midi" type="button">Refresh</button></div>
+          </article>
+          <article class="detail-card">
+            <div class="detail-icon teal">#</div><div class="detail-label">MIDI CHANNEL</div>
+            <strong class="large-number" id="midi-channel-detail">01</strong>
+            <p>Choose the channel used for notes and Pitch Bend.</p>
+            <select class="web-select full-control" id="midi-channel-select" aria-label="MIDI channel">
+              <option value="1">Channel 1</option><option value="2">Channel 2</option><option value="3">Channel 3</option><option value="4">Channel 4</option>
+              <option value="5">Channel 5</option><option value="6">Channel 6</option><option value="7">Channel 7</option><option value="8">Channel 8</option>
+              <option value="9">Channel 9</option><option value="10">Channel 10</option><option value="11">Channel 11</option><option value="12">Channel 12</option>
+              <option value="13">Channel 13</option><option value="14">Channel 14</option><option value="15">Channel 15</option><option value="16">Channel 16</option>
+            </select>
+          </article>
+          <article class="detail-card">
+            <div class="detail-icon coral">↕</div><div class="detail-label">PITCH BEND</div>
+            <div class="bend-control-row"><strong id="bend-state">Enabled</strong><button class="web-switch" id="pitch-bend-toggle" type="button" aria-pressed="true">ON</button></div>
+            <p>Set the maximum expressive range in semitones.</p>
+            <select class="web-select full-control" id="bend-range-select" aria-label="Pitch Bend range">
+              <option value="1">±1 semitone</option><option value="2">±2 semitones</option><option value="3">±3 semitones</option><option value="4">±4 semitones</option>
+              <option value="5">±5 semitones</option><option value="6">±6 semitones</option><option value="7">±7 semitones</option><option value="8">±8 semitones</option>
+              <option value="9">±9 semitones</option><option value="10">±10 semitones</option><option value="11">±11 semitones</option><option value="12">±12 semitones</option>
+            </select>
+            <p class="command-status" id="midi-command-status" aria-live="polite">Changes are saved automatically.</p>
+          </article>
         </div>
-        <div class="info-strip"><span class="info-symbol">i</span><p>Configuration controls are being connected to the native engine in the next integration stage. Your current MIDI settings remain available in the original MIDI tab.</p></div>
       </section>
 
       <section class="view" id="view-audio" data-page="audio">

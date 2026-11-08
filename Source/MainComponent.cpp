@@ -273,6 +273,121 @@ MainComponent::MainComponent()
 
                 complete(juce::var(data));
             })
+
+        .withNativeFunction("getNovoxMidiOutputs",
+            [this](const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion complete)
+            {
+                const auto names = midiRouter.getOutputNames();
+                auto* data = new juce::DynamicObject();
+                data->setProperty("count", names.size());
+                for (int i = 0; i < names.size(); ++i)
+                    data->setProperty("item" + juce::String(i), names[i]);
+                data->setProperty("selected", midiRouter.isOpen() ? preferredMidiOutputName : juce::String{});
+                complete(juce::var(data));
+            })
+        .withNativeFunction("refreshNovoxMidiOutputs",
+            [this](const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion complete)
+            {
+                refreshMidiOutputs();
+                complete(juce::var(true));
+            })
+        .withNativeFunction("setNovoxMidiOutput",
+            [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion complete)
+            {
+                if (args.size() != 1)
+                {
+                    complete(juce::var(false));
+                    return;
+                }
+
+                const auto requestedName = args[0].toString();
+                refreshMidiOutputs();
+                int selectedId = 1;
+
+                if (requestedName.isNotEmpty())
+                {
+                    for (int i = 0; i < midiOutputSelector.getNumItems(); ++i)
+                    {
+                        if (midiOutputSelector.getItemText(i) == requestedName)
+                        {
+                            selectedId = midiOutputSelector.getItemId(i);
+                            break;
+                        }
+                    }
+
+                    if (selectedId <= 1)
+                    {
+                        complete(juce::var(false));
+                        return;
+                    }
+                }
+
+                midiOutputSelector.setSelectedId(selectedId, juce::dontSendNotification);
+                selectMidiOutput();
+                complete(juce::var(selectedId == 1 ? !midiRouter.isOpen() : midiRouter.isOpen()));
+            })
+        .withNativeFunction("setNovoxMidiChannel",
+            [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion complete)
+            {
+                if (args.size() != 1)
+                {
+                    complete(juce::var(false));
+                    return;
+                }
+
+                const int channel = args[0].toString().getIntValue();
+                if (!juce::isPositiveAndBelow(channel - 1, 16))
+                {
+                    complete(juce::var(false));
+                    return;
+                }
+
+                channelSelector.setSelectedId(channel, juce::dontSendNotification);
+                selectMidiChannel();
+                complete(juce::var(midiRouter.getChannel() == channel));
+            })
+        .withNativeFunction("setNovoxPitchBendEnabled",
+            [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion complete)
+            {
+                if (args.size() != 1)
+                {
+                    complete(juce::var(false));
+                    return;
+                }
+
+                const auto value = args[0].toString();
+                const bool enabled = value.equalsIgnoreCase("true") || value == "1";
+                pitchBendEnabled.setToggleState(enabled, juce::dontSendNotification);
+                if (!enabled)
+                    resetPitchBend();
+                else
+                    lastPitchBendValue = -1;
+                settings->setValue("pitchBendEnabled", enabled);
+                saveSettings();
+                complete(juce::var(pitchBendEnabled.getToggleState() == enabled));
+            })
+        .withNativeFunction("setNovoxPitchBendRange",
+            [this](const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion complete)
+            {
+                if (args.size() != 1)
+                {
+                    complete(juce::var(false));
+                    return;
+                }
+
+                const int range = args[0].toString().getIntValue();
+                if (range < 1 || range > 12)
+                {
+                    complete(juce::var(false));
+                    return;
+                }
+
+                bendRangeSlider.setValue(range, juce::dontSendNotification);
+                lastPitchBendValue = -1;
+                settings->setValue("pitchBendRange", range);
+                saveSettings();
+                complete(juce::var(static_cast<int>(bendRangeSlider.getValue()) == range));
+            })
         .withEventListener("novoxUiReady", [this](juce::var)
             { status.setText("Web interface connected — native audio/MIDI engine ready.", juce::dontSendNotification); })
         .withResourceProvider([](const juce::String& path) { return provideNovoxWebResource(path); });

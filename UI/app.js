@@ -32,17 +32,43 @@
     button.addEventListener("click", () => showPage(button.dataset.view));
   });
 
-  function requestStatus() {
+  function invokeNative(name, params = []) {
     if (!backend) return Promise.reject(new Error("Native bridge unavailable"));
     return new Promise((resolve, reject) => {
       const promiseId = nextPromiseId++;
       pending.set(promiseId, { resolve, reject });
-      backend.emitEvent("__juce__invoke", {
-        name: "getNovoxStatus",
-        params: [],
-        resultId: promiseId
-      });
+      backend.emitEvent("__juce__invoke", { name, params, resultId: promiseId });
     });
+  }
+
+  function requestStatus() {
+    return invokeNative("getNovoxStatus");
+  }
+
+  async function loadMidiOutputs() {
+    const result = await invokeNative("getNovoxMidiOutputs");
+    const select = $("midi-output-select");
+    if (!select) return;
+    select.replaceChildren(new Option("No MIDI output", ""));
+    for (let i = 0; i < Number(result.count || 0); i++) {
+      const name = result["item" + i];
+      if (name) select.add(new Option(name, name));
+    }
+    select.value = result.selected || "";
+  }
+
+  async function runMidiCommand(name, params = [], successMessage = "Settings saved.") {
+    const label = $("midi-command-status");
+    if (label) label.textContent = "Applying…";
+    try {
+      const success = await invokeNative(name, params);
+      if (success !== true) throw new Error("The native engine rejected this setting.");
+      if (label) label.textContent = successMessage;
+      await loadMidiOutputs();
+      await poll();
+    } catch (error) {
+      if (label) label.textContent = "Could not apply setting. Check the MIDI device and try again.";
+    }
   }
 
   backend?.addEventListener("__juce__complete", payload => {
@@ -50,6 +76,34 @@
     if (!item) return;
     pending.delete(payload.promiseId);
     item.resolve(payload.result);
+  });
+
+  $("midi-output-select")?.addEventListener("change", event => {
+    runMidiCommand("setNovoxMidiOutput", [event.target.value], "MIDI output updated.");
+  });
+  $("refresh-midi")?.addEventListener("click", async () => {
+    const label = $("midi-command-status");
+    if (label) label.textContent = "Searching for MIDI outputs…";
+    try {
+      const success = await invokeNative("refreshNovoxMidiOutputs");
+      if (success !== true) throw new Error("Refresh failed");
+      await loadMidiOutputs();
+      await poll();
+      if (label) label.textContent = "MIDI outputs refreshed.";
+    } catch (_) {
+      if (label) label.textContent = "Could not refresh MIDI outputs.";
+    }
+  });
+  $("midi-channel-select")?.addEventListener("change", event => {
+    runMidiCommand("setNovoxMidiChannel", [Number(event.target.value)], "MIDI channel updated.");
+  });
+  $("pitch-bend-toggle")?.addEventListener("click", event => {
+    const button = event.currentTarget;
+    const enabled = button.getAttribute("aria-pressed") !== "true";
+    runMidiCommand("setNovoxPitchBendEnabled", [enabled], "Pitch Bend setting updated.");
+  });
+  $("bend-range-select")?.addEventListener("change", event => {
+    runMidiCommand("setNovoxPitchBendRange", [Number(event.target.value)], "Pitch Bend range updated.");
   });
 
   const number = (value, decimals = 0) => Number.isFinite(Number(value))
@@ -98,6 +152,18 @@
     setText("midi-channel-detail", String(status.midiChannel || 1).padStart(2, "0"));
     setText("bend-state", status.pitchBendEnabled ? "Enabled" : "Disabled");
     setText("bend-range-detail", "±" + bendRange + " semitones");
+    const outputSelect = $("midi-output-select");
+    if (outputSelect && document.activeElement !== outputSelect) outputSelect.value = status.midiOutputName || "";
+    const channelSelect = $("midi-channel-select");
+    if (channelSelect && document.activeElement !== channelSelect) channelSelect.value = String(status.midiChannel || 1);
+    const bendToggle = $("pitch-bend-toggle");
+    if (bendToggle) {
+      const enabled = Boolean(status.pitchBendEnabled);
+      bendToggle.setAttribute("aria-pressed", String(enabled));
+      bendToggle.textContent = enabled ? "ON" : "OFF";
+    }
+    const rangeSelect = $("bend-range-select");
+    if (rangeSelect && document.activeElement !== rangeSelect) rangeSelect.value = String(bendRange);
 
     setText("audio-device-name", inputName);
     setText("audio-device-state", audioAvailable ? "ACTIVE" : "UNAVAILABLE");
@@ -131,7 +197,8 @@
   }
 
   showPage("play");
-  backend?.emitEvent("novoxUiReady", { version: 2 });
+  backend?.emitEvent("novoxUiReady", { version: 3 });
+  loadMidiOutputs().catch(() => {});
   poll();
   window.setInterval(poll, 250);
 })();
