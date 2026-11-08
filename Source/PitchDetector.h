@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <cstdint>
 
 struct PitchResult
 {
@@ -7,6 +8,7 @@ struct PitchResult
     float confidence = 0.0f;
     float rms = 0.0f;
     bool voiced = false;
+    uint64_t sequence = 0;
 };
 
 class PitchDetector
