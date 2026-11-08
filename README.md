@@ -2,16 +2,17 @@
 
 NOVOX is an offline-first, standalone vocal instrument for turning voice into musical control data. It is written in C++ and uses JUCE for audio input, MIDI integration, and the desktop application.
 
-## Current milestone (0.2.1)
+## Current milestone (0.2.2 — implementation in validation)
 
 - JUCE standalone desktop application
 - Microphone/audio input capture
 - YIN-style fundamental-frequency estimation with confidence and RMS level
-- Live note, frequency, and input-level display
-- Input gain control
-- Selectable MIDI output
-- Stable-note filtering before MIDI note-on/note-off events
-- Automated pitch-detector regression tests through CTest
+- Pitch analysis moved off the audio callback to a dedicated worker thread
+- Preallocated single-producer/single-consumer audio FIFO between capture and analysis
+- Sequence-stamped pitch snapshots so note tracking only consumes new analysis frames
+- Note onset/release confirmation and semitone hysteresis to reduce MIDI chatter
+- Selectable MIDI output and input gain
+- Automated pitch-detector and note-tracker regression tests through CTest
 
 ## Build on Windows
 
@@ -27,9 +28,10 @@ CMake fetches JUCE 8.0.6 on the first configure. An internet connection is neede
 
 ## Regression coverage
 
-The `NOVOXPitchTests` target validates known sine-wave frequencies across the supported vocal range, sample-rate handling at 44.1/48 kHz, silence and low-level rejection, harmonic-rich input, broadband-noise rejection, and invalid input handling.
+- `NOVOXPitchTests`: known sine-wave frequencies, 44.1/48 kHz sample rates, silence and low-level rejection, harmonic-rich input, broadband-noise rejection, and invalid input handling.
+- `NOVOXTrackingTests`: onset debounce, transient rejection, release debounce, note transitions, and semitone hysteresis.
 
-The tests use generated deterministic signals; they do not replace microphone, room-noise, latency, or musical-performance testing.
+The generated-signal tests are deterministic. They do not replace microphone, room-noise, end-to-end latency, or musical-performance testing.
 
 ## Continuous integration
 
@@ -37,6 +39,7 @@ GitHub Actions configures and compiles the Windows x64 Release build and runs CT
 
 ## Engineering notes
 
-- Keep audio callbacks real-time safe: avoid allocations, blocking locks, logging, and GUI access.
-- The pitch detector remains an early YIN-style implementation; regression coverage is a foundation, not a production-quality certification.
-- MIDI events are currently dispatched by the GUI timer; a dedicated timestamped MIDI event queue is planned to improve timing.
+- The audio callback now performs bounded channel mixing and FIFO writes only; pitch detection runs on a dedicated worker thread.
+- The FIFO is preallocated and lock-free for the single audio producer and single analysis consumer. If it fills, excess incoming samples are counted and dropped rather than blocking the audio callback.
+- The MIDI note tracker consumes each published analysis frame once, applies onset/release confirmation, and uses a small semitone hysteresis margin.
+- MIDI events are still dispatched by the GUI timer. A dedicated timestamped MIDI event queue remains a future improvement for tighter timing.
