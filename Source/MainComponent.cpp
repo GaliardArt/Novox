@@ -1,15 +1,7 @@
 #include "MainComponent.h"
-#include <cmath>
 
 namespace
 {
-    int frequencyToMidiNote(float hz)
-    {
-        if (hz <= 0.0f)
-            return -1;
-        return juce::jlimit(0, 127, juce::roundToInt(69.0 + 12.0 * std::log2(hz / 440.0)));
-    }
-
     juce::String noteNameFromMidi(int midi)
     {
         if (!juce::isPositiveAndBelow(midi, 128))
@@ -66,14 +58,14 @@ MainComponent::MainComponent()
         deviceManager.addAudioCallback(&engine);
 
     setSize(960, 620);
-    startTimerHz(30);
+    startTimerHz(60);
 }
 
 MainComponent::~MainComponent()
 {
     stopTimer();
-    if (activeMidiNote >= 0)
-        midiRouter.noteOff(activeMidiNote);
+    if (noteTracker.getActiveNote() >= 0)
+        midiRouter.noteOff(noteTracker.getActiveNote());
     midiRouter.closeOutput();
     deviceManager.removeAudioCallback(&engine);
     deviceManager.closeAudioDevice();
@@ -88,16 +80,16 @@ void MainComponent::refreshMidiOutputs()
         midiOutputSelector.addItem(names[i], i + 2);
     midiOutputSelector.setSelectedId(1, juce::dontSendNotification);
     midiRouter.closeOutput();
+    noteTracker.reset();
     midiLabel.setText("MIDI: choose an output device", juce::dontSendNotification);
 }
 
 void MainComponent::selectMidiOutput()
 {
-    if (activeMidiNote >= 0)
-    {
-        midiRouter.noteOff(activeMidiNote);
-        activeMidiNote = -1;
-    }
+    const int activeNote = noteTracker.getActiveNote();
+    if (activeNote >= 0)
+        midiRouter.noteOff(activeNote);
+    noteTracker.reset();
 
     const int selectedId = midiOutputSelector.getSelectedId();
     if (selectedId <= 1)
@@ -115,37 +107,11 @@ void MainComponent::selectMidiOutput()
 
 void MainComponent::updateNoteTracking(const PitchResult& pitch)
 {
-    const int detectedNote = pitch.voiced ? frequencyToMidiNote(pitch.frequencyHz) : -1;
-
-    if (detectedNote < 0)
-    {
-        candidateMidiNote = -1;
-        candidateFrames = 0;
-        ++silentFrames;
-        if (silentFrames >= 4 && activeMidiNote >= 0)
-        {
-            midiRouter.noteOff(activeMidiNote);
-            activeMidiNote = -1;
-        }
-        return;
-    }
-
-    silentFrames = 0;
-    if (detectedNote != candidateMidiNote)
-    {
-        candidateMidiNote = detectedNote;
-        candidateFrames = 1;
-        return;
-    }
-
-    ++candidateFrames;
-    if (candidateFrames >= 3 && detectedNote != activeMidiNote)
-    {
-        if (activeMidiNote >= 0)
-            midiRouter.noteOff(activeMidiNote);
-        activeMidiNote = detectedNote;
-        midiRouter.noteOn(activeMidiNote);
-    }
+    const auto update = noteTracker.process(pitch);
+    if (update.noteOff >= 0)
+        midiRouter.noteOff(update.noteOff);
+    if (update.noteOn >= 0)
+        midiRouter.noteOn(update.noteOn);
 }
 
 void MainComponent::paint(juce::Graphics& g)
@@ -173,13 +139,18 @@ void MainComponent::resized()
 
 void MainComponent::timerCallback()
 {
-    const auto p = engine.getLatestPitch();
-    noteLabel.setText(p.voiced ? noteNameFromMidi(frequencyToMidiNote(p.frequencyHz)) : "--",
+    const auto pitch = engine.getLatestPitch();
+    noteLabel.setText(pitch.voiced ? noteNameFromMidi(noteTracker.getActiveNote()) : "--",
                       juce::dontSendNotification);
-    frequencyLabel.setText(juce::String(p.frequencyHz, 1) + " Hz  |  confidence "
-        + juce::String(p.confidence * 100.0f, 0) + "%  |  input "
-        + juce::String(p.rms, 3), juce::dontSendNotification);
-    status.setText(p.voiced ? "Voice detected" : "Listening for voice",
+    frequencyLabel.setText(juce::String(pitch.frequencyHz, 1) + " Hz  |  confidence "
+        + juce::String(pitch.confidence * 100.0f, 0) + "%  |  input "
+        + juce::String(pitch.rms, 3), juce::dontSendNotification);
+    status.setText(pitch.voiced ? "Voice detected" : "Listening for voice",
                    juce::dontSendNotification);
-    updateNoteTracking(p);
+
+    if (pitch.sequence != 0 && pitch.sequence != lastPitchSequence)
+    {
+        lastPitchSequence = pitch.sequence;
+        updateNoteTracking(pitch);
+    }
 }
