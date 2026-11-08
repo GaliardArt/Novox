@@ -2,6 +2,7 @@
 #include <JuceHeader.h>
 #include "VoiceEngine.h"
 #include "MidiRouter.h"
+#include "NoteTracker.h"
 
 class MainComponent final : public juce::Component,
                             private juce::Timer
@@ -21,16 +22,14 @@ private:
 
     VoiceEngine engine;
     MidiRouter midiRouter;
+    NoteTracker noteTracker;
     juce::Label title, status, noteLabel, frequencyLabel, midiLabel;
     juce::Slider gainSlider;
     juce::ComboBox midiOutputSelector;
     juce::TextButton refreshButton { "Refresh MIDI" };
     juce::AudioDeviceManager deviceManager;
 
-    int activeMidiNote = -1;
-    int candidateMidiNote = -1;
-    int candidateFrames = 0;
-    int silentFrames = 0;
+    uint64_t lastPitchSequence = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
