@@ -36,6 +36,22 @@ namespace
         return {};
     }
 
+    PitchResult uncertainSignal()
+    {
+        PitchResult pitch;
+        pitch.rms = 0.04f;
+        pitch.signalPresent = true;
+        pitch.voiced = false;
+        return pitch;
+    }
+
+    void activateA4(NoteTracker& tracker)
+    {
+        tracker.process(note(69.0f), 0.01f);
+        tracker.process(note(69.0f), 0.01f);
+        tracker.process(note(69.0f), 0.01f);
+    }
+
     void testOnsetDebounce()
     {
         NoteTracker tracker;
@@ -94,6 +110,62 @@ namespace
         const auto update = tracker.process(silence());
         check(update.noteOff == 69 && tracker.getActiveNote() == -1,
               "Release emits note-off after 40 ms of silence");
+    }
+
+    void testPitchDropoutBridge()
+    {
+        NoteTracker tracker;
+        activateA4(tracker);
+        check(tracker.process(uncertainSignal(), 0.01f).noteOff == -1
+                  && tracker.getActiveNote() == 69,
+              "Brief high-note pitch dropout does not send MIDI note-off");
+        check(tracker.process(uncertainSignal(), 0.01f).noteOff == -1
+                  && tracker.getActiveNote() == 69,
+              "Consecutive uncertain frames remain bridged");
+        const auto resumed = tracker.process(note(69.0f), 0.01f);
+        check(resumed.noteOn == -1 && resumed.noteOff == -1 && tracker.getActiveNote() == 69,
+              "Pitch recovery continues the same MIDI note without retriggering");
+    }
+
+    void testPitchDropoutTimeout()
+    {
+        NoteTracker tracker;
+        activateA4(tracker);
+        for (int i = 0; i < 9; ++i)
+        {
+            const auto update = tracker.process(uncertainSignal(), 0.01f);
+            check(update.noteOff == -1, "Pitch uncertainty is tolerated before the 100 ms safety timeout");
+        }
+        const auto timeout = tracker.process(uncertainSignal(), 0.01f);
+        check(timeout.noteOff == 69 && tracker.getActiveNote() == -1,
+              "Persistent pitch uncertainty releases MIDI after the bounded hold");
+    }
+
+    void testLowLatencyPitchDropoutTimeout()
+    {
+        NoteTracker tracker;
+        tracker.setLowLatencyMode(true);
+        tracker.process(note(69.0f), 0.01f);
+        check(tracker.getActiveNote() == 69, "Low-latency onset remains immediate");
+        for (int i = 0; i < 7; ++i)
+            check(tracker.process(uncertainSignal(), 0.01f).noteOff == -1,
+                  "Low-latency mode bridges short uncertain frames");
+        const auto timeout = tracker.process(uncertainSignal(), 0.01f);
+        check(timeout.noteOff == 69 && tracker.getActiveNote() == -1,
+              "Low-latency uncertainty hold has an 80 ms safety timeout");
+    }
+
+    void testTrueSilenceStillReleasesPromptly()
+    {
+        NoteTracker tracker;
+        activateA4(tracker);
+        tracker.process(uncertainSignal(), 0.01f);
+        tracker.process(silence(), 0.01f);
+        tracker.process(silence(), 0.01f);
+        tracker.process(silence(), 0.01f);
+        const auto update = tracker.process(silence(), 0.01f);
+        check(update.noteOff == 69 && tracker.getActiveNote() == -1,
+              "Actual silence still releases promptly after the normal 40 ms confirmation");
     }
 
     void testNoteTransition()
@@ -163,6 +235,10 @@ int main()
     testTimeBasedTransition();
     testTransientRejection();
     testReleaseDebounce();
+    testPitchDropoutBridge();
+    testPitchDropoutTimeout();
+    testLowLatencyPitchDropoutTimeout();
+    testTrueSilenceStillReleasesPromptly();
     testNoteTransition();
     testOptionalTransitionSmoothing();testScaleQuantizer();testAutoTuneTracking();
     testHysteresis();

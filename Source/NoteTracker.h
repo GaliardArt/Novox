@@ -23,6 +23,7 @@ public:
     {
         onsetConfirmationSeconds = enabled ? 0.0f : 0.030f;
         releaseConfirmationSeconds = enabled ? 0.020f : 0.040f;
+        pitchDropoutHoldSeconds = enabled ? 0.080f : 0.100f;
     }
 
     void setTransitionSmoothing(bool enabled, float confirmationMs) noexcept
@@ -53,6 +54,8 @@ private:
     int candidateNote = -1;
     float candidateSeconds = 0.0f;
     float silentSeconds = 0.0f;
+    float pitchDropoutSeconds = 0.0f;
+    float pitchDropoutHoldSeconds = 0.100f;
     float transitionConfirmationSeconds = 0.060f;
     bool transitionSmoothingEnabled = false;
     bool autoTuneEnabled = false;

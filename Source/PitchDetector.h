@@ -9,6 +9,9 @@ struct PitchResult
     float confidence = 0.0f;
     float rms = 0.0f;
     bool voiced = false;
+    // True when the analysis window contains signal energy above the silence gate,
+    // even if YIN cannot produce a sufficiently confident pitch estimate.
+    bool signalPresent = false;
     uint64_t sequence = 0;
     int analysisWindowSamples = 0;
 };

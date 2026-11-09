@@ -23,8 +23,25 @@ NoteUpdate NoteTracker::process(const PitchResult& pitch, float elapsedSeconds) 
     {
         candidateNote = -1;
         candidateSeconds = 0.0f;
-        silentSeconds += delta;
 
+        // A voiced signal with an uncertain YIN estimate is not equivalent to
+        // silence. Hold the current MIDI note briefly to bridge isolated pitch
+        // estimation dropouts, but enforce a hard timeout to prevent stuck notes.
+        if (activeNote >= 0 && pitch.signalPresent)
+        {
+            silentSeconds = 0.0f;
+            pitchDropoutSeconds += delta;
+            if (pitchDropoutSeconds + 1.0e-6f >= pitchDropoutHoldSeconds)
+            {
+                update.noteOff = activeNote;
+                activeNote = -1;
+                pitchDropoutSeconds = 0.0f;
+            }
+            return update;
+        }
+
+        pitchDropoutSeconds = 0.0f;
+        silentSeconds += delta;
         if (silentSeconds >= releaseConfirmationSeconds && activeNote >= 0)
         {
             update.noteOff = activeNote;
@@ -34,6 +51,7 @@ NoteUpdate NoteTracker::process(const PitchResult& pitch, float elapsedSeconds) 
     }
 
     silentSeconds = 0.0f;
+    pitchDropoutSeconds = 0.0f;
 
     if (activeNote >= 0 && detectedNote != activeNote)
     {
@@ -81,4 +99,5 @@ void NoteTracker::reset() noexcept
     candidateNote = -1;
     candidateSeconds = 0.0f;
     silentSeconds = 0.0f;
+    pitchDropoutSeconds = 0.0f;
 }

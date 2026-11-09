@@ -92,7 +92,8 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
     }
 
     result.rms = static_cast<float>(std::sqrt(energy / analysisWindowSize));
-    if (result.rms < silenceThreshold)
+    result.signalPresent = result.rms >= silenceThreshold;
+    if (!result.signalPresent)
     {
         if (lowLatency)
         {

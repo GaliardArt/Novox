@@ -37,11 +37,16 @@ public:
                 auto bridged = lastConfirmedPitch;
                 bridged.sequence = input.sequence;
                 bridged.rms = input.rms;
+                bridged.signalPresent = input.signalPresent;
                 return bridged;
             }
             gapSeconds += delta;
             confirmedNote = -1;
-            return {};
+            PitchResult uncertain;
+            uncertain.sequence = input.sequence;
+            uncertain.rms = input.rms;
+            uncertain.signalPresent = input.signalPresent;
+            return uncertain;
         }
 
         gapSeconds = 0.0f;
