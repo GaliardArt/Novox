@@ -110,13 +110,15 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
     const int maxLag = lowLatency
         ? std::min({ maxLagCapacity, static_cast<int>(currentSampleRate / minFrequency), analysisWindowSize / 2 })
         : std::min(maxLagCapacity, static_cast<int>(currentSampleRate / minFrequency));
-    const int comparisonLength = analysisWindowSize - maxLag;
-
     difference[0] = 0.0f;
     cumulativeMeanDifference[0] = 1.0f;
 
     for (int tau = 1; tau <= maxLag; ++tau)
     {
+        // YIN's difference function must compare every valid sample pair for
+        // this lag. A fixed (window - maxLag) length starves short lags of
+        // data, which is especially damaging for high notes.
+        const int comparisonLength = analysisWindowSize - tau;
         double sum = 0.0;
         for (int j = 0; j < comparisonLength; ++j)
         {

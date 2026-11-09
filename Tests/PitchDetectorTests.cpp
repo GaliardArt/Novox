@@ -189,6 +189,24 @@ namespace
               "detected " + std::to_string(pureTone.frequencyHz) + " Hz");
     }
 
+    void testHighNoteHarmonicStability()
+    {
+        constexpr double sampleRate = 48000.0;
+        constexpr double fundamental = 660.0;
+        auto signal = makeSine(fundamental, sampleRate, 0.4, 0.18f);
+        const auto second = makeSine(fundamental * 2.0, sampleRate, 0.4, 0.28f);
+        const auto third = makeSine(fundamental * 3.0, sampleRate, 0.4, 0.12f);
+        const auto fourth = makeSine(fundamental * 4.0, sampleRate, 0.4, 0.06f);
+        for (size_t i = 0; i < signal.size(); ++i)
+            signal[i] += second[i] + third[i] + fourth[i];
+
+        const auto result = analyseSignal(signal, sampleRate);
+        check(result.voiced && std::abs(result.frequencyHz - fundamental) <= 6.0f,
+              "High-note harmonic voice remains trackable",
+              "expected 660 Hz, detected " + std::to_string(result.frequencyHz)
+                + " Hz / confidence " + std::to_string(result.confidence));
+    }
+
     void testNoiseRejection()
     {
         std::mt19937 generator(0x4e4f564f);
@@ -256,6 +274,7 @@ int main()
     testAntiAliasing();
     testOctaveErrorCorrection();
     testDominantThirdHarmonic();
+    testHighNoteHarmonicStability();
     testNoiseRejection();
     testAdaptiveAnalysisWindow();
     testLowLatencyProgressiveWindows();
