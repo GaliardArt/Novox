@@ -153,7 +153,11 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
 
     if (selectedLag < 0)
     {
-        float bestValue = yinThreshold;
+        // A threshold crossing is preferred, but it must not be required:
+        // voiced frames can have a valid periodic minimum slightly above the
+        // early-exit threshold. Let the independent confidence gate decide
+        // whether that minimum is reliable enough to emit a note.
+        float bestValue = 1.0f;
         for (int tau = minLag; tau <= maxLag; ++tau)
         {
             const float value = cumulativeMeanDifference[static_cast<size_t>(tau)];
