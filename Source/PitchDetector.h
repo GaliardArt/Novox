@@ -14,6 +14,8 @@ struct PitchResult
     bool signalPresent = false;
     uint64_t sequence = 0;
     int analysisWindowSamples = 0;
+    // 0=warming up, 1=silence gate, 2=no YIN candidate, 3=confidence/range rejected, 4=voiced.
+    int diagnosticState = 0;
 };
 
 class PitchDetector

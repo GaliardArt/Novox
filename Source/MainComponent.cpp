@@ -547,9 +547,10 @@ void MainComponent::paint(juce::Graphics& g)
         drawText(g, "RUNTIME HEALTH", { x + 18.0f, diagY + 15.0f, cw - 36.0f, 15.0f }, 8.0f, NovoxLookAndFeel::textSecondary, true);
         const float dcol=cw/4;drawText(g,"INPUT LEVEL",{x+18,diagY+42,dcol-20,15},7.2f,NovoxLookAndFeel::textSecondary);drawText(g,juce::String(currentInputRms>0.0f?20.0f*std::log10(currentInputRms):-120.0f,1)+" dBFS",{x+18,diagY+61,dcol-20,25},14,NovoxLookAndFeel::textPrimary,true);
         drawText(g,"PEAK / CLIP",{x+dcol,diagY+42,dcol-16,15},7.2f,NovoxLookAndFeel::textSecondary);drawText(g,juce::String(currentInputPeak,3)+(currentInputClipping?"  CLIP":""),{x+dcol,diagY+61,dcol-16,25},13,currentInputClipping?NovoxLookAndFeel::accent:NovoxLookAndFeel::textPrimary,true);
-        drawText(g,"YIN CONFIDENCE",{x+dcol*2,diagY+42,dcol-16,15},7.2f,NovoxLookAndFeel::textSecondary);drawText(g,juce::String(currentConfidence*100.0f,0)+"%",{x+dcol*2,diagY+61,dcol-16,25},16,NovoxLookAndFeel::textPrimary,true);
-        drawText(g,"ANALYSIS WINDOW",{x+dcol*3,diagY+42,dcol-12,15},7.2f,NovoxLookAndFeel::textSecondary);drawText(g,juce::String(currentAnalysisWindowSamples)+" samples",{x+dcol*3,diagY+61,dcol-12,25},12,NovoxLookAndFeel::textPrimary,true);
-        int cs=engine.getNoiseCalibrationState();float nf=engine.getCalibratedNoiseFloorDb();juce::String nt=cs==1?"Calibrating...":(nf>-119?juce::String(nf,1)+" dBFS":"Not calibrated");drawText(g,"ROOM NOISE FLOOR  ·  DROPPED AUDIO / MIDI",{x+18,diagY+101,cw-36,15},7.2f,NovoxLookAndFeel::textSecondary);drawText(g,nt+"     "+juce::String((juce::int64)engine.getDroppedAudioSamples())+" / "+juce::String((juce::int64)midiRouter.getDroppedEvents()),{x+18,diagY+117,cw-36,15},9,cs==2?NovoxLookAndFeel::success:NovoxLookAndFeel::textPrimary,true);
+        drawText(g,"YIN CONFIDENCE",{x+dcol*2,diagY+42,dcol-16,15},7.2f,NovoxLookAndFeel::textSecondary);drawText(g,juce::String(currentDetectorPitch.confidence*100.0f,0)+"%",{x+dcol*2,diagY+61,dcol-16,25},16,NovoxLookAndFeel::textPrimary,true);
+        drawText(g,"ANALYSIS WINDOW",{x+dcol*3,diagY+42,dcol-12,15},7.2f,NovoxLookAndFeel::textSecondary);drawText(g,juce::String(currentDetectorPitch.analysisWindowSamples)+" samples",{x+dcol*3,diagY+61,dcol-12,25},12,NovoxLookAndFeel::textPrimary,true);
+        drawText(g,"YIN STATE",{x+18,diagY+83,cw-36,13},7.2f,NovoxLookAndFeel::textSecondary);drawText(g,currentDetectorState+"  ·  "+juce::String(currentDetectorPitch.rms*100.0f,2)+"% RMS  ·  "+(currentDetectorPitch.frequencyHz>0.0f?juce::String(currentDetectorPitch.frequencyHz,1)+" Hz":"—"),{x+18,diagY+97,cw-36,16},9,currentDetectorPitch.voiced?NovoxLookAndFeel::success:NovoxLookAndFeel::textPrimary,true);
+        int cs=engine.getNoiseCalibrationState();float nf=engine.getCalibratedNoiseFloorDb();juce::String nt=cs==1?"Calibrating...":(nf>-119?juce::String(nf,1)+" dBFS":"Not calibrated");drawText(g,"ROOM NOISE FLOOR  ·  DROPPED AUDIO / MIDI",{x+18,diagY+119,cw-36,13},7.2f,NovoxLookAndFeel::textSecondary);drawText(g,nt+"     "+juce::String((juce::int64)engine.getDroppedAudioSamples())+" / "+juce::String((juce::int64)midiRouter.getDroppedEvents()),{x+18,diagY+133,cw-36,15},9,cs==2?NovoxLookAndFeel::success:NovoxLookAndFeel::textPrimary,true);
     }
     else
     {
@@ -888,12 +889,21 @@ void MainComponent::showAudioSetup()
 void MainComponent::timerCallback()
 {
     const auto pitch = engine.getLatestPitch();
-    currentConfidence = pitch.voiced ? pitch.confidence : 0.0f;
+    currentDetectorPitch = engine.getLatestDetectorPitch();
+    switch (currentDetectorPitch.diagnosticState)
+    {
+        case 1: currentDetectorState = "SILENCE GATE"; break;
+        case 2: currentDetectorState = "NO YIN CANDIDATE"; break;
+        case 3: currentDetectorState = "LOW CONFIDENCE / RANGE"; break;
+        case 4: currentDetectorState = "TRACKING"; break;
+        default: currentDetectorState = "WARMING UP"; break;
+    }
+    currentConfidence = currentDetectorPitch.confidence;
     currentRms = pitch.rms;
     currentInputRms = engine.getInputRms();
     currentInputPeak = engine.getInputPeak();
     currentInputClipping = engine.isInputClipping();
-    currentAnalysisWindowSamples = pitch.analysisWindowSamples;
+    currentAnalysisWindowSamples = currentDetectorPitch.analysisWindowSamples;
 
     if (auto* device = deviceManager.getCurrentAudioDevice())
     {

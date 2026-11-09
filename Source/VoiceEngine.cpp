@@ -60,6 +60,7 @@ void VoiceEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     lastPitchBendValue = PitchBend::center;
     latestActiveNote.store(-1, std::memory_order_relaxed);
     publishPitch(PitchResult {});
+    publishDetectorPitch(PitchResult {});
     startThread(juce::Thread::Priority::high);
 }
 
@@ -72,6 +73,7 @@ void VoiceEngine::audioDeviceStopped()
     monoScratch.setSize(0, 0);
     resetTrackingAndMidi();
     publishPitch(PitchResult {});
+    publishDetectorPitch(PitchResult {});
 }
 
 void VoiceEngine::audioDeviceIOCallbackWithContext(const float* const* input,
@@ -193,6 +195,7 @@ void VoiceEngine::run()
         inputEqualizer.process(workerScratch.data(), readable);
         noiseReducer.process(workerScratch.data(), readable);
         const auto rawPitch = detector.process(workerScratch.data(), readable);
+        publishDetectorPitch(rawPitch);
         noteTracker.setLowLatencyMode(lowLatency);
         noteTracker.setTransitionSmoothing(
             transitionSmoothingEnabled.load(std::memory_order_relaxed) && !lowLatency,
@@ -293,6 +296,38 @@ void VoiceEngine::publishPitch(const PitchResult& result) noexcept
     latestAnalysisWindowSamples.store(result.analysisWindowSamples, std::memory_order_relaxed);
     latestVoiced.store(result.voiced, std::memory_order_relaxed);
     latestSequence.fetch_add(1, std::memory_order_release);
+}
+
+void VoiceEngine::publishDetectorPitch(const PitchResult& result) noexcept
+{
+    detectorSequence.fetch_add(1, std::memory_order_acq_rel);
+    detectorFrequency.store(result.frequencyHz, std::memory_order_relaxed);
+    detectorConfidence.store(result.confidence, std::memory_order_relaxed);
+    detectorRms.store(result.rms, std::memory_order_relaxed);
+    detectorWindowSamples.store(result.analysisWindowSamples, std::memory_order_relaxed);
+    detectorState.store(result.diagnosticState, std::memory_order_relaxed);
+    detectorVoiced.store(result.voiced, std::memory_order_relaxed);
+    detectorSequence.fetch_add(1, std::memory_order_release);
+}
+
+PitchResult VoiceEngine::getLatestDetectorPitch() const noexcept
+{
+    PitchResult result;
+    for (;;)
+    {
+        const auto before = detectorSequence.load(std::memory_order_acquire);
+        if ((before & 1U) != 0U)
+            continue;
+        result.frequencyHz = detectorFrequency.load(std::memory_order_relaxed);
+        result.confidence = detectorConfidence.load(std::memory_order_relaxed);
+        result.rms = detectorRms.load(std::memory_order_relaxed);
+        result.analysisWindowSamples = detectorWindowSamples.load(std::memory_order_relaxed);
+        result.diagnosticState = detectorState.load(std::memory_order_relaxed);
+        result.voiced = detectorVoiced.load(std::memory_order_relaxed);
+        const auto after = detectorSequence.load(std::memory_order_acquire);
+        if (before == after)
+            return result;
+    }
 }
 
 PitchResult VoiceEngine::getLatestPitch() const noexcept

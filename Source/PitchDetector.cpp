@@ -76,6 +76,7 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
     result.analysisWindowSamples = analysisWindowSize;
     if (decimatedSamplesReceived < analysisWindowSize)
         return result;
+    result.diagnosticState = 1;
 
     const float sensitivity = sensitivityValue.load(std::memory_order_relaxed);
     const float silenceThreshold = 0.002f + 0.012f * (1.0f - sensitivity);
@@ -104,6 +105,7 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
         return result;
     }
 
+    result.diagnosticState = 2;
     const int minLag = std::max(2, static_cast<int>(currentSampleRate / maxFrequency));
     const int maxLag = lowLatency
         ? std::min({ maxLagCapacity, static_cast<int>(currentSampleRate / minFrequency), analysisWindowSize / 2 })
@@ -245,6 +247,7 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
     result.voiced = result.confidence >= confidenceThreshold
                  && result.frequencyHz >= minFrequency
                  && result.frequencyHz <= maxFrequency;
+    result.diagnosticState = result.voiced ? 4 : 3;
     if (!result.voiced)
     {
         result.frequencyHz = 0.0f;

@@ -25,6 +25,7 @@ public:
     void audioDeviceStopped() override;
 
     PitchResult getLatestPitch() const noexcept;
+    PitchResult getLatestDetectorPitch() const noexcept;
     int getActiveNote() const noexcept { return latestActiveNote.load(std::memory_order_relaxed); }
     void setMidiRouter(MidiRouter* router) noexcept { midiRouter = router; }
     void requestReset() noexcept { resetRequested.store(true, std::memory_order_release); notify(); }
@@ -61,6 +62,7 @@ private:
 
     void run() override;
     void publishPitch(const PitchResult& result) noexcept;
+    void publishDetectorPitch(const PitchResult& result) noexcept;
     void resetTrackingAndMidi() noexcept;
 
     PitchDetector detector;
@@ -85,6 +87,10 @@ private:
     std::atomic<float> latestRms { 0.0f };
     std::atomic<bool> latestVoiced { false };
     std::atomic<uint64_t> latestSequence { 0 };
+    std::atomic<float> detectorFrequency { 0.0f }, detectorConfidence { 0.0f }, detectorRms { 0.0f };
+    std::atomic<int> detectorWindowSamples { 0 }, detectorState { 0 };
+    std::atomic<bool> detectorVoiced { false };
+    std::atomic<uint64_t> detectorSequence { 0 };
     std::atomic<int> latestActiveNote { -1 };
     std::atomic<float> inputGain { 1.0f };
     std::atomic<int> inputChannelMode { 0 }, activeInputChannel { -1 };

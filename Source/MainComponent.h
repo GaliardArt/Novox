@@ -74,6 +74,8 @@ private:
     juce::String midiStatus = "No MIDI output selected";
     juce::String operationStatus = "Ready";
     float currentFrequency = 0.0f, currentConfidence = 0.0f, currentRms = 0.0f;
+    PitchResult currentDetectorPitch;
+    juce::String currentDetectorState = "WARMING UP";
     float currentInputRms = 0.0f, currentInputPeak = 0.0f;
     bool currentInputClipping = false;
     int currentAnalysisWindowSamples = 0;
