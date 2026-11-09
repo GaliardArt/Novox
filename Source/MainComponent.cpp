@@ -71,6 +71,7 @@ MainComponent::MainComponent()
     const double savedMidiNoteMinimumConfidence = juce::jlimit(0.0, 100.0, settings->getDoubleValue("midiNoteMinimumConfidence", 65.0));
     const double savedMidiNoteGapBridge = juce::jlimit(0.0, 80.0, settings->getDoubleValue("midiNoteGapBridgeMs", 25.0));
     const int savedInputChannelMode=juce::jlimit(0,3,settings->getIntValue("inputChannelMode",0));
+    const bool savedLowLatencyMode = settings->getBoolValue("lowLatencyMode", false);
     const double savedNoiseFloorDb=juce::jlimit(-120.0,0.0,settings->getDoubleValue("noiseCalibrationFloorDb",-120.0));
     const int savedBendRange = juce::jlimit(1, 12, settings->getIntValue("pitchBendRange", 2));
     const int savedChannel = juce::jlimit(1, 16, settings->getIntValue("midiChannel", 1));
@@ -289,6 +290,18 @@ MainComponent::MainComponent()
     inputChannelSelector.addItem("Auto (strongest)",1);inputChannelSelector.addItem("Left",2);inputChannelSelector.addItem("Right",3);inputChannelSelector.addItem("Stereo mix",4);inputChannelSelector.setSelectedId(savedInputChannelMode+1,juce::dontSendNotification);
     inputChannelSelector.onChange=[this]{int mode=juce::jlimit(0,3,inputChannelSelector.getSelectedId()-1);engine.setInputChannelMode(mode);settings->setValue("inputChannelMode",mode);saveSettings();repaint();};engine.setInputChannelMode(savedInputChannelMode);engine.setCalibratedNoiseFloorDb((float)savedNoiseFloorDb);addAndMakeVisible(inputChannelSelector);
     calibrateNoiseButton.onClick=[this]{engine.beginNoiseCalibration();operationStatus="Measuring room noise. Keep the microphone silent for two seconds.";repaint();};addAndMakeVisible(calibrateNoiseButton);
+    lowLatencyEnabled.setToggleState(savedLowLatencyMode, juce::dontSendNotification);
+    lowLatencyEnabled.onClick = [this]
+    {
+        const bool enabled = lowLatencyEnabled.getToggleState();
+        engine.setLowLatencyMode(enabled);
+        settings->setValue("lowLatencyMode", enabled);
+        operationStatus = enabled ? "Low-latency mode active; note cleanup, transition smoothing and pitch stability delays are bypassed."
+                                  : "Balanced pitch analysis active.";
+        saveSettings(); repaint();
+    };
+    addAndMakeVisible(lowLatencyEnabled);
+    engine.setLowLatencyMode(savedLowLatencyMode);
     audioSetupButton.onClick = [this] { showAudioSetup(); }; addAndMakeVisible(audioSetupButton);
 
     presetNameEditor.setText("My Preset", juce::dontSendNotification);
@@ -375,6 +388,7 @@ void MainComponent::styleControls()
     noiseReductionEnabled.setColour(juce::ToggleButton::textColourId, NovoxLookAndFeel::textPrimary);
     noteTransitionEnabled.setColour(juce::ToggleButton::textColourId, NovoxLookAndFeel::textPrimary);
     pitchStabilityEnabled.setColour(juce::ToggleButton::textColourId, NovoxLookAndFeel::textPrimary);
+    lowLatencyEnabled.setColour(juce::ToggleButton::textColourId, NovoxLookAndFeel::textPrimary);
     presetNameEditor.setColour(juce::TextEditor::backgroundColourId, NovoxLookAndFeel::panel);
     presetNameEditor.setColour(juce::TextEditor::textColourId, NovoxLookAndFeel::textPrimary);
     presetNameEditor.setColour(juce::TextEditor::outlineColourId, NovoxLookAndFeel::border);
@@ -607,7 +621,7 @@ void MainComponent::layoutPlayPage(juce::Rectangle<int>)
     pitchStabilityEnabled.setVisible(false);pitchDropToleranceSlider.setVisible(false);pitchDropHoldSlider.setVisible(false);
     midiNoteCleanupEnabled.setVisible(false); midiNoteMinimumDurationSlider.setVisible(false); midiNoteMinimumConfidenceSlider.setVisible(false); midiNoteGapBridgeSlider.setVisible(false);
     midiCleanupDurationLabel.setVisible(false); midiCleanupConfidenceLabel.setVisible(false); midiCleanupGapLabel.setVisible(false);
-    inputChannelSelector.setVisible(false);calibrateNoiseButton.setVisible(false);
+    inputChannelSelector.setVisible(false);calibrateNoiseButton.setVisible(false);lowLatencyEnabled.setVisible(false);
     presetSelector.setVisible(false);
     presetNameEditor.setVisible(false);
     savePresetButton.setVisible(false);
@@ -643,7 +657,7 @@ void MainComponent::layoutAudioPage(juce::Rectangle<int> a)
     pitchStabilityEnabled.setVisible(true);pitchDropToleranceSlider.setVisible(true);pitchDropHoldSlider.setVisible(true);
     midiNoteCleanupEnabled.setVisible(true); midiNoteMinimumDurationSlider.setVisible(true); midiNoteMinimumConfidenceSlider.setVisible(true); midiNoteGapBridgeSlider.setVisible(true);
     midiCleanupDurationLabel.setVisible(true); midiCleanupConfidenceLabel.setVisible(true); midiCleanupGapLabel.setVisible(true);
-    inputChannelSelector.setBounds(a.getRight()-220,266,200,28);calibrateNoiseButton.setBounds(a.getX()+716,top+157,128,28);
+    inputChannelSelector.setBounds(a.getRight()-220,266,200,28);lowLatencyEnabled.setVisible(true);lowLatencyEnabled.setBounds(a.getRight()-410,266,178,28);calibrateNoiseButton.setBounds(a.getX()+716,top+157,128,28);
     const int fiveGap=8,fiveCardW=(a.getWidth()-fiveGap*4)/5;
     gainSlider.setBounds(a.getX()+10,top+72,fiveCardW-20,30);
     sensitivitySlider.setBounds(a.getX()+fiveCardW+fiveGap+10,top+72,fiveCardW-20,30);
@@ -745,7 +759,7 @@ PresetData MainComponent::capturePresetData() const
     data.inputEqualizerEnabled=inputEqualizerEnabled.getToggleState();data.equalizerLowDb=equalizerLowSlider.getValue();data.equalizerMidDb=equalizerMidSlider.getValue();data.equalizerHighDb=equalizerHighSlider.getValue();
     data.pitchStabilityEnabled=pitchStabilityEnabled.getToggleState();data.pitchDropToleranceCents=pitchDropToleranceSlider.getValue();data.pitchDropHoldMs=pitchDropHoldSlider.getValue();
     data.midiNoteCleanupEnabled=midiNoteCleanupEnabled.getToggleState(); data.midiNoteMinimumDurationMs=midiNoteMinimumDurationSlider.getValue(); data.midiNoteMinimumConfidence=midiNoteMinimumConfidenceSlider.getValue(); data.midiNoteGapBridgeMs=midiNoteGapBridgeSlider.getValue();
-    data.inputChannelMode=inputChannelSelector.getSelectedId()-1;
+    data.inputChannelMode=inputChannelSelector.getSelectedId()-1; data.lowLatencyMode=lowLatencyEnabled.getToggleState();
     data.pitchBendRange = static_cast<int>(bendRangeSlider.getValue());
     data.midiChannel = channelSelector.getSelectedId(); data.midiOutputName = preferredMidiOutputName.toStdString();
     data.sanitise(); return data;
@@ -778,6 +792,7 @@ void MainComponent::applyPresetData(PresetData data, const juce::String& name)
     engine.setNoiseReductionEnabled(data.noiseReductionEnabled);
     engine.setNoiseReductionStrength(static_cast<float>(data.noiseReductionStrength / 100.0));
     inputChannelSelector.setSelectedId(data.inputChannelMode+1,juce::dontSendNotification);engine.setInputChannelMode(data.inputChannelMode);
+    lowLatencyEnabled.setToggleState(data.lowLatencyMode, juce::dontSendNotification);engine.setLowLatencyMode(data.lowLatencyMode);
     pitchBendEnabled.setToggleState(data.pitchBendEnabled, juce::dontSendNotification);
     engine.setPitchBendEnabled(data.pitchBendEnabled);
     bendRangeSlider.setValue(data.pitchBendRange, juce::dontSendNotification);
@@ -794,7 +809,7 @@ void MainComponent::applyPresetData(PresetData data, const juce::String& name)
     settings->setValue("noiseReductionEnabled", data.noiseReductionEnabled); settings->setValue("noiseReductionStrength", data.noiseReductionStrength);
     settings->setValue("inputEqualizerEnabled",data.inputEqualizerEnabled);settings->setValue("equalizerLowDb",data.equalizerLowDb);settings->setValue("equalizerMidDb",data.equalizerMidDb);settings->setValue("equalizerHighDb",data.equalizerHighDb);
     settings->setValue("pitchStabilityEnabled",data.pitchStabilityEnabled);settings->setValue("pitchDropToleranceCents",data.pitchDropToleranceCents);settings->setValue("pitchDropHoldMs",data.pitchDropHoldMs);
-    settings->setValue("inputChannelMode",data.inputChannelMode);
+    settings->setValue("inputChannelMode",data.inputChannelMode); settings->setValue("lowLatencyMode",data.lowLatencyMode);
     settings->setValue("pitchBendRange", data.pitchBendRange); settings->setValue("midiChannel", data.midiChannel);
     settings->setValue("midiOutputName", preferredMidiOutputName); settings->setValue("lastPresetName", name);
     refreshMidiOutputs(); saveSettings(); operationStatus = "Loaded preset: " + name; repaint();
@@ -856,8 +871,8 @@ void MainComponent::deleteSelectedPreset()
 void MainComponent::showAudioSetup()
 {
     auto* selector = new juce::AudioDeviceSelectorComponent(
-        deviceManager, 1, 2, 0, 0, false, false, true, false);
-    selector->setSize(560, 430);
+        deviceManager, 1, 2, 0, 0, false, false, true, true);
+    selector->setSize(560, 520);
 
     juce::DialogWindow::LaunchOptions options;
     options.content.setOwned(selector);

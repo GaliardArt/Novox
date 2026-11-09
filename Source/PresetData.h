@@ -27,6 +27,7 @@ struct PresetData
     double midiNoteMinimumConfidence = 65.0;
     double midiNoteGapBridgeMs = 25.0;
     int inputChannelMode = 0;
+    bool lowLatencyMode = false;
     int pitchBendRange = 2;
     int midiChannel = 1;
     std::string midiOutputName;

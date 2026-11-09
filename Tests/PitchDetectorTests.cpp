@@ -208,6 +208,31 @@ namespace
         check(high.voiced && high.analysisWindowSamples == 1024, "Higher notes use the shorter low-latency window", "window " + std::to_string(high.analysisWindowSamples));
     }
 
+    void testLowLatencyProgressiveWindows()
+    {
+        PitchDetector highDetector;
+        highDetector.prepare(48000.0, 64);
+        highDetector.setLowLatencyMode(true);
+        const auto high = makeSine(440.0, 48000.0, 0.08);
+        PitchResult highResult;
+        for (size_t offset = 0; offset < high.size(); offset += 64)
+            highResult = highDetector.process(high.data() + offset, static_cast<int>(std::min<size_t>(64, high.size() - offset)));
+        check(highResult.voiced && std::abs(highResult.frequencyHz - 440.0f) < 5.0f && highResult.analysisWindowSamples == 128,
+              "Low-latency mode uses a 128-sample window for high notes",
+              "detected " + std::to_string(highResult.frequencyHz) + " Hz / window " + std::to_string(highResult.analysisWindowSamples));
+
+        PitchDetector bassDetector;
+        bassDetector.prepare(48000.0, 64);
+        bassDetector.setLowLatencyMode(true);
+        const auto bass = makeSine(82.4069, 48000.0, 0.30);
+        PitchResult bassResult;
+        for (size_t offset = 0; offset < bass.size(); offset += 64)
+            bassResult = bassDetector.process(bass.data() + offset, static_cast<int>(std::min<size_t>(64, bass.size() - offset)));
+        check(bassResult.voiced && std::abs(bassResult.frequencyHz - 82.4069f) < 4.0f && bassResult.analysisWindowSamples >= 1024,
+              "Low-latency mode expands its window to retain bass accuracy",
+              "detected " + std::to_string(bassResult.frequencyHz) + " Hz / window " + std::to_string(bassResult.analysisWindowSamples));
+    }
+
     void testInvalidInput()
     {
         PitchDetector detector;
@@ -233,6 +258,7 @@ int main()
     testDominantThirdHarmonic();
     testNoiseRejection();
     testAdaptiveAnalysisWindow();
+    testLowLatencyProgressiveWindows();
     testInvalidInput();
 
     std::cout << "\nChecks: " << checks << ", failures: " << failures << '\n';

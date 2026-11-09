@@ -50,6 +50,7 @@ public:
     void setAutoTune(bool enabled, int tonic, int scale) noexcept;
     void setPitchStabilityGuard(bool enabled, float toleranceCents, float holdMs) noexcept;
     void setMidiNoteCleanup(bool enabled, float minimumDurationMs, float minimumConfidencePercent, float gapBridgeMs) noexcept;
+    void setLowLatencyMode(bool enabled) noexcept { lowLatencyMode.store(enabled, std::memory_order_relaxed); detector.setLowLatencyMode(enabled); }
     void setPitchBendEnabled(bool enabled) noexcept { pitchBendEnabled.store(enabled, std::memory_order_relaxed); }
     void setPitchBendRange(int semitones) noexcept { pitchBendRange.store(juce::jlimit(1, 12, semitones), std::memory_order_relaxed); }
     void setPitchSmoothing(float amount) noexcept { pitchSmoothing.store(juce::jlimit(0.0f, 100.0f, amount), std::memory_order_relaxed); }
@@ -92,6 +93,7 @@ private:
     std::atomic<int> latestAnalysisWindowSamples { 0 };
     std::atomic<bool> latestInputClipping { false };
     std::atomic<bool> resetRequested { false };
+    std::atomic<bool> lowLatencyMode { false };
 
     std::atomic<bool> transitionSmoothingEnabled { false };
     std::atomic<float> transitionConfirmationMs { 60.0f };

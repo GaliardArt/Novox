@@ -23,10 +23,12 @@ public:
         sensitivityValue.store(sensitivity < 0.0f ? 0.0f : (sensitivity > 1.0f ? 1.0f : sensitivity),
                                std::memory_order_relaxed);
     }
+    void setLowLatencyMode(bool enabled) noexcept { lowLatencyMode.store(enabled, std::memory_order_relaxed); }
 
 private:
     static constexpr int maxAnalysisWindowSize = 2048;
     static constexpr int shortAnalysisWindowSize = 1024;
+    static constexpr std::array<int, 5> lowLatencyWindows { 128, 256, 512, 1024, 2048 };
     static constexpr int maxLagCapacity = 768;
     static constexpr int filterHistorySize = 31;
 
@@ -58,4 +60,8 @@ private:
     float minFrequency = 65.0f;
     float maxFrequency = 1000.0f;
     std::atomic<float> sensitivityValue { 0.5f };
+    std::atomic<bool> lowLatencyMode { false };
+    int lowLatencyStage = 0;
+    bool lowLatencyFallbackActive = false;
+    bool lastLowLatencyMode = false;
 };

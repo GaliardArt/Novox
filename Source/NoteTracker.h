@@ -19,6 +19,12 @@ public:
         onsetConfirmationSeconds = std::clamp(durationMs, 0.0f, 120.0f) * 0.001f;
     }
 
+    void setLowLatencyMode(bool enabled) noexcept
+    {
+        onsetConfirmationSeconds = enabled ? 0.0f : 0.030f;
+        releaseConfirmationSeconds = enabled ? 0.020f : 0.040f;
+    }
+
     void setTransitionSmoothing(bool enabled, float confirmationMs) noexcept
     {
         transitionSmoothingEnabled = enabled;
@@ -54,6 +60,6 @@ private:
     MusicalScale musicalScale = MusicalScale::major;
 
     float onsetConfirmationSeconds = 0.030f;
-    static constexpr float releaseConfirmationSeconds = 0.040f;
+    float releaseConfirmationSeconds = 0.040f;
     static constexpr float noteChangeHysteresisSemitones = 0.58f;
 };

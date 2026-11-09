@@ -4,7 +4,7 @@
 
 namespace
 {
-    constexpr int presetSchemaVersion = 4;
+    constexpr int presetSchemaVersion = 5;
 
     void setError(juce::String* error, const juce::String& message)
     {
@@ -116,6 +116,7 @@ bool PresetManager::savePreset(const juce::String& name, PresetData data, juce::
     object->setProperty("midiNoteMinimumConfidence", data.midiNoteMinimumConfidence);
     object->setProperty("midiNoteGapBridgeMs", data.midiNoteGapBridgeMs);
     object->setProperty("inputChannelMode", data.inputChannelMode);
+    object->setProperty("lowLatencyMode", data.lowLatencyMode);
     object->setProperty("pitchBendRange", data.pitchBendRange);
     object->setProperty("midiChannel", data.midiChannel);
     object->setProperty("midiOutputName", juce::String(data.midiOutputName));
@@ -199,6 +200,7 @@ bool PresetManager::loadPreset(const juce::String& name, PresetData& data, juce:
         if (has("midiNoteGapBridgeMs")) loaded.midiNoteGapBridgeMs = static_cast<double>(object->getProperty("midiNoteGapBridgeMs"));
     }
     if (has("inputChannelMode")) loaded.inputChannelMode = static_cast<int>(object->getProperty("inputChannelMode"));
+    if (schemaVersion >= 5 && has("lowLatencyMode")) loaded.lowLatencyMode = static_cast<bool>(object->getProperty("lowLatencyMode"));
     loaded.pitchBendRange = static_cast<int>(object->getProperty("pitchBendRange"));
     loaded.midiChannel = static_cast<int>(object->getProperty("midiChannel"));
     loaded.midiOutputName = object->getProperty("midiOutputName").toString().toStdString();

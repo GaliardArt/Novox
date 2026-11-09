@@ -31,7 +31,7 @@ bool MidiRouter::openOutput(int index)
     }
     droppedEvents.store(0, std::memory_order_relaxed);
     emergencyAllNotesOff.store(false, std::memory_order_relaxed);
-    if (!startThread(juce::Thread::Priority::normal))
+    if (!startThread(juce::Thread::Priority::high))
     {
         output.reset();
         return false;

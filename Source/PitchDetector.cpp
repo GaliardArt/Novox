@@ -16,6 +16,9 @@ void PitchDetector::prepare(double sampleRate, int)
     decimatedSamplesReceived = 0;
     decimationPhase = 0;
     filterHistoryCount = 0;
+    lowLatencyStage = 0;
+    lowLatencyFallbackActive = false;
+    lastLowLatencyMode = lowLatencyMode.load(std::memory_order_relaxed);
 }
 
 PitchResult PitchDetector::process(const float* samples, int numSamples)
@@ -47,7 +50,28 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
         decimationPhase ^= 1;
     }
 
-    currentAnalysisWindowSize = (lastDetectedFrequency > 180.0f) ? shortAnalysisWindowSize : maxAnalysisWindowSize;
+    const bool lowLatency = lowLatencyMode.load(std::memory_order_relaxed);
+    if (lowLatency != lastLowLatencyMode)
+    {
+        lowLatencyStage = 0;
+        lowLatencyFallbackActive = false;
+        lastLowLatencyMode = lowLatency;
+    }
+    if (lowLatency)
+    {
+        if (!lowLatencyFallbackActive)
+        {
+            if (lastDetectedFrequency >= 350.0f) lowLatencyStage = 0;
+            else if (lastDetectedFrequency >= 180.0f) lowLatencyStage = 1;
+            else if (lastDetectedFrequency >= 90.0f) lowLatencyStage = 2;
+            else if (lastDetectedFrequency > 0.0f)
+                lowLatencyStage = (currentSampleRate / lastDetectedFrequency > 512.0) ? 4 : 3;
+        }
+        lowLatencyStage = std::clamp(lowLatencyStage, 0, 4);
+        currentAnalysisWindowSize = lowLatencyWindows[static_cast<size_t>(lowLatencyStage)];
+    }
+    else
+        currentAnalysisWindowSize = (lastDetectedFrequency > 180.0f) ? shortAnalysisWindowSize : maxAnalysisWindowSize;
     const int analysisWindowSize = currentAnalysisWindowSize;
     result.analysisWindowSamples = analysisWindowSize;
     if (decimatedSamplesReceived < analysisWindowSize)
@@ -69,10 +93,20 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
 
     result.rms = static_cast<float>(std::sqrt(energy / analysisWindowSize));
     if (result.rms < silenceThreshold)
+    {
+        if (lowLatency)
+        {
+            lowLatencyStage = 0;
+            lowLatencyFallbackActive = false;
+            lastDetectedFrequency = 0.0f;
+        }
         return result;
+    }
 
     const int minLag = std::max(2, static_cast<int>(currentSampleRate / maxFrequency));
-    const int maxLag = std::min(maxLagCapacity, static_cast<int>(currentSampleRate / minFrequency));
+    const int maxLag = lowLatency
+        ? std::min({ maxLagCapacity, static_cast<int>(currentSampleRate / minFrequency), analysisWindowSize / 2 })
+        : std::min(maxLagCapacity, static_cast<int>(currentSampleRate / minFrequency));
     const int comparisonLength = analysisWindowSize - maxLag;
 
     difference[0] = 0.0f;
@@ -128,8 +162,15 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
         }
     }
 
-    if (selectedLag < 0)
+    if (selectedLag < 0 || (lowLatency && lowLatencyStage < 4 && selectedLag >= maxLag - 2))
+    {
+        if (lowLatency && lowLatencyStage < 4)
+        {
+            ++lowLatencyStage;
+            lowLatencyFallbackActive = true;
+        }
         return result;
+    }
 
     // YIN can lock onto a strong harmonic when the fundamental is weak.
     // Compare Hann-windowed sinusoidal projections before accepting a lower
@@ -204,9 +245,26 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
                  && result.frequencyHz >= minFrequency
                  && result.frequencyHz <= maxFrequency;
     if (!result.voiced)
+    {
         result.frequencyHz = 0.0f;
+        if (lowLatency && lowLatencyStage < 4)
+        {
+            ++lowLatencyStage;
+            lowLatencyFallbackActive = true;
+        }
+    }
     else
+    {
         lastDetectedFrequency = result.frequencyHz;
+        lowLatencyFallbackActive = false;
+        if (lowLatency)
+        {
+            const double period = currentSampleRate / static_cast<double>(result.frequencyHz);
+            lowLatencyStage = result.frequencyHz >= 350.0f ? 0
+                : (result.frequencyHz >= 180.0f ? 1
+                : (result.frequencyHz >= 90.0f ? 2 : (period > 512.0 ? 4 : 3)));
+        }
+    }
 
     return result;
 }

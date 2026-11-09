@@ -46,10 +46,10 @@ void VoiceEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     currentSampleRate = device != nullptr ? juce::jmax(1.0, device->getCurrentSampleRate()) : 44100.0;
     const auto deviceBlockSize = device != nullptr ? device->getCurrentBufferSizeSamples() : 512;
     detector.prepare(currentSampleRate, deviceBlockSize);
-    noiseReducer.prepare(currentSampleRate, juce::jlimit(128, maxWorkerBlockSize, deviceBlockSize));
+    noiseReducer.prepare(currentSampleRate, juce::jlimit(1, maxWorkerBlockSize, deviceBlockSize));
     inputEqualizer.prepare(currentSampleRate);
     monoScratch.setSize(1, juce::jmax(maxWorkerBlockSize, deviceBlockSize));
-    workerBlockSize = juce::jlimit(128, maxWorkerBlockSize, deviceBlockSize);
+    workerBlockSize = juce::jlimit(1, maxWorkerBlockSize, deviceBlockSize);
     sampleFifo.reset();
     droppedAudioSamples.store(0);
     inputChannelSelector.reset();
@@ -60,7 +60,7 @@ void VoiceEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     lastPitchBendValue = PitchBend::center;
     latestActiveNote.store(-1, std::memory_order_relaxed);
     publishPitch(PitchResult {});
-    startThread(juce::Thread::Priority::normal);
+    startThread(juce::Thread::Priority::high);
 }
 
 void VoiceEngine::audioDeviceStopped()
@@ -154,7 +154,18 @@ void VoiceEngine::run()
             resetTrackingAndMidi();
 
         int start1 = 0, size1 = 0, start2 = 0, size2 = 0;
-        const int requested = juce::jmin(sampleFifo.getNumReady(), workerBlockSize);
+        int available = sampleFifo.getNumReady();
+        const int backlogLimit = workerBlockSize * 2;
+        if (available > backlogLimit)
+        {
+            const int stale = available - backlogLimit;
+            int staleStart1 = 0, staleSize1 = 0, staleStart2 = 0, staleSize2 = 0;
+            sampleFifo.prepareToRead(stale, staleStart1, staleSize1, staleStart2, staleSize2);
+            sampleFifo.finishedRead(staleSize1 + staleSize2);
+            droppedAudioSamples.fetch_add(static_cast<uint64_t>(staleSize1 + staleSize2), std::memory_order_relaxed);
+            available = sampleFifo.getNumReady();
+        }
+        const int requested = juce::jmin(available, workerBlockSize);
         if (requested <= 0)
         {
             wait(-1);
@@ -178,29 +189,30 @@ void VoiceEngine::run()
         lastObservedDroppedSamples = totalDroppedSamples;
         const auto elapsedSamples = static_cast<uint64_t>(readable) + droppedSinceLastBlock;
         const float elapsedSeconds = static_cast<float>(static_cast<double>(elapsedSamples) / currentSampleRate);
+        const bool lowLatency = lowLatencyMode.load(std::memory_order_relaxed);
         inputEqualizer.process(workerScratch.data(), readable);
         noiseReducer.process(workerScratch.data(), readable);
         const auto rawPitch = detector.process(workerScratch.data(), readable);
-
+        noteTracker.setLowLatencyMode(lowLatency);
         noteTracker.setTransitionSmoothing(
-            transitionSmoothingEnabled.load(std::memory_order_relaxed),
+            transitionSmoothingEnabled.load(std::memory_order_relaxed) && !lowLatency,
             transitionConfirmationMs.load(std::memory_order_relaxed));
         const bool tuneEnabled = autoTuneEnabled.load(std::memory_order_relaxed);
         noteTracker.setAutoTune(tuneEnabled,
             autoTuneTonic.load(std::memory_order_relaxed),
             static_cast<MusicalScale>(autoTuneScale.load(std::memory_order_relaxed)));
         pitchStabilityGuard.configure(
-            pitchStabilityEnabled.load(std::memory_order_relaxed),
+            pitchStabilityEnabled.load(std::memory_order_relaxed) && !lowLatency,
             pitchDropToleranceCents.load(std::memory_order_relaxed),
             pitchDropHoldMs.load(std::memory_order_relaxed));
 
         const auto guardedPitch = pitchStabilityGuard.process(rawPitch, elapsedSeconds);
-        const auto cleanupEnabled = midiNoteCleanupEnabled.load(std::memory_order_relaxed);
+        const auto cleanupEnabled = midiNoteCleanupEnabled.load(std::memory_order_relaxed) && !lowLatency;
         midiNoteCleanup.configure(cleanupEnabled,
             midiNoteMinimumDurationMs.load(std::memory_order_relaxed),
             midiNoteMinimumConfidence.load(std::memory_order_relaxed),
             midiNoteGapBridgeMs.load(std::memory_order_relaxed));
-        noteTracker.setOnsetConfirmationMs(cleanupEnabled ? 0.0f : 30.0f);
+        noteTracker.setOnsetConfirmationMs((lowLatency || cleanupEnabled) ? 0.0f : 30.0f);
         const auto pitch = midiNoteCleanup.process(guardedPitch, elapsedSeconds);
         const auto noteUpdate = noteTracker.process(pitch, elapsedSeconds);
 
