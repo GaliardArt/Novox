@@ -89,6 +89,7 @@ private:
     std::atomic<uint64_t> latestSequence { 0 };
     std::atomic<float> detectorFrequency { 0.0f }, detectorConfidence { 0.0f }, detectorRms { 0.0f };
     std::atomic<int> detectorWindowSamples { 0 }, detectorState { 0 };
+    std::atomic<float> detectorCandidateFrequency { 0.0f }, detectorConfidenceThreshold { 0.0f };
     std::atomic<bool> detectorVoiced { false };
     std::atomic<uint64_t> detectorSequence { 0 };
     std::atomic<int> latestActiveNote { -1 };

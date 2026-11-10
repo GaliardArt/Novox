@@ -306,6 +306,8 @@ void VoiceEngine::publishDetectorPitch(const PitchResult& result) noexcept
     detectorRms.store(result.rms, std::memory_order_relaxed);
     detectorWindowSamples.store(result.analysisWindowSamples, std::memory_order_relaxed);
     detectorState.store(result.diagnosticState, std::memory_order_relaxed);
+    detectorCandidateFrequency.store(result.candidateFrequencyHz, std::memory_order_relaxed);
+    detectorConfidenceThreshold.store(result.confidenceThreshold, std::memory_order_relaxed);
     detectorVoiced.store(result.voiced, std::memory_order_relaxed);
     detectorSequence.fetch_add(1, std::memory_order_release);
 }
@@ -323,6 +325,8 @@ PitchResult VoiceEngine::getLatestDetectorPitch() const noexcept
         result.rms = detectorRms.load(std::memory_order_relaxed);
         result.analysisWindowSamples = detectorWindowSamples.load(std::memory_order_relaxed);
         result.diagnosticState = detectorState.load(std::memory_order_relaxed);
+        result.candidateFrequencyHz = detectorCandidateFrequency.load(std::memory_order_relaxed);
+        result.confidenceThreshold = detectorConfidenceThreshold.load(std::memory_order_relaxed);
         result.voiced = detectorVoiced.load(std::memory_order_relaxed);
         const auto after = detectorSequence.load(std::memory_order_acquire);
         if (before == after)

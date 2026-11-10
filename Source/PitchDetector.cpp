@@ -249,11 +249,13 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
 
     result.confidence = std::clamp(
         1.0f - cumulativeMeanDifference[static_cast<size_t>(selectedLag)], 0.0f, 1.0f);
-    result.frequencyHz = static_cast<float>(currentSampleRate / refinedLag);
-    result.voiced = result.confidence >= confidenceThreshold
-                 && result.frequencyHz >= minFrequency
-                 && result.frequencyHz <= maxFrequency;
-    result.diagnosticState = result.voiced ? 4 : 3;
+    result.candidateFrequencyHz = static_cast<float>(currentSampleRate / refinedLag);
+    result.confidenceThreshold = confidenceThreshold;
+    const bool confidencePassed = result.confidence >= confidenceThreshold;
+    const bool frequencyInRange = result.candidateFrequencyHz >= minFrequency
+                               && result.candidateFrequencyHz <= maxFrequency;
+    result.voiced = confidencePassed && frequencyInRange;
+    result.diagnosticState = result.voiced ? 4 : (confidencePassed ? 5 : 3);
     if (!result.voiced)
     {
         result.frequencyHz = 0.0f;

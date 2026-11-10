@@ -16,6 +16,8 @@ struct PitchResult
     int analysisWindowSamples = 0;
     // 0=warming up, 1=silence gate, 2=no YIN candidate, 3=confidence/range rejected, 4=voiced.
     int diagnosticState = 0;
+    float candidateFrequencyHz = 0.0f;
+    float confidenceThreshold = 0.0f;
 };
 
 class PitchDetector
