@@ -255,10 +255,10 @@ PitchResult PitchDetector::process(const float* samples, int numSamples)
     const bool frequencyInRange = result.candidateFrequencyHz >= minFrequency
                                && result.candidateFrequencyHz <= maxFrequency;
     result.voiced = confidencePassed && frequencyInRange;
+    result.frequencyHz = result.voiced ? result.candidateFrequencyHz : 0.0f;
     result.diagnosticState = result.voiced ? 4 : (confidencePassed ? 5 : 3);
     if (!result.voiced)
     {
-        result.frequencyHz = 0.0f;
         if (lowLatency && lowLatencyStage < 4)
         {
             ++lowLatencyStage;
