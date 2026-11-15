@@ -107,9 +107,9 @@ private:
         if (state == nullptr)
             return;
         for (int i = 0; i < frameSize; ++i)
-            frameOutput[static_cast<size_t>(i)] = frameInput[static_cast<size_t>(i)] * 32768.0f;
+            framePcmInput[static_cast<size_t>(i)] = frameInput[static_cast<size_t>(i)] * 32768.0f;
 
-        rnnoise_process_frame(state, frameOutput.data(), frameOutput.data());
+        rnnoise_process_frame(state, frameOutput.data(), framePcmInput.data());
 
         for (auto& sample : frameOutput)
         {
@@ -153,5 +153,6 @@ private:
     int outputWrite = 0;
     bool enabledWas = false;
     std::array<float, frameSize> frameInput {};
+    std::array<float, frameSize> framePcmInput {};
     std::array<float, frameSize> frameOutput {};
 };
