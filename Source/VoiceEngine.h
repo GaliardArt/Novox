@@ -34,11 +34,6 @@ public:
     void setNoiseReductionEnabled(bool enabled) noexcept { noiseReducer.setEnabled(enabled); }
     void setInputEqualizerEnabled(bool enabled) noexcept { inputEqualizer.setEnabled(enabled); }
     void setInputEqualizerGains(float l,float m,float h) noexcept { inputEqualizer.setGains(l,m,h); }
-    void setNoiseReductionStrength(float strength) noexcept { noiseReducer.setStrength(strength); }
-    void beginNoiseCalibration() noexcept { noiseReducer.beginCalibration(); }
-    int getNoiseCalibrationState() const noexcept { return noiseReducer.getCalibrationState(); }
-    float getCalibratedNoiseFloorDb() const noexcept { return noiseReducer.getCalibratedNoiseFloorDb(); }
-    void setCalibratedNoiseFloorDb(float value) noexcept { noiseReducer.setCalibratedNoiseFloorDb(value); }
     void setInputChannelMode(int value) noexcept { inputChannelMode.store(juce::jlimit(0, 3, value), std::memory_order_relaxed); }
     int getActiveInputChannel() const noexcept { return activeInputChannel.load(std::memory_order_relaxed); }
     uint64_t getDroppedAudioSamples() const noexcept { return droppedAudioSamples.load(); }
