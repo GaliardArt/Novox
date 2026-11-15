@@ -40,4 +40,3 @@ add_library(NOVOX_RNNoise STATIC
   ${rnnoise_SOURCE_DIR}/src/rnnoise_tables.c
   ${_model_c_file})
 target_include_directories(NOVOX_RNNoise PUBLIC ${rnnoise_SOURCE_DIR}/include PRIVATE ${rnnoise_SOURCE_DIR}/src ${_model_include})
-target_compile_definitions(NOVOX_RNNoise PRIVATE USE_WEIGHTS_FILE=1)
