@@ -61,8 +61,7 @@ private:
     juce::Slider midiNoteMinimumDurationSlider, midiNoteMinimumConfidenceSlider, midiNoteGapBridgeSlider;
     juce::Label midiCleanupDurationLabel, midiCleanupConfidenceLabel, midiCleanupGapLabel;
     juce::ComboBox autoTuneKeySelector, autoTuneScaleSelector, inputChannelSelector;
-    juce::TextButton calibrateNoiseButton { "Calibrate 2s" };
-    juce::Slider bendRangeSlider, gainSlider, sensitivitySlider, smoothingSlider, noteTransitionSlider, noiseReductionSlider, pitchDropToleranceSlider, pitchDropHoldSlider;
+    juce::Slider bendRangeSlider, gainSlider, sensitivitySlider, smoothingSlider, noteTransitionSlider, pitchDropToleranceSlider, pitchDropHoldSlider;
     juce::TextEditor presetNameEditor;
     juce::TextButton savePresetButton { "Save / Update" },
                      loadPresetButton { "Load preset" },
@@ -79,6 +78,5 @@ private:
     bool audioAvailable = false;
     int audioChannels = 0, bufferSize = 0;
     double sampleRate = 0.0;
-    int lastNoiseCalibrationState = 0;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
