@@ -53,7 +53,7 @@ private:
     juce::ToggleButton pitchBendEnabled { "Pitch Bend" };
     juce::ToggleButton noteTransitionEnabled { "Note transition smoothing" };
     juce::ToggleButton autoTuneEnabled { "Auto-Tune" };
-    juce::ToggleButton noiseReductionEnabled { "Noise reduction (gate)" };
+    juce::ToggleButton noiseReductionEnabled { "Noise reduction (RNNoise)" };
     juce::ToggleButton inputEqualizerEnabled { "Input equalizer" };
     juce::Slider equalizerLowSlider, equalizerMidSlider, equalizerHighSlider;
     juce::Label equalizerLowLabel, equalizerMidLabel, equalizerHighLabel;
