@@ -53,6 +53,12 @@ public:
         return available.load(std::memory_order_acquire);
     }
 
+    // Legacy gate-calibration API: RNNoise adapts internally and has no noise-floor calibration.
+    void beginCalibration() noexcept {}
+    int getCalibrationState() const noexcept { return 0; }
+    float getCalibratedNoiseFloorDb() const noexcept { return -120.0f; }
+    void setCalibratedNoiseFloorDb(float) noexcept {}
+
     void process(float* samples, int count) noexcept
     {
         if (samples == nullptr || count <= 0)
@@ -79,16 +85,17 @@ public:
         for (int i = 0; i < count; ++i)
         {
             const float x = std::isfinite(samples[i]) ? samples[i] : 0.0f;
+            if (outputRead < outputWrite)
+                samples[i] = frameOutput[static_cast<size_t>(outputRead++)];
+            else
+                samples[i] = 0.0f;
+
             frameInput[static_cast<size_t>(inputCount++)] = x;
             if (inputCount == frameSize)
             {
                 processFrame();
                 inputCount = 0;
             }
-            if (outputRead < outputWrite)
-                samples[i] = frameOutput[static_cast<size_t>(outputRead++)];
-            else
-                samples[i] = 0.0f;
         }
         if (outputRead == outputWrite)
             outputRead = outputWrite = 0;
