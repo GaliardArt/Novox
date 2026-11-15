@@ -134,3 +134,24 @@ Mudanças na UI são permitidas apenas para refletir corretamente RNNoise e reti
 A tarefa só pode ser marcada como concluída quando a CI Windows Release compilar o aplicativo e todos os testes passarem; RNNoise estiver realmente executando no worker; taxas diferentes de 48 kHz funcionarem por resampling contínuo; bypass e alternância forem seguros; o fluxo YIN/MIDI não sofrer regressão deliberada; e o executável estiver disponível para teste com voz real.
 
 **Não declarar integrado, validado ou pronto antes desses critérios.**
+
+
+## 12. Referências técnicas verificadas para a implementação
+
+A investigação da API upstream foi feita na revisão imutável abaixo (não usar `main` como dependência de build):
+
+- Repositório: https://github.com/xiph/rnnoise
+- Commit fixado para a integração: `70f1d256acd4b34a572f999a05c87bf00b67730d`
+- Header público: `include/rnnoise.h`
+- API de processamento: `rnnoise_create`, `rnnoise_process_frame`, `rnnoise_destroy`.
+- Tamanho de frame reportado pela API: 480 amostras.
+- A demonstração oficial lê PCM16 e converte diretamente cada amostra `short` para `float` antes de chamar `rnnoise_process_frame`. Portanto, o wrapper NOVOX deve converter float JUCE normalizado para a escala PCM esperada (multiplicação por 32768) e normalizar a saída novamente, com proteção contra valores não finitos e clipping.
+
+Modelo correspondente ao arquivo `model_version` dessa revisão:
+
+- SHA-256: `0a8755f8e2d834eff6a54714ecc7d75f9932e845df35f8b59bc52a7cfe6e8b37`
+- Arquivo oficial: `https://media.xiph.org/rnnoise/models/rnnoise_data-0a8755f8e2d834eff6a54714ecc7d75f9932e845df35f8b59bc52a7cfe6e8b37.tar.gz`
+- O script oficial `download_model.sh` valida o SHA-256 do arquivo compactado antes de extraí-lo.
+- A API permite carregar pesos com `rnnoise_model_from_filename` ou `rnnoise_model_from_buffer`; ao usar modelo customizado, liberar o estado de denoise antes de liberar o modelo. O arquivo/bytes do modelo devem estar disponíveis localmente e nunca ser baixados pelo aplicativo em tempo de execução.
+
+Observação importante: o modelo e o código são dependências distintas. O CMake/CI deve validar o download e checksum do pacote de modelo, extrair/gerar os arquivos necessários e empacotar o modelo junto ao executável (ou incorporá-lo como recurso). Não habilitar silenciosamente `rnnoise_create(NULL)` caso os pesos default gerados não estejam presentes. O teste de inicialização precisa falhar de forma explícita e o NOVOX deve permanecer em bypass seguro se o modelo não carregar.
