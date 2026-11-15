@@ -23,7 +23,7 @@ public:
     {
         release();
         sampleRate = rate > 0.0 ? rate : 48000.0;
-        juce::ignoreUnused(maximumBlockSize);
+        (void) maximumBlockSize;
         inputCount = 0;
         outputRead = outputWrite = 0;
         enabledWas = false;
@@ -104,7 +104,7 @@ private:
         {
             const float normalized = sample / 32768.0f;
             sample = std::isfinite(normalized)
-                ? juce::jlimit(-1.0f, 1.0f, normalized) : 0.0f;
+                ? std::clamp(normalized, -1.0f, 1.0f) : 0.0f;
         }
         outputRead = 0;
         outputWrite = frameSize;
