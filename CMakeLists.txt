@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.22)
-project(NOVOX VERSION 1.2.0 LANGUAGES CXX)
+project(NOVOX VERSION 1.2.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 include(CTest)
 include(FetchContent)
+include(cmake/NovoxRNNoise.cmake)
 FetchContent_Declare(JUCE
     GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
     GIT_TAG 8.0.6
@@ -53,7 +54,7 @@ if(WIN32)
 endif()
 target_link_libraries(NOVOX PRIVATE
     juce::juce_audio_utils juce::juce_audio_devices juce::juce_audio_basics juce::juce_dsp
-    juce::juce_recommended_config_flags juce::juce_recommended_warning_flags
+    juce::juce_recommended_config_flags juce::juce_recommended_warning_flags NOVOX_RNNoise
 )
 if(WIN32)
     target_compile_options(NOVOX PRIVATE
