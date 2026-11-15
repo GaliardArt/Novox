@@ -1,6 +1,5 @@
 #pragma once
 
-#include <juce_dsp/juce_dsp.h>
 #include <rnnoise.h>
 
 #include <algorithm>
@@ -24,7 +23,7 @@ public:
     {
         release();
         sampleRate = rate > 0.0 ? rate : 48000.0;
-        maxBlock = juce::jmax(1, maximumBlockSize);
+        juce::ignoreUnused(maximumBlockSize);
         inputCount = 0;
         outputRead = outputWrite = 0;
         enabledWas = false;
@@ -42,22 +41,12 @@ public:
         enabled.store(shouldEnable, std::memory_order_relaxed);
     }
 
-    void setStrength(float) noexcept
-    {
-        // RNNoise does not expose a suppression-strength parameter. Retained
-        // temporarily for source/config compatibility; intentionally no-op.
-    }
 
     bool isAvailable() const noexcept
     {
         return available.load(std::memory_order_acquire);
     }
 
-    // Legacy gate-calibration API: RNNoise adapts internally and has no noise-floor calibration.
-    void beginCalibration() noexcept {}
-    int getCalibrationState() const noexcept { return 0; }
-    float getCalibratedNoiseFloorDb() const noexcept { return -120.0f; }
-    void setCalibratedNoiseFloorDb(float) noexcept {}
 
     void process(float* samples, int count) noexcept
     {
@@ -147,7 +136,6 @@ private:
     std::atomic<bool> enabled { false };
     std::atomic<bool> available { false };
     double sampleRate = 48000.0;
-    int maxBlock = 512;
     int inputCount = 0;
     int outputRead = 0;
     int outputWrite = 0;
