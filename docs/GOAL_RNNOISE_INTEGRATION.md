@@ -12,7 +12,7 @@ Integrar o RNNoise oficial da Xiph como redução de ruído neural opcional para
 
 O recurso deve:
 - permanecer opcional, com bypass transparente quando desativado;
-- manter o controle de intensidade já exposto na interface, se tecnicamente aplicável ao RNNoise;
+- não expor controles fictícios: a API RNNoise não oferece parâmetro direto de intensidade;
 - funcionar nas taxas de amostragem suportadas pelo dispositivo de áudio;
 - aceitar blocos de áudio de tamanhos variáveis;
 - executar exclusivamente no worker de processamento, nunca no callback de áudio do dispositivo;
@@ -68,6 +68,7 @@ A conversão de retorno deve preservar continuidade temporal e número de amostr
 
 - Preservar os métodos públicos usados por VoiceEngine e MainComponent, ou atualizar todos os chamadores no mesmo conjunto de alterações.
 - Preservar o toggle de redução de ruído e a persistência de configurações.
+- O slider antigo de intensidade e a calibração de noise floor foram removidos da interface; o campo legado de intensidade em presets é ignorado para compatibilidade de leitura.
 - Avaliar o controle atual de intensidade: manter semântica real e documentada, ou removê-lo coerentemente da UI, configurações e presets. Não manter slider sem efeito.
 - A calibração de noise floor é específica do gate. Remover ou redefinir deliberadamente calibração, estados, textos, settings e referências. Não deixar API/UI morta nem fingir que RNNoise usa essa calibração.
 - Atualizar o rótulo da UI para RNNoise ou Noise reduction (RNNoise); não continuar chamando o recurso de gate.
@@ -123,7 +124,8 @@ Mudanças na UI são permitidas apenas para refletir corretamente RNNoise e reti
 - [ ] Wrapper sem alocações no caminho de áudio, com buffering correto.
 - [ ] Resampling stateful para taxas suportadas.
 - [ ] Integração no worker entre EQ e PitchDetector.
-- [ ] UI/settings/presets coerentes com a nova implementação.
+- [x] Remoção dos controles de calibração e intensidade sem efeito; leitura de presets antigos preservada pelo campo legado.
+- [ ] Resampling contínuo para taxas diferentes de 48 kHz.
 - [ ] Testes automatizados cobrindo a seção 7.
 - [ ] CI Windows Release verde e CTest completo verde.
 - [ ] Artefato executável gerado e pronto para validação auditiva.
